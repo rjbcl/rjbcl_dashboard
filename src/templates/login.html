@@ -1,69 +1,254 @@
-<!DOCTYPE html>
+<!doctype html>
+{% load static %}
 <html lang="en">
-    <head>
-        <meta charset="utf-8" />
-        <meta http-equiv="X-UA-Compatible" content="IE=edge" />
-        <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
-        <meta name="description" content="" />
-        <meta name="author" content="" />
-        <title>Login - SB Admin</title>
-        <link href="../static/css/styles.css" rel="stylesheet" />
-        <script src="https://use.fontawesome.com/releases/v6.3.0/js/all.js" crossorigin="anonymous"></script>
-    </head>
-    <body class="bg-primary">
-        <div id="layoutAuthentication">
-            <div id="layoutAuthentication_content">
-                <main>
-                    <div class="container">
-                        <div class="row justify-content-center">
-                            <div class="col-lg-5">
-                                <div class="card shadow-lg border-0 rounded-lg mt-5">
-                                    <div class="card-header"><h3 class="text-center font-weight-light my-4">Login</h3></div>
-                                    <div class="card-body">
-                                        <form>
-                                            <div class="form-floating mb-3">
-                                                <input class="form-control" id="inputEmail" type="email" placeholder="name@example.com" />
-                                                <label for="inputEmail">Email address</label>
-                                            </div>
-                                            <div class="form-floating mb-3">
-                                                <input class="form-control" id="inputPassword" type="password" placeholder="Password" />
-                                                <label for="inputPassword">Password</label>
-                                            </div>
-                                            <div class="form-check mb-3">
-                                                <input class="form-check-input" id="inputRememberPassword" type="checkbox" value="" />
-                                                <label class="form-check-label" for="inputRememberPassword">Remember Password</label>
-                                            </div>
-                                            <div class="d-flex align-items-center justify-content-between mt-4 mb-0">
-                                                <a class="small" href="password.html">Forgot Password?</a>
-                                                <a class="btn btn-primary" href="base.html">Login</a>
-                                            </div>
-                                        </form>
-                                    </div>
-                                    <div class="card-footer text-center py-3">
-                                        <div class="small"><a href="register.html">Need an account? Sign up!</a></div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </main>
-            </div>
-            <div id="layoutAuthentication_footer">
-                <footer class="py-4 bg-light mt-auto">
-                    <div class="container-fluid px-4">
-                        <div class="d-flex align-items-center justify-content-between small">
-                            <div class="text-muted">Copyright &copy; Your Website 2023</div>
-                            <div>
-                                <a href="#">Privacy Policy</a>
-                                &middot;
-                                <a href="#">Terms &amp; Conditions</a>
-                            </div>
-                        </div>
-                    </div>
-                </footer>
-            </div>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>RJCBL PolicyHolder & Agent Login Portal</title>
+
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+  <style>
+  body, html {
+  height: 100%;
+  margin: 0;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background: url("{% static 'images/background1.jpg' %}") no-repeat center center fixed;
+  background-size: cover;
+  position: relative;
+}
+
+body::before {
+  content: "";
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(135deg, #0A1D56 0%, #102C6C 40%, #1ABC9C 100%);
+  z-index: -1;
+}
+
+    .main-wrapper {
+      display: flex;
+      min-height: 100vh;
+      position: relative;
+      z-index: 1;
+    }
+
+    .sidebar {
+      flex-shrink: 0;
+      width: 260px;
+      background-color: #ffffff;
+      border-right: 1px solid #dee2e6;
+    }
+
+    .sidebar-header {
+      padding: 1.5rem;
+      text-align: center;
+      font-weight: 600;
+      font-size: 1.5rem;
+      border-bottom: 1px solid #dee2e6;
+      color: #35589A;
+    }
+
+    .sidebar .nav-link {
+      color: #333;
+      font-size: 1rem;
+      padding: 0.75rem 1.5rem;
+      border-radius: 0.375rem;
+      margin: 0.25rem 0;
+      display: flex;
+      align-items: center;
+    }
+
+    .sidebar .nav-link .bi {
+      margin-right: 0.75rem;
+      font-size: 1.2rem;
+    }
+
+    .sidebar .nav-link:hover {
+      background-color: #e9ecef;
+    }
+
+    .sidebar .nav-link.active {
+      background-color: #35589A;
+      color: #fff;
+    }
+
+    .content-area {
+      flex-grow: 1;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      overflow-y: auto;
+      padding: 2rem;
+    }
+
+    .login-card {
+      width: 100%;
+      max-width: 500px;
+      border: none;
+      border-radius: 10px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+      background-color: rgba(255, 255, 255, 0.95);
+      padding: 2rem;
+    }
+
+    .logo-section {
+      text-align: center;
+      margin-bottom: 2rem;
+    }
+
+    .logo-section img {
+      width: 400px;
+      height: auto;
+    }
+
+    .login-tabs .nav-link {
+      border: none;
+      border-bottom: 3px solid transparent;
+      color: #6c757d;
+      font-weight: 600;
+      padding-bottom: 1rem;
+    }
+
+    .login-tabs .nav-link.active {
+      color: #148754;
+      border-bottom-color: #148754;
+    }
+
+    .login-tabs {
+      border-bottom: 1px solid #dee2e6;
+      margin-bottom: 1.5rem !important;
+    }
+
+    .form-control {
+      border-radius: 8px;
+      padding: 0.75rem 1rem;
+      border: 1px solid #ced4da;
+    }
+
+    .btn-login {
+      background-color: #35589A;
+      border: none;
+      border-radius: 8px;
+      padding: 0.75rem;
+      font-weight: 600;
+    }
+
+    .btn-login:hover {
+      background-color: #2c4980;
+    }
+  </style>
+</head>
+<body>
+  <div class="main-wrapper">
+    <div class="sidebar p-3">
+      <div class="sidebar-header">RJBCL</div>
+      <ul class="nav flex-column">
+        <li class="nav-item">
+          <a class="nav-link active" id="sidebarAgentLink"><i class="bi bi-person-badge"></i> Agent Login</a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" id="sidebarPolicyholderLink"><i class="bi bi-person-circle"></i> Policyholder Login</a>
+        </li>
+      </ul>
+    </div>
+
+    <div class="content-area">
+      <div class="card login-card">
+        <div class="logo-section">
+          <img src="{% static 'images/logo.png' %}" alt="RJCBL Logo">
         </div>
-        <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/js/bootstrap.bundle.min.js" crossorigin="anonymous"></script>
-        <script src="../static/js/scripts.js"></script>
-    </body>
+
+        {% if error_message %}
+          <div class="alert alert-danger text-center" role="alert">
+            {{ error_message }}
+          </div>
+        {% endif %}
+
+
+
+        <ul class="nav nav-tabs nav-fill login-tabs" id="loginTab" role="tablist">
+          <li class="nav-item" role="presentation">
+            <button class="nav-link active" id="agent-tab" data-bs-toggle="tab" data-bs-target="#agent-pane" type="button" role="tab">AGENT</button>
+          </li>
+          <li class="nav-item" role="presentation">
+            <button class="nav-link" id="policyholder-tab" data-bs-toggle="tab" data-bs-target="#policyholder-pane" type="button" role="tab">POLICYHOLDER</button>
+          </li>
+        </ul>
+
+        <div class="tab-content" id="loginTabContent">
+          <div class="tab-pane fade show active" id="agent-pane" role="tabpanel">
+            <form method="POST" action="/login/agent/">
+              {% csrf_token %}
+              <div class="mb-3">
+                <label for="agentCode" class="form-label">Agent Code</label>
+                <input type="text" class="form-control" id="agentCode" name="agentCode" placeholder="Enter agent code">
+              </div>
+              <div class="mb-4">
+                <label for="agentPassword" class="form-label">Password</label>
+                <input type="password" class="form-control" id="agentPassword" name="password" placeholder="Enter password">
+              </div>
+              <div class="d-grid">
+                <button type="submit" class="btn btn-primary btn-login">LOGIN</button>
+              </div>
+            </form>
+          </div>
+
+          <div class="tab-pane fade" id="policyholder-pane" role="tabpanel">
+            <form method="POST" action="/login/policyholder/">
+              {% csrf_token %}
+              <div class="mb-3">
+                <label for="policyNumber" class="form-label">Policy Number</label>
+                <input type="text" class="form-control" id="policyNumber" name="policyNumber" placeholder="Enter policy number">
+              </div>
+              <div class="mb-4">
+                <label for="policyPassword" class="form-label">Password</label>
+                <input type="password" class="form-control" id="policyPassword" name="password" placeholder="Enter password">
+              </div>
+              <div class="d-grid">
+                <button type="submit" class="btn btn-primary btn-login">LOGIN</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', function () {
+      const sidebarAgentLink = document.getElementById('sidebarAgentLink');
+      const sidebarPolicyholderLink = document.getElementById('sidebarPolicyholderLink');
+      const agentTabButton = document.getElementById('agent-tab');
+      const policyholderTabButton = document.getElementById('policyholder-tab');
+
+      const agentTab = new bootstrap.Tab(agentTabButton);
+      const policyholderTab = new bootstrap.Tab(policyholderTabButton);
+
+      sidebarAgentLink.addEventListener('click', function (e) {
+        e.preventDefault();
+        agentTab.show();
+      });
+
+      sidebarPolicyholderLink.addEventListener('click', function (e) {
+        e.preventDefault();
+        policyholderTab.show();
+      });
+
+      agentTabButton.addEventListener('shown.bs.tab', function() {
+        sidebarAgentLink.classList.add('active');
+        sidebarPolicyholderLink.classList.remove('active');
+      });
+
+      policyholderTabButton.addEventListener('shown.bs.tab', function() {
+        sidebarPolicyholderLink.classList.add('active');
+        sidebarAgentLink.classList.remove('active');
+      });
+    });
+  </script>
+</body>
 </html>
