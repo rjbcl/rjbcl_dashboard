@@ -1,3 +1,4 @@
 from django.shortcuts import render
 
-# Create your views here.
+def register_policyholder(request):
+    return render(request, 'policyholder/register.html')
