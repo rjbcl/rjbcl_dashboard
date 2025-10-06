@@ -1,3 +1,5 @@
+{% extends 'login.html' %}
+{% block content %}
 <div class="login-section p-4">
 
   {% if error_message %}
@@ -43,14 +45,15 @@
   <div class="register-link text-center mt-3">
     <p class="mb-1">
       Don’t have a login password?
-      <a href="/register/policyholder/" class="fw-semibold" style="color:#E0B600;">
+      <a href="/policyholder/register/" class="fw-semibold" style="color:#E0B600;">
         Register your Policy Number
       </a>
     </p>
     <p class="mb-0">
-      <a href="/forgot-password/" class="text-decoration-none fw-semibold" style="color:#0A1D56;">
+      <a href="/policyholder/forgot-password/" class="text-decoration-none fw-semibold" style="color:#0A1D56;">
         Forgot Password?
       </a>
     </p>
   </div>
 </div>
+{%endblock content%}

@@ -17,10 +17,10 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import path, include
 from . import  views
-
+from agent.views import  login_agent
 urlpatterns = [
     path('', views.home, name='home'),
-    path('login/', views.login, name='login'),
+    path('login/',  login_agent, name='login'),
     path('agent/', include('agent.urls'),name='agent'),
     path('policyholder/', include('policyholder.urls'), name='policyholder'),
     path('admin/', admin.site.urls),

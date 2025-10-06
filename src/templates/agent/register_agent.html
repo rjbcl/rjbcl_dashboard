@@ -1,41 +1,46 @@
+
+
+
+
 {%extends 'login.html' %}
 
 {%block content %}
 
-
-    <!-- Title and Description -->
-    <h4 class="text-center mb-3" style="color:#0A1D56;">Forgot Password</h4>
+    <!-- Title -->
+    <h4 class="text-center mb-3" style="color:#0A1D56;">Register your agent code</h4>
     <p class="text-center mb-4 text-muted">
-      Enter your registered email address to receive a password reset link.
+        Please register your Agent code no to get your password in your  email
     </p>
 
-    <!-- Forgot Password Form -->
-    <form method="POST" action="/agent/forget-password">
+    <!-- Registration Form -->
+    <form method="POST" action="/agent/register">
 
-      <!-- Email Field -->
+      <!-- Policy Number Field -->
       <div class="mb-3">
-        <label for="email" class="form-label fw-semibold">Email Address</label>
+        <label for="policyNo" class="form-label fw-semibold">Agent Code</label>
         <input
-          type="number"
-          name="agent_code"
-          id="agent_code"
+          type="text"
+          name="policyNo"
+          id="policyNo"
           class="form-control"
-          placeholder="Enter your registered agent code"
+          placeholder="30008988"
           required>
       </div>
 
+
+
       <!-- Error Message Placeholder -->
       <div class="alert alert-danger text-center mt-3" style="display:none;" id="error-message">
-        Invalid email address.
+        Something went wrong. Please check your details.
       </div>
 
       <!-- Success Message Placeholder -->
       <div class="alert alert-success text-center mt-3" style="display:none;" id="success-message">
-        Reset link sent successfully.
+        Policy registered successfully.
       </div>
 
       <!-- Submit Button -->
-      <button type="submit" class="btn-login mt-3">Send Reset Link</button>
+      <button type="submit" class="btn-login mt-3">Register</button>
 
       <!-- Back to Login Link -->
       <div class="register-link mt-4">
@@ -44,4 +49,7 @@
     </form>
 
 
-{%endblock content %}
+
+{%endblock content%}
+
+
