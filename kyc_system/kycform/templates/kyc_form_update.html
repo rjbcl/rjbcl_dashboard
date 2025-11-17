@@ -1,6 +1,4 @@
 {% load static %}
-
-
 <!DOCTYPE html>
 <html lang="ne">
 <head>
@@ -8,296 +6,479 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>राष्ट्रिय जीवन बीमा कम्पनी लिमिटेड | KYC Form</title>
 
-  <!-- ✅ Bootstrap -->
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-
-  <!-- ✅ Nepali Datepicker -->
+  <!-- Bootstrap (Local) -->
+  <link href="{% static 'bootstrap/css/bootstrap.min.css' %}" rel="stylesheet">
+  
+  <!-- Nepali Datepicker -->
   <link href="https://nepalidatepicker.sajanmaharjan.com.np/v5/nepali.datepicker/css/nepali.datepicker.v5.0.6.min.css" rel="stylesheet">
-  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-  <script src="https://nepalidatepicker.sajanmaharjan.com.np/v5/nepali.datepicker/js/nepali.datepicker.v5.0.6.min.js"></script>
-
- <!-- ✅ Add this line for offline BS <-> AD conversion -->
-  <script src="{% static 'js/nepaliFunctions_local.js' %}"></script>
-
-  <style>
-    body { background:#f8fafc; font-family:"Segoe UI",Arial,sans-serif; }
-    .form-section { background:#fff; border-radius:10px; padding:25px; box-shadow:0 2px 6px rgba(0,0,0,0.1); }
-    .section-title { color:#0d6efd; font-weight:600; margin-top:25px; border-bottom:2px solid #0d6efd; display:inline-block; }
-    label { font-weight:500; }
-    .is-invalid { border-color:red; }
-  </style>
+  
+  <!-- Custom CSS -->
+  <link href="{% static 'css/kyc-form.css' %}" rel="stylesheet">
 </head>
 
 <body>
-  <div class="container mt-4 mb-5" style="max-width:1100px;">
-    <div class="text-center mb-3 border-bottom pb-2">
-      <img src="{% static 'images/rjbclogo.png' %}" 
-     alt="Rastriya Jeeewan Beema Logo" 
-     style="height:90px;">
-      <h4 class="mt-2 fw-bold text-primary">राष्ट्रिय जीवन बीमा कम्पनी लिमिटेड</h4>
-      <h6 class="text-secondary">Rastriya Jeeewan Beema Company Limited</h6>
-      <p class="small mb-0">Know Your Customer (KYC) Update Form</p>
+  <div class="container-fluid">
+    <div class="row">
+      <!-- Left Sidebar -->
+      <div class="col-md-3 sidebar">
+        <div class="logo-section">
+          <img src="{% static 'images/rjbclogo.png' %}" alt="RJBC Logo" class="logo">
+        </div>
+        
+        <div class="step-indicator">
+          <h6 class="step-title">KYC Form</h6>
+          <p class="step-subtitle">Step <span id="currentStep">1</span> of 5</p>
+        </div>
+
+        <nav class="nav-steps">
+          <a href="#" class="nav-step active" data-step="1">
+            <span class="step-number">1</span>
+            <span class="step-name">Personal Details</span>
+          </a>
+          <a href="#" class="nav-step" data-step="2">
+            <span class="step-number">2</span>
+            <span class="step-name">Address Details</span>
+          </a>
+          <a href="#" class="nav-step" data-step="3">
+            <span class="step-number">3</span>
+            <span class="step-name">Bank Details</span>
+          </a>
+          <a href="#" class="nav-step" data-step="4">
+            <span class="step-number">4</span>
+            <span class="step-name">Nominee Details</span>
+          </a>
+          <a href="#" class="nav-step" data-step="5">
+            <span class="step-number">5</span>
+            <span class="step-name">Additional Details</span>
+          </a>
+        </nav>
+      </div>
+
+      <!-- Main Content -->
+      <div class="col-md-9 main-content">
+        <div class="form-container">
+          <form id="kycForm" method="POST" action="{% url 'kyc_form' %}" enctype="multipart/form-data">
+            {% csrf_token %}
+            
+            <input type="hidden" name="policy_no" id="policyField">
+
+            <!-- Step 1: Personal Details -->
+            <div class="form-step active" data-step="1">
+              <h4 class="form-step-title">Personal Details</h4>
+
+              <!-- Photo Upload -->
+              <div class="photo-upload-section">
+                <div class="photo-preview">
+                  <img id="photoPreview" src="{% static 'images/default-avatar.png' %}" alt="Photo">
+                </div>
+                <div class="photo-upload-controls">
+                  <label class="form-label">Passport Size Photo</label>
+                  <p class="form-text">Supports jpg, jpeg and png. 300KB max.</p>
+                  <input type="file" id="photoUpload" name="photo" accept="image/*" style="display:none;">
+                  <button type="button" class="btn btn-outline-primary btn-sm" onclick="document.getElementById('photoUpload').click()">Upload</button>
+                  <button type="button" class="btn btn-link btn-sm text-danger" id="removePhoto">Remove</button>
+                </div>
+              </div>
+
+              <!-- Document Uploads -->
+              <div class="row mb-4">
+                <div class="col-md-6">
+                  <div class="document-upload">
+                    <div class="upload-icon">📄</div>
+                    <label class="form-label">Citizenship / Birth Certificate</label>
+                    <p class="form-text">Supports jpg, jpeg and png. 500KB max.</p>
+                    <input type="file" id="citizenshipUpload" name="citizenship" accept="image/*,application/pdf" style="display:none;">
+                    <button type="button" class="btn btn-outline-secondary btn-sm" onclick="document.getElementById('citizenshipUpload').click()">
+                      <span class="upload-icon-btn">⬇</span>
+                    </button>
+                    <span class="file-name" id="citizenshipFileName"></span>
+                  </div>
+                </div>
+                <div class="col-md-6">
+                  <div class="document-upload">
+                    <div class="upload-icon">📄</div>
+                    <label class="form-label">Signature.png</label>
+                    <p class="form-text"></p>
+                    <input type="file" id="signatureUpload" name="signature" accept="image/*" style="display:none;">
+                    <button type="button" class="btn btn-link btn-sm text-danger" id="removeSignature">✕</button>
+                    <span class="file-name" id="signatureFileName">Signature.png</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Personal Information Fields -->
+              <div class="row">
+                <div class="col-md-4 mb-3">
+                  <label class="form-label">Full Name <span class="text-danger">*</span></label>
+                  <input type="text" name="full_name" class="form-control" required>
+                </div>
+                <div class="col-md-4 mb-3">
+                  <label class="form-label">Gender <span class="text-danger">*</span></label>
+                  <div class="gender-options">
+                    <div class="form-check form-check-inline">
+                      <input class="form-check-input" type="radio" name="gender" value="Male" required>
+                      <label class="form-check-label">Male</label>
+                    </div>
+                    <div class="form-check form-check-inline">
+                      <input class="form-check-input" type="radio" name="gender" value="Female">
+                      <label class="form-check-label">Female</label>
+                    </div>
+                    <div class="form-check form-check-inline">
+                      <input class="form-check-input" type="radio" name="gender" value="Other">
+                      <label class="form-check-label">Other</label>
+                    </div>
+                  </div>
+                </div>
+                <div class="col-md-4 mb-3">
+                  <label class="form-label">Salutation</label>
+                  <select name="salutation" class="form-select">
+                    <option value="">Select</option>
+                    <option value="Mr">Mr</option>
+                    <option value="Mrs">Mrs</option>
+                    <option value="Ms">Ms</option>
+                    <option value="Dr">Dr</option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="row">
+                <div class="col-md-4 mb-3">
+                  <label class="form-label">Date of Birth (BS) <span class="text-danger">*</span></label>
+                  <input type="text" id="dob_bs" name="dob_bs" class="form-control" placeholder="YYYY/MM/DD" required>
+                </div>
+                <div class="col-md-4 mb-3">
+                  <label class="form-label">Father's Name</label>
+                  <input type="text" name="father_name" class="form-control">
+                </div>
+                <div class="col-md-4 mb-3">
+                  <label class="form-label">Mother's Name</label>
+                  <input type="text" name="mother_name" class="form-control">
+                </div>
+              </div>
+
+              <div class="row">
+                <div class="col-md-4 mb-3">
+                  <label class="form-label">Grandfather's Name</label>
+                  <input type="text" name="grandfather_name" class="form-control">
+                </div>
+                <div class="col-md-4 mb-3">
+                  <label class="form-label">Marital Status <span class="text-danger">*</span></label>
+                  <div class="marital-options">
+                    <div class="form-check form-check-inline">
+                      <input class="form-check-input" type="radio" name="marital_status" value="Married" required>
+                      <label class="form-check-label">Married</label>
+                    </div>
+                    <div class="form-check form-check-inline">
+                      <input class="form-check-input" type="radio" name="marital_status" value="Unmarried">
+                      <label class="form-check-label">Unmarried</label>
+                    </div>
+                  </div>
+                </div>
+                <div class="col-md-4 mb-3">
+                  <label class="form-label">Spouse Name (Optional)</label>
+                  <input type="text" name="spouse_name" class="form-control">
+                </div>
+              </div>
+
+              <div class="row">
+                <div class="col-md-4 mb-3">
+                  <label class="form-label">Citizenship No. / Birth Certificate No. <span class="text-danger">*</span></label>
+                  <input type="text" name="citizenship_no" class="form-control" required>
+                </div>
+                <div class="col-md-4 mb-3">
+                  <label class="form-label">Document Issued Date <span class="text-danger">*</span></label>
+                  <input type="text" id="citizen_bs" name="citizenship_date" class="form-control" placeholder="YYYY/MM/DD" required>
+                </div>
+                <div class="col-md-4 mb-3">
+                  <label class="form-label">Document Issued Place</label>
+                  <select name="citizenship_place" class="form-select">
+                    <option value="">Select</option>
+                    <option value="Kathmandu">Kathmandu</option>
+                    <option value="Bhaktapur">Bhaktapur</option>
+                    <option value="Lalitpur">Lalitpur</option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="row">
+                <div class="col-md-4 mb-3">
+                  <label class="form-label">Passport No. (Optional)</label>
+                  <input type="text" name="passport_no" class="form-control">
+                </div>
+                <div class="col-md-4 mb-3">
+                  <label class="form-label">Expiry Date (Optional)</label>
+                  <input type="text" id="passport_expiry" name="passport_expiry" class="form-control" placeholder="YYYY/MM/DD">
+                </div>
+                <div class="col-md-4 mb-3">
+                  <label class="form-label">PAN No. (Optional)</label>
+                  <input type="text" name="pan_no" class="form-control">
+                </div>
+              </div>
+
+              <div class="row">
+                <div class="col-md-6 mb-3">
+                  <label class="form-label">Email Address <span class="text-danger">*</span></label>
+                  <input type="email" name="email" class="form-control" required>
+                </div>
+                <div class="col-md-6 mb-3">
+                  <label class="form-label">Mobile No. <span class="text-danger">*</span></label>
+                  <input type="tel" name="mobile" class="form-control" required>
+                </div>
+              </div>
+            </div>
+
+            <!-- Step 2: Address Details -->
+            <div class="form-step" data-step="2">
+              <h4 class="form-step-title">Address Details</h4>
+
+              <h6 class="section-subtitle">स्थायी ठेगाना (Permanent Address)</h6>
+              <div class="row">
+                <div class="col-md-3 mb-3">
+                  <label class="form-label">Province <span class="text-danger">*</span></label>
+                  <select id="perm_province" name="perm_province" class="form-select" required>
+                    <option value="">Select Province</option>
+                  </select>
+                </div>
+                <div class="col-md-3 mb-3">
+                  <label class="form-label">District <span class="text-danger">*</span></label>
+                  <select id="perm_district" name="perm_district" class="form-select" required>
+                    <option value="">Select District</option>
+                  </select>
+                </div>
+                <div class="col-md-3 mb-3">
+                  <label class="form-label">Municipality <span class="text-danger">*</span></label>
+                  <select id="perm_muni" name="perm_municipality" class="form-select" required>
+                    <option value="">Select Municipality</option>
+                  </select>
+                </div>
+                <div class="col-md-3 mb-3">
+                  <label class="form-label">Ward <span class="text-danger">*</span></label>
+                  <input type="number" name="perm_ward" class="form-control" required>
+                </div>
+              </div>
+
+              <h6 class="section-subtitle mt-4">अस्थायी ठेगाना (Temporary Address)</h6>
+              <div class="form-check mb-3">
+                <input class="form-check-input" type="checkbox" id="sameAddress">
+                <label class="form-check-label" for="sameAddress">
+                  Same as Permanent Address
+                </label>
+              </div>
+              <div class="row">
+                <div class="col-md-3 mb-3">
+                  <label class="form-label">Province <span class="text-danger">*</span></label>
+                  <select id="temp_province" name="temp_province" class="form-select" required>
+                    <option value="">Select Province</option>
+                  </select>
+                </div>
+                <div class="col-md-3 mb-3">
+                  <label class="form-label">District <span class="text-danger">*</span></label>
+                  <select id="temp_district" name="temp_district" class="form-select" required>
+                    <option value="">Select District</option>
+                  </select>
+                </div>
+                <div class="col-md-3 mb-3">
+                  <label class="form-label">Municipality <span class="text-danger">*</span></label>
+                  <select id="temp_muni" name="temp_municipality" class="form-select" required>
+                    <option value="">Select Municipality</option>
+                  </select>
+                </div>
+                <div class="col-md-3 mb-3">
+                  <label class="form-label">Ward <span class="text-danger">*</span></label>
+                  <input type="number" name="temp_ward" class="form-control" required>
+                </div>
+              </div>
+            </div>
+
+            <!-- Step 3: Bank Details -->
+            <div class="form-step" data-step="3">
+              <h4 class="form-step-title">Bank Details</h4>
+
+              <div class="row">
+                <div class="col-md-6 mb-3">
+                  <label class="form-label">Bank Name <span class="text-danger">*</span></label>
+                  <select name="bank_name" class="form-select" required>
+                    <option value="">Select Bank</option>
+                    <option value="Nepal Bank Limited">Nepal Bank Limited</option>
+                    <option value="Rastriya Banijya Bank">Rastriya Banijya Bank</option>
+                    <option value="Nabil Bank">Nabil Bank</option>
+                    <option value="NIC Asia Bank">NIC Asia Bank</option>
+                    <option value="Standard Chartered Bank">Standard Chartered Bank</option>
+                  </select>
+                </div>
+                <div class="col-md-6 mb-3">
+                  <label class="form-label">Branch Name <span class="text-danger">*</span></label>
+                  <input type="text" name="branch_name" class="form-control" required>
+                </div>
+              </div>
+
+              <div class="row">
+                <div class="col-md-6 mb-3">
+                  <label class="form-label">Account Number <span class="text-danger">*</span></label>
+                  <input type="text" name="account_number" class="form-control" required>
+                </div>
+                <div class="col-md-6 mb-3">
+                  <label class="form-label">Account Type <span class="text-danger">*</span></label>
+                  <select name="account_type" class="form-select" required>
+                    <option value="">Select</option>
+                    <option value="Saving">Saving</option>
+                    <option value="Current">Current</option>
+                  </select>
+                </div>
+              </div>
+
+              <h6 class="section-subtitle mt-4">पेशा / Occupation Details</h6>
+              <div class="row">
+                <div class="col-md-4 mb-3">
+                  <label class="form-label">Occupation <span class="text-danger">*</span></label>
+                  <select name="occupation" class="form-select" required>
+                    <option value="">Select</option>
+                    <option value="Government Service">Government Service</option>
+                    <option value="Private Job">Private Job</option>
+                    <option value="Business">Business</option>
+                    <option value="Agriculture">Agriculture</option>
+                    <option value="Housewife">Housewife</option>
+                    <option value="Student">Student</option>
+                    <option value="Other">Other</option>
+                  </select>
+                </div>
+                <div class="col-md-4 mb-3">
+                  <label class="form-label">Annual Income (Rs.)</label>
+                  <input type="number" name="annual_income" class="form-control">
+                </div>
+                <div class="col-md-4 mb-3">
+                  <label class="form-label">Source of Income</label>
+                  <input type="text" name="income_source" class="form-control">
+                </div>
+              </div>
+            </div>
+
+            <!-- Step 4: Nominee Details -->
+            <div class="form-step" data-step="4">
+              <h4 class="form-step-title">Nominee Details</h4>
+
+              <div class="row">
+                <div class="col-md-6 mb-3">
+                  <label class="form-label">Nominee Name <span class="text-danger">*</span></label>
+                  <input type="text" name="nominee_name" class="form-control" required>
+                </div>
+                <div class="col-md-6 mb-3">
+                  <label class="form-label">Relationship with Nominee <span class="text-danger">*</span></label>
+                  <select name="nominee_relation" class="form-select" required>
+                    <option value="">Select</option>
+                    <option value="Spouse">Spouse</option>
+                    <option value="Father">Father</option>
+                    <option value="Mother">Mother</option>
+                    <option value="Son">Son</option>
+                    <option value="Daughter">Daughter</option>
+                    <option value="Brother">Brother</option>
+                    <option value="Sister">Sister</option>
+                    <option value="Other">Other</option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="row">
+                <div class="col-md-6 mb-3">
+                  <label class="form-label">Nominee Date of Birth (BS)</label>
+                  <input type="text" id="nominee_dob" name="nominee_dob" class="form-control" placeholder="YYYY/MM/DD">
+                </div>
+                <div class="col-md-6 mb-3">
+                  <label class="form-label">Nominee Contact Number</label>
+                  <input type="tel" name="nominee_contact" class="form-control">
+                </div>
+              </div>
+
+              <h6 class="section-subtitle mt-4">In Case of Minor</h6>
+              <div class="row">
+                <div class="col-md-6 mb-3">
+                  <label class="form-label">Guardian Name</label>
+                  <input type="text" name="guardian_name" class="form-control">
+                </div>
+                <div class="col-md-6 mb-3">
+                  <label class="form-label">Guardian Relationship</label>
+                  <input type="text" name="guardian_relation" class="form-control">
+                </div>
+              </div>
+            </div>
+
+            <!-- Step 5: Additional Details -->
+            <div class="form-step" data-step="5">
+              <h4 class="form-step-title">Additional Details</h4>
+
+              <div class="row">
+                <div class="col-md-12 mb-3">
+                  <label class="form-label">National ID Number</label>
+                  <input type="text" name="nid_number" class="form-control">
+                </div>
+              </div>
+
+              <div class="row">
+                <div class="col-md-6 mb-3">
+                  <label class="form-label">NID Issued Date (BS)</label>
+                  <input type="text" id="nid_bs" name="nid_date" class="form-control" placeholder="YYYY/MM/DD">
+                </div>
+                <div class="col-md-6 mb-3">
+                  <label class="form-label">NID Issued District</label>
+                  <input type="text" name="nid_district" class="form-control">
+                </div>
+              </div>
+
+              <div class="mb-4">
+                <label class="form-label">NID Card Upload</label>
+                <input type="file" name="nid_card" class="form-control" accept="image/*,application/pdf">
+              </div>
+
+              <h6 class="section-subtitle">घोषणा / Declaration</h6>
+              <div class="declaration-box">
+                <div class="form-check">
+                  <input class="form-check-input" type="checkbox" id="declaration" name="declaration" required>
+                  <label class="form-check-label" for="declaration">
+                    <strong>के तपाईंले दिएको विवरण सत्य र ठ्याक्कै हो?</strong><br>
+                    I hereby declare that all the information provided above is true and accurate to the best of my knowledge.
+                  </label>
+                </div>
+              </div>
+            </div>
+
+            <!-- Navigation Buttons -->
+            <div class="form-navigation">
+              <button type="button" class="btn btn-outline-secondary" id="prevBtn" style="display:none;">Previous</button>
+              <button type="button" class="btn btn-primary" id="nextBtn">Continue</button>
+              <button type="submit" class="btn btn-success" id="submitBtn" style="display:none;">पेश गर्नुहोस् / Submit</button>
+            </div>
+          </form>
+        </div>
+
+        <footer class="form-footer">
+          <p>© Rastriya Jeeewan Beema Company Limited</p>
+        </footer>
+      </div>
     </div>
-
-    <form id="kycForm" method="POST" action="{% url 'kyc_form' %}">
-  {% csrf_token %}
-
-<input type="hidden" name="policy_no" id="policyField">
-	<!-- Display Policy Number -->
-<div class="mb-3">
-    <label class="form-label fw-bold">Policy Number</label>
-    <input type="text" id="policyVisible" class="form-control bg-light" readonly style="font-weight:600;">
-</div>
-
-
-      <!-- Personal Information -->
-      <h5 class="section-title">१. व्यक्तिगत विवरण / Personal Information</h5>
-      <div class="row">
-        <div class="col-md-3 mb-3">
-          <label>पहिलो नाम / First Name</label>
-          <input type="text" class="form-control form-control-sm" required>
-        </div>
-        <div class="col-md-3 mb-3">
-          <label>थर / Last Name</label>
-          <input type="text" class="form-control form-control-sm" required>
-        </div>
-        <div class="col-md-3 mb-3">
-          <label>लिङ्ग / Gender</label>
-          <select class="form-select form-select-sm" required>
-            <option value="">Select</option>
-            <option>Male</option><option>Female</option><option>Other</option>
-          </select>
-        </div>
-        <div class="col-md-3 mb-3">
-          <label>वैवाहिक स्थिति / Marital Status</label>
-          <select class="form-select form-select-sm" required>
-            <option value="">Select</option>
-            <option>Married</option><option>Unmarried</option><option>Divorced</option>
-          </select>
-        </div>
-      </div>
-
-      <div class="row">
-        <div class="col-md-3 mb-3">
-          <label>जन्म मिति (BS)</label>
-          <input type="text" id="dob_bs" class="form-control form-control-sm" autocomplete="off" required>
-        </div>
-        <div class="col-md-3 mb-3">
-          <label>Date of Birth (AD)</label>
-          <input type="date" id="dob_ad" class="form-control form-control-sm" required>
-        </div>
-        <div class="col-md-3 mb-3">
-          <label>Nationality</label>
-          <input type="text" value="Nepalese" class="form-control form-control-sm">
-        </div>
-      </div>
-
-      <!-- Identification Section -->
-      <h5 class="section-title">२. परिचयपत्र विवरण / Identification Documents</h5>
-      <h6 class="fw-semibold text-secondary">A. Citizenship Details</h6>
-      <div class="row">
-        <div class="col-md-3 mb-3"><label>Citizenship No</label><input type="text" class="form-control form-control-sm" required></div>
-        <div class="col-md-3 mb-3"><label>Issued District</label><input type="text" class="form-control form-control-sm" required></div>
-        <div class="col-md-3 mb-3"><label>Issued Date (BS)</label><input type="text" id="citizen_bs" class="form-control form-control-sm" autocomplete="off" required></div>
-        <div class="col-md-3 mb-3"><label>Citizenship Copy Upload</label><input type="file" class="form-control form-control-sm" required></div>
-      </div>
-
-      <h6 class="fw-semibold text-secondary">B. National ID Details</h6>
-      <div class="row">
-        <div class="col-md-3 mb-3"><label>NID Number</label><input type="text" class="form-control form-control-sm" required></div>
-        <div class="col-md-3 mb-3"><label>Issued Date (BS)</label><input type="text" id="nid_bs" class="form-control form-control-sm" autocomplete="off" required></div>
-        <div class="col-md-3 mb-3"><label>Issued District</label><input type="text" class="form-control form-control-sm" required></div>
-        <div class="col-md-3 mb-3"><label>NID Card Upload</label><input type="file" class="form-control form-control-sm" required></div>
-      </div>
-
-      <!-- Address -->
-      <h5 class="section-title">३. ठेगाना विवरण / Address Details</h5>
-      <h6>स्थायी ठेगाना (Permanent Address)</h6>
-      <div class="row">
-        <div class="col-md-3 mb-3"><label>Province</label><select id="perm_province" class="form-select form-select-sm" required></select></div>
-        <div class="col-md-3 mb-3"><label>District</label><select id="perm_district" class="form-select form-select-sm" required></select></div>
-        <div class="col-md-3 mb-3"><label>Municipality</label><select id="perm_muni" class="form-select form-select-sm" required></select></div>
-        <div class="col-md-3 mb-3"><label>Ward</label><input type="number" class="form-control form-control-sm" required></div>
-      </div>
-
-      <h6>अस्थायी ठेगाना (Temporary Address)</h6>
-      <div class="row">
-        <div class="col-md-3 mb-3"><label>Province</label><select id="temp_province" class="form-select form-select-sm" required></select></div>
-        <div class="col-md-3 mb-3"><label>District</label><select id="temp_district" class="form-select form-select-sm" required></select></div>
-        <div class="col-md-3 mb-3"><label>Municipality</label><select id="temp_muni" class="form-select form-select-sm" required></select></div>
-        <div class="col-md-3 mb-3"><label>Ward</label><input type="number" class="form-control form-control-sm" required></div>
-      </div>
-
-      <!-- Occupation -->
-      <h5 class="section-title">४. पेशा / Occupation Details</h5>
-      <div class="row">
-        <div class="col-md-4 mb-3">
-          <label>Occupation</label>
-          <select class="form-select form-select-sm" required>
-            <option value="">Select</option>
-            <option>Government Service</option><option>Private Job</option><option>Business</option>
-            <option>Agriculture</option><option>Housewife</option><option>Student</option><option>Other</option>
-          </select>
-        </div>
-        <div class="col-md-4 mb-3"><label>PAN Number</label><input type="text" class="form-control form-control-sm"></div>
-        <div class="col-md-4 mb-3"><label>Annual Income (Rs.)</label><input type="number" class="form-control form-control-sm"></div>
-      </div>
-
-      <!-- Photo and Signature -->
-      <h5 class="section-title">५. फोटो र हस्ताक्षर / Photo & Signature</h5>
-      <div class="row">
-        <div class="col-md-6 mb-3"><label>Upload Photo</label><input type="file" class="form-control form-control-sm" accept="image/*" required></div>
-        <div class="col-md-6 mb-3"><label>Upload Signature</label><input type="file" class="form-control form-control-sm" accept="image/*" required></div>
-      </div>
-
-      <!-- Declaration -->
-      <h5 class="section-title">६. घोषणा / Declaration</h5>
-      <div class="mb-3">
-        <label>के तपाईँले दिएको विवरण सत्य र ठ्याक्कै हो?</label><br>
-        <input type="radio" name="declaration" value="Yes" required> हो / Yes
-        <input type="radio" name="declaration" value="No"> होइन / No
-      </div>
-
-      <div class="text-center mt-4">
-        <button type="submit" class="btn btn-success px-5">पेश गर्नुहोस् / Submit</button>
-      </div>
-    </form>
-    <p class="text-center mt-3 text-muted small">© Rastriya Jeeewan Beema Company Limited</p>
   </div>
 
+  <!-- jQuery -->
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+  
+  <!-- Bootstrap JS (Local) -->
+  <script src="{% static 'bootstrap/js/bootstrap.bundle.min.js' %}"></script>
+  
+  <!-- Nepali Datepicker -->
+  <script src="https://nepalidatepicker.sajanmaharjan.com.np/v5/nepali.datepicker/js/nepali.datepicker.v5.0.6.min.js"></script>
+  
+  <!-- Nepali Functions -->
+  <script src="{% static 'js/nepaliFunctions_local.js' %}"></script>
+  
+  <!-- Custom JS -->
+  <script src="{% static 'js/kyc-form.js' %}"></script>
+
   <script>
-$(function(){
-
-  // =============================
-  // 1. Initialize Datepickers
-  // =============================
-  $("#dob_bs, #citizen_bs, #nid_bs").nepaliDatePicker({
-    ndpYear:true,
-    ndpMonth:true,
-    ndpYearCount:120
-  });
-
-  // =============================
-  // 2. BS ↔ AD Conversion Logic
-  // =============================
-
-  const nepaliDigits = {'०':'0','१':'1','२':'2','३':'3','४':'4','५':'5','६':'6','७':'7','८':'8','९':'9'};
-  function nepaliToLatin(s){return s?s.replace(/[०१२३४५६७८९]/g,d=>nepaliDigits[d]||d):s;}
-
-  function normalizeBS(bsRaw){
-    if(!bsRaw) return '';
-    let s = nepaliToLatin(bsRaw.trim()).replace(/\s+/g,'').replace(/[^\d\-\/]/g,'').replace(/\//g,'-');
-    if(/^\d{8}$/.test(s)) return `${s.slice(0,4)}-${s.slice(4,6)}-${s.slice(6,8)}`;
-    const parts = s.split('-').filter(Boolean);
-    if(parts.length===3){
-      const [y,m,d]=parts;
-      return `${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    // Get policy number from URL
+    const params = new URLSearchParams(window.location.search);
+    const policy = params.get("policy_no");
+    if (policy) {
+      document.getElementById("policyField").value = policy;
     }
-    return '';
-  }
-
-  function bsToAd(bsRaw){
-    try{
-      const n = normalizeBS(bsRaw);
-      if(!n) return '';
-      const [y,m,d] = n.split('-').map(Number);
-      const ad = NepaliFunctions.BS2AD({year:y,month:m,day:d});
-      return `${ad.year}-${String(ad.month).padStart(2,'0')}-${String(ad.day).padStart(2,'0')}`;
-    }catch(e){console.error("BS→AD error",e);return'';}
-  }
-
-  function adToBs(adRaw){
-    try{
-      const [y,m,d] = adRaw.split('-').map(Number);
-      const bs = NepaliFunctions.AD2BS({year:y,month:m,day:d});
-      return `${bs.year}-${String(bs.month).padStart(2,'0')}-${String(bs.day).padStart(2,'0')}`;
-    }catch(e){console.error("AD→BS error",e);return'';}
-  }
-
-  const $bs = $("#dob_bs");
-  const $ad = $("#dob_ad");
-
-  // Convert BS → AD (handles typing or datepicker)
-  function updateAD(){
-    const ad = bsToAd($bs.val());
-    if(ad) $ad.val(ad);
-  }
-
-  // Convert AD → BS
-  $ad.on("change blur",function(){
-    const bs = adToBs($(this).val());
-    if(bs) $bs.val(bs);
-  });
-
-  // Observe changes from the datepicker (handles clicks)
-  const observer = new MutationObserver(() => updateAD());
-  observer.observe($bs[0], {attributes:true, attributeFilter:['value']});
-  $bs.on("input change blur", updateAD);
-
-  console.log("✅ BS↔AD conversion active");
-
-  // =============================
-  // 3. Dynamic Address Loading
-  // =============================
-  function initWithLocations(locations){
-    function populateProvince(sel){sel.html('<option value="">Select Province</option>');for(let p in locations){sel.append(`<option>${p}</option>`);}}
-    function populateDistricts(p,selD,selM){selD.html('<option value="">Select District</option>');selM.html('<option value="">Select Municipality</option>');if(locations[p])Object.keys(locations[p]).forEach(d=>selD.append(`<option>${d}</option>`));}
-    function populateMunicipalities(p,d,selM){selM.html('<option value="">Select Municipality</option>');if(locations[p]&&locations[p][d])locations[p][d].forEach(m=>selM.append(`<option>${m}</option>`));}
-    populateProvince($('#perm_province'));populateProvince($('#temp_province'));
-    $('#perm_province').on('change',function(){populateDistricts($(this).val(),$('#perm_district'),$('#perm_muni'));});
-    $('#perm_district').on('change',function(){populateMunicipalities($('#perm_province').val(),$(this).val(),$('#perm_muni'));});
-    $('#temp_province').on('change',function(){populateDistricts($(this).val(),$('#temp_district'),$('#temp_muni'));});
-    $('#temp_district').on('change',function(){populateMunicipalities($('#temp_province').val(),$(this).val(),$('#temp_muni'));});
-  }
-
-  $.getJSON('/static/nepal_locations.json')
-    .done(function(data){
-      console.log('✅ Loaded full Nepal location data');
-      initWithLocations(data);
-    })
-    .fail(function(){
-      alert('⚠️ Could not load nepal_locations.json');
-    });
-
-  // =============================
-  // 4. Form Validation
-  // =============================
- $("#kycForm").on("submit",function(e){
-
-    let valid = true;
-
-    $(this).find("[required]").each(function(){
-        if(!$(this).val()){
-            valid = false;
-            $(this).addClass("is-invalid");
-        } else {
-            $(this).removeClass("is-invalid");
-        }
-    });
-
-    // ❌ BLOCK ONLY IF INVALID
-    if(!valid){
-        e.preventDefault();
-        alert("कृपया सबै आवश्यक विवरण भर्नुहोस्। / Please fill all required fields.");
-    }
-
-    // ✔ If valid → allow natural form submit (NO e.preventDefault)
-});
-
-
-});
-</script>
-
-<script>
-  const params = new URLSearchParams(window.location.search);
-  const policy = params.get("policy_no");
-
-  if (policy) {
-      document.getElementById("policyVisible").value = policy;  // visible field
-      document.getElementById("policyField").value = policy;    // hidden field for backend
-  }
-</script>
-
-
+  </script>
 </body>
 </html>
