@@ -48,17 +48,23 @@ $(function() {
   }
 
   function validateStep(step) {
+    debugger
     let valid = true;
     const $currentStep = $(`.form-step[data-step="${step}"]`);
+    let missingFields = [];
     
     $currentStep.find('[required]').each(function() {
       const $field = $(this);
+      const fieldLabel = $field.closest('.mb-3').find('label').first().text().replace('*', '').trim();
       
       if($field.attr('type') === 'radio') {
         const name = $field.attr('name');
         if(!$(`input[name="${name}"]:checked`).length) {
           valid = false;
           $field.closest('.row, .mb-3').addClass('is-invalid-group');
+          if(fieldLabel && !missingFields.includes(fieldLabel)) {
+            missingFields.push(fieldLabel);
+          }
         } else {
           $field.closest('.row, .mb-3').removeClass('is-invalid-group');
         }
@@ -66,6 +72,9 @@ $(function() {
         if(!$field.is(':checked')) {
           valid = false;
           $field.addClass('is-invalid');
+          if(fieldLabel && !missingFields.includes(fieldLabel)) {
+            missingFields.push(fieldLabel);
+          }
         } else {
           $field.removeClass('is-invalid');
         }
@@ -73,6 +82,9 @@ $(function() {
         if(!$field.val() || $field.val().trim() === '') {
           valid = false;
           $field.addClass('is-invalid');
+          if(fieldLabel && !missingFields.includes(fieldLabel)) {
+            missingFields.push(fieldLabel);
+          }
         } else {
           $field.removeClass('is-invalid');
         }
@@ -80,7 +92,26 @@ $(function() {
     });
     
     if(!valid) {
-      alert('कृपया सबै आवश्यक विवरण भर्नुहोस्। / Please fill all required fields.');
+      let errorMessage = 'कृपया सबै आवश्यक विवरण भर्नुहोस्।<br><small>Please fill all required fields.</small>';
+      
+      if(missingFields.length > 0 && missingFields.length <= 5) {
+        errorMessage += '<br><br><div style="text-align: left; font-size: 13px;"><strong>Missing:</strong><br>';
+        missingFields.forEach(field => {
+          errorMessage += `• ${field}<br>`;
+        });
+        errorMessage += '</div>';
+      }
+      
+      Swal.fire({
+        icon: 'warning',
+        title: 'Incomplete Form',
+        html: errorMessage,
+        confirmButtonText: 'OK',
+        confirmButtonColor: '#28a745',
+        customClass: {
+          popup: 'swal-nepali'
+        }
+      });
     }
     
     return valid;
@@ -311,7 +342,18 @@ $(function() {
     })
     .fail(function() {
       console.error('⚠️ Could not load nepal_locations.json');
-      alert('Warning: Location data could not be loaded. Please refresh the page.');
+      Swal.fire({
+        icon: 'error',
+        title: 'Data Loading Error',
+        text: 'Location data could not be loaded. Please refresh the page.',
+        confirmButtonText: 'Refresh Page',
+        confirmButtonColor: '#28a745',
+        allowOutsideClick: false
+      }).then((result) => {
+        if (result.isConfirmed) {
+          location.reload();
+        }
+      });
     });
 
   // =============================
@@ -349,16 +391,48 @@ $(function() {
   // 7. Form Submission
   // =============================
   $('#kycForm').on('submit', function(e) {
+    e.preventDefault();
+    
     if(!validateStep(totalSteps)) {
-      e.preventDefault();
       return false;
     }
     
-    // Re-enable disabled fields before submission
-    $('#temp_province, #temp_district, #temp_muni, input[name="temp_ward"]').prop('disabled', false);
+    // Show confirmation dialog
+    Swal.fire({
+      title: 'Submit KYC Form?',
+      html: '<p>के तपाईं यो फारम पेश गर्न चाहनुहुन्छ?</p><small>Do you want to submit this form?</small>',
+      icon: 'question',
+      showCancelButton: true,
+      confirmButtonColor: '#28a745',
+      cancelButtonColor: '#6c757d',
+      confirmButtonText: 'Yes, Submit',
+      cancelButtonText: 'Cancel',
+      customClass: {
+        popup: 'swal-nepali'
+      }
+    }).then((result) => {
+      if (result.isConfirmed) {
+        // Re-enable disabled fields before submission
+        $('#temp_province, #temp_district, #temp_muni, input[name="temp_ward"]').prop('disabled', false);
+        
+        // Show loading
+        Swal.fire({
+          title: 'Submitting...',
+          html: 'कृपया पर्खनुहोस्...<br><small>Please wait...</small>',
+          allowOutsideClick: false,
+          allowEscapeKey: false,
+          showConfirmButton: false,
+          didOpen: () => {
+            Swal.showLoading();
+          }
+        });
+        
+        // Submit the form
+        this.submit();
+      }
+    });
     
-    // Form will submit normally
-    console.log('✅ Form submitted');
+    return false;
   });
 
   // =============================

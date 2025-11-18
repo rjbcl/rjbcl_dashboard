@@ -12,6 +12,9 @@
   <!-- Nepali Datepicker -->
   <link href="https://nepalidatepicker.sajanmaharjan.com.np/v5/nepali.datepicker/css/nepali.datepicker.v5.0.6.min.css" rel="stylesheet">
   
+  <!-- SweetAlert2 -->
+  <link href="{% static 'css/sweetalert2.min.css' %}" rel="stylesheet">
+  
   <!-- Custom CSS -->
   <link href="{% static 'css/kyc-form.css' %}" rel="stylesheet">
 </head>
@@ -85,7 +88,7 @@
                 <div class="col-md-6">
                   <div class="document-upload">
                     <div class="upload-icon">📄</div>
-                    <label class="form-label">Citizenship / Birth Certificate</label>
+                    <label class="form-label">Citizenship</label>
                     <p class="form-text">Supports jpg, jpeg and png. 500KB max.</p>
                     <input type="file" id="citizenshipUpload" name="citizenship" accept="image/*,application/pdf" style="display:none;">
                     <button type="button" class="btn btn-outline-secondary btn-sm" onclick="document.getElementById('citizenshipUpload').click()">
@@ -457,14 +460,17 @@
     </div>
   </div>
 
-  <!-- jQuery -->
-  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+  <!-- jQuery (Local) -->
+  <script src="{% static 'js/jquery-3.6.0.min.js' %}"></script>
   
   <!-- Bootstrap JS (Local) -->
   <script src="{% static 'bootstrap/js/bootstrap.bundle.min.js' %}"></script>
   
   <!-- Nepali Datepicker -->
   <script src="https://nepalidatepicker.sajanmaharjan.com.np/v5/nepali.datepicker/js/nepali.datepicker.v5.0.6.min.js"></script>
+  
+  <!-- SweetAlert2 -->
+  <script src="{% static 'js/sweetalert2.all.min.js' %}"></script>
   
   <!-- Nepali Functions -->
   <script src="{% static 'js/nepaliFunctions_local.js' %}"></script>
