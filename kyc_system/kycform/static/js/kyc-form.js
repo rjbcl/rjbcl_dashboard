@@ -48,7 +48,6 @@ $(function() {
   }
 
   function validateStep(step) {
-    debugger
     let valid = true;
     const $currentStep = $(`.form-step[data-step="${step}"]`);
     let missingFields = [];
@@ -101,22 +100,12 @@ $(function() {
         });
         errorMessage += '</div>';
       }
-      
-      Swal.fire({
-        icon: 'warning',
-        title: 'Incomplete Form',
-        html: errorMessage,
-        confirmButtonText: 'OK',
-        confirmButtonColor: '#28a745',
-        customClass: {
-          popup: 'swal-nepali'
-        }
-      });
+      swalError('Incomplete Form', errorMessage);
     }
     
     return valid;
   }
-
+ 
   $('#nextBtn').on('click', function() {
     if(validateStep(currentStep)) {
       currentStep++;
@@ -342,14 +331,8 @@ $(function() {
     })
     .fail(function() {
       console.error('⚠️ Could not load nepal_locations.json');
-      Swal.fire({
-        icon: 'error',
-        title: 'Data Loading Error',
-        text: 'Location data could not be loaded. Please refresh the page.',
-        confirmButtonText: 'Refresh Page',
-        confirmButtonColor: '#28a745',
-        allowOutsideClick: false
-      }).then((result) => {
+      // Calling Sweetalert for error message
+      swalFire('Data Loading Error','Location data could not be loaded. Please refresh the page.').then((result) => {
         if (result.isConfirmed) {
           location.reload();
         }
@@ -396,21 +379,13 @@ $(function() {
     if(!validateStep(totalSteps)) {
       return false;
     }
-    
+    debugger
     // Show confirmation dialog
-    Swal.fire({
-      title: 'Submit KYC Form?',
-      html: '<p>के तपाईं यो फारम पेश गर्न चाहनुहुन्छ?</p><small>Do you want to submit this form?</small>',
-      icon: 'question',
-      showCancelButton: true,
-      confirmButtonColor: '#28a745',
-      cancelButtonColor: '#6c757d',
-      confirmButtonText: 'Yes, Submit',
-      cancelButtonText: 'Cancel',
-      customClass: {
-        popup: 'swal-nepali'
-      }
-    }).then((result) => {
+      swalQuestion(
+        'Submit KYC Form?', 
+        '<p>के तपाईं यो फारम पेश गर्न चाहनुहुन्छ?</p><small>Do you want to submit this form?</small>',
+        'Yes, Submit'
+    ).then((result) => {
       if (result.isConfirmed) {
         // Re-enable disabled fields before submission
         $('#temp_province, #temp_district, #temp_muni, input[name="temp_ward"]').prop('disabled', false);
