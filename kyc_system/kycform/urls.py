@@ -10,4 +10,5 @@ urlpatterns = [
     path('kyc-form/', views.kyc_form_view, name='kyc_form'),
     path('dashboard/', views.dashboard_view, name='dashboard'),
     path('agent-dashboard/', views.agent_dashboard_view, name='agent_dashboard'),
+    path('register/', views.register_view, name='register'),
 ]
