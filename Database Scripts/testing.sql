@@ -139,4 +139,6 @@ INSERT INTO kyc_policy (policy_number, user_ID, created_at) VALUES
 
 
 
-
+SELECT * from kyc_agent_info
+SELECT * from kyc_user_info
+SELECT * from kyc_policy
