@@ -79,3 +79,64 @@ END$$;
 -- Show data from both tables
 SELECT * FROM kyc_user_info;
 SELECT * FROM kyc_agent_info;
+
+
+
+--=============POLICY TABLE=================
+REATE EXTENSION IF NOT EXISTS "pgcrypto";
+
+-- Create kyc_status_table
+CREATE TABLE kyc_status_table (
+    kyc_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    policy_number kyc_user_info(policy_number),
+    User_ID VARCHAR REFERENCES kyc_user_info(User_ID),
+    KYC_status kyc_status_enum
+);
+
+DROP TABLE IF EXISTS kyc_agent_info;
+DROP TABLE IF EXISTS kyc_user_info;
+
+-- ******************* CREATE TABLE  kyc_user_info *******************
+CREATE TABLE kyc_user_info (
+    row_id SERIAL PRIMARY KEY,
+    user_ID VARCHAR UNIQUE,  
+    dob DATE,
+    first_name VARCHAR,
+    last_name VARCHAR,
+    user_email VARCHAR,
+    citizenship_number VARCHAR,
+    phone_number VARCHAR,
+    address VARCHAR,
+    password VARCHAR
+);
+
+
+
+--- Adding 3 Dummy data into the user info table
+INSERT INTO kyc_user_info (
+    user_ID, dob, first_name, last_name, user_email,
+    citizenship_number, phone_number, address, password
+) VALUES
+('USR001', '1990-01-01', 'Aarav', 'Shrestha', 'aarav@example.com', '01-90-12345', '9800000001', 'Kathmandu', 'pass123'),
+('USR002', '1985-05-15', 'Bina', 'Rai', 'bina@example.com', '05-85-54321', '9800000002', 'Lalitpur', 'pass456'),
+('USR003', '1992-09-20', 'Chirag', 'Gurung', 'chirag@example.com', '09-92-67890', '9800000003', 'Bhaktapur', 'pass789');
+
+
+
+-- ******************* CREATE TABLE kyc_policy *******************
+CREATE TABLE kyc_policy (
+    policy_number VARCHAR PRIMARY KEY,
+    user_ID VARCHAR REFERENCES kyc_user_info(user_ID),
+    created_at DATE DEFAULT CURRENT_DATE
+);
+
+
+INSERT INTO kyc_policy (policy_number, user_ID, created_at) VALUES
+('POL001', 'USR001', '2025-01-10'),
+('POL002', 'USR002', '2025-02-15'),
+('POL003', 'USR003', '2025-03-20'),
+('POL004', 'USR001', '2025-03-20');
+
+
+
+
