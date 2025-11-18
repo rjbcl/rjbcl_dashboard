@@ -38,7 +38,11 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+
+    # your app
+    'kycform',
 ]
+
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
@@ -73,20 +77,24 @@ WSGI_APPLICATION = 'kyc_system.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
+from decouple import config
+
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': config('PGNAME'),
-        'USER': config('PGUSER'),
-        'PASSWORD': config('PGPASSWORD'),
-        'HOST': config('PGHOST'),
-        'PORT': config('PGPORT'),
+        'NAME': 'kyc_testing',
+        'USER': 'neondb_owner',
+        'PASSWORD': 'npg_lzrAo0HEmO9S',
+        'HOST': 'ep-holy-firefly-a167umgo-pooler.ap-southeast-1.aws.neon.tech',
+        'PORT': '5432',
         'OPTIONS': {
             'sslmode': 'require',
-            'channel_binding': 'require',
-        },
+        }
     }
 }
+
+
+
 
 
 
