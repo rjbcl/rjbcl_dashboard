@@ -88,7 +88,7 @@
                 <div class="col-md-6">
                   <div class="document-upload">
                     <div class="upload-icon">📄</div>
-                    <label class="form-label">Citizenship</label>
+                    <label class="form-label">Citizenship Front</label>
                     <p class="form-text">Supports jpg, jpeg and png. 500KB max.</p>
                     <input type="file" id="citizenshipUpload" name="citizenship" accept="image/*,application/pdf" style="display:none;">
                     <button type="button" class="btn btn-outline-secondary btn-sm" onclick="document.getElementById('citizenshipUpload').click()">
@@ -97,6 +97,33 @@
                     <span class="file-name" id="citizenshipFileName"></span>
                   </div>
                 </div>
+                <div class="col-md-6">
+                  <div class="document-upload">
+                    <div class="upload-icon">📄</div>
+                    <label class="form-label">Citizenship Back</label>
+                    <p class="form-text">Supports jpg, jpeg and png. 500KB max.</p>
+                    <input type="file" id="citizenshipUpload" name="citizenship" accept="image/*,application/pdf" style="display:none;">
+                    <button type="button" class="btn btn-outline-secondary btn-sm" onclick="document.getElementById('citizenshipUpload').click()">
+                      <span class="upload-icon-btn">⬇</span>
+                    </button>
+                    <span class="file-name" id="citizenshipFileName"></span>
+                  </div>
+                </div>
+              </div>
+              <div class="row mb-4">
+                <div class="col-md-6">
+                  <div class="document-upload">
+                    <div class="upload-icon">📄</div>
+                    <label class="form-label">National Identity Card (optional)</label>
+                    <p class="form-text">Supports jpg, jpeg and png. 500KB max.</p>
+                    <input type="file" id="citizenshipUpload" name="citizenship" accept="image/*,application/pdf" style="display:none;">
+                    <button type="button" class="btn btn-outline-secondary btn-sm" onclick="document.getElementById('citizenshipUpload').click()">
+                      <span class="upload-icon-btn">⬇</span>
+                    </button>
+                    <span class="file-name" id="citizenshipFileName"></span>
+                  </div>
+                </div>
+                
                 <div class="col-md-6">
                   <div class="document-upload">
                     <div class="upload-icon">📄</div>
@@ -109,11 +136,42 @@
                 </div>
               </div>
 
-              <!-- Personal Information Fields -->
+              <!-- NAME Fields -->
               <div class="row">
                 <div class="col-md-4 mb-3">
-                  <label class="form-label">Full Name <span class="text-danger">*</span></label>
-                  <input type="text" name="full_name" class="form-control" required>
+                  <label class="form-label">First Name <span class="text-danger">*</span></label>
+                  <input type="text" name="first_name" class="form-control" required>
+                </div>
+                <div class="col-md-4 mb-3">
+                  <label class="form-label">Middle Name</label>
+                  <input type="text" name="middle_name" class="form-control">
+                </div>
+                <div class="col-md-4 mb-3">
+                  <label class="form-label">Last Name <span class="text-danger">*</span></label>
+                  <input type="text" name="last_name" class="form-control" required>
+                </div>
+              </div>
+              <!-- Personal Information Fields 1 -->
+              <div class="row">
+                <div class="col-md-4 mb-3">
+                  <label class="form-label">Salutation</label>
+                  <select name="salutation" class="form-select">
+                    <option value="">Select</option>
+                    <option value="Mr">Mr</option>
+                    <option value="Mrs">Mrs</option>
+                    <option value="Ms">Ms</option>
+                    <option value="Dr">Dr</option>
+                  </select>
+                </div>
+                <div class="col-md-4 mb-3">
+                  <label class="form-label">Nationality</label>
+                  <select name="nationality" class="form-select">
+                    <option value="">Select</option>
+                    <option value="Kathmandu">Nepalese</option>
+                    <option value="Bhaktapur">Indian</option>
+                    <option value="Bhaktapur">Chinese</option>
+                    <option value="Lalitpur">Other</option>
+                  </select>
                 </div>
                 <div class="col-md-4 mb-3">
                   <label class="form-label">Gender <span class="text-danger">*</span></label>
@@ -132,38 +190,74 @@
                     </div>
                   </div>
                 </div>
-                <div class="col-md-4 mb-3">
-                  <label class="form-label">Salutation</label>
-                  <select name="salutation" class="form-select">
-                    <option value="">Select</option>
-                    <option value="Mr">Mr</option>
-                    <option value="Mrs">Mrs</option>
-                    <option value="Ms">Ms</option>
-                    <option value="Dr">Dr</option>
-                  </select>
-                </div>
+                
               </div>
-
+              <!-- Personal Information Fields 2-->
               <div class="row">
                 <div class="col-md-4 mb-3">
                   <label class="form-label">Date of Birth (BS) <span class="text-danger">*</span></label>
-                  <input type="text" id="dob_bs" name="dob_bs" class="form-control" placeholder="YYYY/MM/DD" required>
+                  <input type="date" id="dob_bs" name="dob_bs" class="form-control" placeholder="YYYY/MM/DD"  required readonly>
                 </div>
-                <div class="col-md-4 mb-3">
+                 <div class="col-md-4 mb-3" onclick="document.getElementById('dob_ad').showPicker()"> 
+                <!-- <div class="col-md-4 mb-3" onclick="$('#dob_ad')[0].showPicker()"> -->
+
+                  <label class="form-label">Date of Birth (AD) <span class="text-danger">*</span></label>
+                  <input type="date" id="dob_ad" name="dob_ad" class="form-control" placeholder="YYYY/MM/DD" required autocomplete="off">
+                </div>
+              </div>
+              <!-- Personal Information Fields 3-->
+              <div class="row mb-4">
+                <div class="col-md-6 mb-3">
+                  <label class="form-label">Email Address <span class="text-danger">*</span></label>
+                  <input type="email" name="email" class="form-control" required >
+                </div>
+                <div class="col-md-6 mb-3">
+                  <label class="form-label">Mobile No. <span class="text-danger">*</span></label>
+                  <input type="tel" name="mobile" class="form-control" required>
+                </div>
+                <!-- <div class="col-md-4 mb-3">
                   <label class="form-label">Father's Name</label>
                   <input type="text" name="father_name" class="form-control">
                 </div>
                 <div class="col-md-4 mb-3">
                   <label class="form-label">Mother's Name</label>
                   <input type="text" name="mother_name" class="form-control">
+                </div> -->
+              </div>
+              <!-- Documents-->
+              <div class="row">
+                <div class="col-md-4 mb-3">
+                  <label class="form-label">Citizenship No.<span class="text-danger">*</span></label>
+                  <input type="text" name="citizenship_no" class="form-control" required>
+                </div>
+                <div class="col-md-4 mb-3">
+                  <label class="form-label">Document Issued Date(BS) <span class="text-danger">*</span></label>
+                  <input type="date" id="citizen_bs" name="citizenship_date" class="form-control" placeholder="YYYY/MM/DD" required>
+                </div>
+                <div class="col-md-4 mb-3" onclick="document.getElementById('citizen_ad').showPicker()">
+                  <label class="form-label">Document Issued Date(AD) <span class="text-danger">*</span></label>
+                  <input type="date" id="citizen_ad" name="citizenship_date" class="form-control" placeholder="YYYY/MM/DD" required>
+                </div>
+              </div>
+              <!-- Documents 2-->
+              <div class="row mb-4">
+                <div class="col-md-4 mb-3">
+                  <label class="form-label">Document Issued Place <span class="text-danger">*</span></label>
+                  <input type="text" name="citizenship_place" class="form-control" required>
+                </div>
+              <div class="col-md-4 mb-3">
+                  <label class="form-label">Passport No.</label>
+                  <input type="text" name="passport_no" class="form-control">
+                </div>
+              <div class="col-md-4 mb-3">
+                  <label class="form-label">National Identity Card No.</label>
+                  <input type="text" name="passport_no" class="form-control">
                 </div>
               </div>
 
+              <h4 class="form-step-title">Family Details</h4>
+              <!-- Married Details -->
               <div class="row">
-                <div class="col-md-4 mb-3">
-                  <label class="form-label">Grandfather's Name</label>
-                  <input type="text" name="grandfather_name" class="form-control">
-                </div>
                 <div class="col-md-4 mb-3">
                   <label class="form-label">Marital Status <span class="text-danger">*</span></label>
                   <div class="marital-options">
@@ -178,54 +272,50 @@
                   </div>
                 </div>
                 <div class="col-md-4 mb-3">
-                  <label class="form-label">Spouse Name (Optional)</label>
+                  <label class="form-label">Spouse Name <span class="text-danger">*</span></label>
                   <input type="text" name="spouse_name" class="form-control">
                 </div>
               </div>
 
+              <!-- Close Family -->
               <div class="row">
                 <div class="col-md-4 mb-3">
-                  <label class="form-label">Citizenship No. / Birth Certificate No. <span class="text-danger">*</span></label>
-                  <input type="text" name="citizenship_no" class="form-control" required>
+                  <label class="form-label">Father's Name</label>
+                  <input type="text" name="father_name" class="form-control">
                 </div>
                 <div class="col-md-4 mb-3">
-                  <label class="form-label">Document Issued Date <span class="text-danger">*</span></label>
-                  <input type="text" id="citizen_bs" name="citizenship_date" class="form-control" placeholder="YYYY/MM/DD" required>
+                  <label class="form-label">Mother's Name</label>
+                  <input type="text" name="mother_name" class="form-control">
                 </div>
                 <div class="col-md-4 mb-3">
-                  <label class="form-label">Document Issued Place</label>
-                  <select name="citizenship_place" class="form-select">
-                    <option value="">Select</option>
-                    <option value="Kathmandu">Kathmandu</option>
-                    <option value="Bhaktapur">Bhaktapur</option>
-                    <option value="Lalitpur">Lalitpur</option>
-                  </select>
+                  <label class="form-label">Grand Father's Name</label>
+                  <input type="text" name="grand_father_name" class="form-control">
                 </div>
               </div>
-
+              <!-- Close Family 2 -->
               <div class="row">
                 <div class="col-md-4 mb-3">
-                  <label class="form-label">Passport No. (Optional)</label>
-                  <input type="text" name="passport_no" class="form-control">
+                  <label class="form-label">Son's Name</label>
+                  <input type="text" name="son_name" class="form-control">
                 </div>
                 <div class="col-md-4 mb-3">
-                  <label class="form-label">Expiry Date (Optional)</label>
-                  <input type="text" id="passport_expiry" name="passport_expiry" class="form-control" placeholder="YYYY/MM/DD">
+                  <label class="form-label">Daughter's Name</label>
+                  <input type="text" name="daughter_name" class="form-control">
                 </div>
                 <div class="col-md-4 mb-3">
-                  <label class="form-label">PAN No. (Optional)</label>
-                  <input type="text" name="pan_no" class="form-control">
+                  <label class="form-label">Father in Law's Name</label>
+                  <input type="text" name="father_in_law_name" class="form-control">
                 </div>
               </div>
 
               <div class="row">
                 <div class="col-md-6 mb-3">
-                  <label class="form-label">Email Address <span class="text-danger">*</span></label>
-                  <input type="email" name="email" class="form-control" required>
+                  <label class="form-label">Contact Person <span class="text-danger">*</span></label>
+                  <input type="text" name="contact_person" class="form-control" required>
                 </div>
                 <div class="col-md-6 mb-3">
                   <label class="form-label">Mobile No. <span class="text-danger">*</span></label>
-                  <input type="tel" name="mobile" class="form-control" required>
+                  <input type="tel" name="contact_mobile" class="form-control" required>
                 </div>
               </div>
             </div>
@@ -259,6 +349,16 @@
                   <input type="number" name="perm_ward" class="form-control" required>
                 </div>
               </div>
+              <div class="row">
+                  <div class="col-md-3 mb-3">
+                  <label class="form-label">Address <span class="text-danger">*</span></label>
+                  <input type="text" name="perm_address" class="form-control" required>
+                </div>
+                <div class="col-md-3 mb-3">
+                  <label class="form-label">House No. <span class="text-danger">*</span></label>
+                  <input type="text" name="perm_house_number" class="form-control" required>
+                </div>
+              </div>
 
               <h6 class="section-subtitle mt-4">अस्थायी ठेगाना (Temporary Address)</h6>
               <div class="form-check mb-3">
@@ -289,6 +389,16 @@
                 <div class="col-md-3 mb-3">
                   <label class="form-label">Ward <span class="text-danger">*</span></label>
                   <input type="number" name="temp_ward" class="form-control" required>
+                </div>
+              </div>
+              <div class="row">
+                  <div class="col-md-3 mb-3">
+                  <label class="form-label">Address <span class="text-danger">*</span></label>
+                  <input type="text" name="temp_address" class="form-control" required>
+                </div>
+                <div class="col-md-3 mb-3">
+                  <label class="form-label">House No. <span class="text-danger">*</span></label>
+                  <input type="text" name="temp_house_number" class="form-control" required>
                 </div>
               </div>
             </div>
@@ -376,7 +486,8 @@
                     <option value="Daughter">Daughter</option>
                     <option value="Brother">Brother</option>
                     <option value="Sister">Sister</option>
-                    <option value="Other">Other</option>
+                    <option value="Sister">In-Laws</option>
+                    <option value="Sister">Other</option>
                   </select>
                 </div>
               </div>
@@ -462,19 +573,23 @@
 
   <!-- jQuery (Local) -->
   <script src="{% static 'js/jquery-3.6.0.min.js' %}"></script>
+  <script src="{% static 'js/nepali.datepicker.v5.0.6.min.js' %}"></script>
+
   
   <!-- Bootstrap JS (Local) -->
   <script src="{% static 'bootstrap/js/bootstrap.bundle.min.js' %}"></script>
   
   <!-- Nepali Datepicker -->
-  <script src="https://nepalidatepicker.sajanmaharjan.com.np/v5/nepali.datepicker/js/nepali.datepicker.v5.0.6.min.js"></script>
+  <!-- <script src="https://nepalidatepicker.sajanmaharjan.com.np/v5/nepali.datepicker/js/nepali.datepicker.v5.0.6.min.js"></script> -->
+  <!-- <script src="% static 'js/nepali.datepicker.v5.0.6.min.js' %"></script> -->
   
   <!-- SweetAlert2 -->
   <script src="{% static 'js/sweetalert2.all.min.js' %}"></script>
   <script src="{% static 'js/sweetalert-messages.js' %}"></script>
   
   <!-- Nepali Functions -->
-  <script src="{% static 'js/nepaliFunctions_local.js' %}"></script>
+  <script src="{% static 'js/nepaliFunctions.js' %}"></script>
+  <script src="{% static 'js/date-conversion.js' %}"></script>
   
   <!-- MAIN JS -->
   <script src="{% static 'js/kyc-form.js' %}"></script>

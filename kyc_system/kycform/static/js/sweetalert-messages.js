@@ -1,10 +1,10 @@
 function swalError(errorTitle, errorMessage)
   {
      Swal.fire({
-        icon: 'warning',
+        icon: 'error',
         title: errorTitle,
         html: errorMessage,
-        confirmButtonText: 'OK',
+        confirmButtonText: 'Okay',
         confirmButtonColor: '#28a745',
         customClass: {
           popup: 'swal-nepali'
@@ -15,10 +15,10 @@ function swalError(errorTitle, errorMessage)
 function swalFire(errorTitle, errorMessage)
   {
     Swal.fire({
-        icon: 'error',
+        icon: 'warning',
         title: errorTitle,
         text: errorMessage,
-        confirmButtonText: 'Refresh Page',
+        confirmButtonText: 'Okay',
         confirmButtonColor: '#28a745',
         allowOutsideClick: false
       })

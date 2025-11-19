@@ -244,9 +244,11 @@ body {
   border: 2px dashed #dee2e6;
   border-radius: 8px;
   text-align: center;
+  margin-bottom: 20px;
   position: relative;
   background-color: #f8f9fa;
   transition: all 0.3s ease;
+
 }
 
 .document-upload:hover {
@@ -435,7 +437,7 @@ body {
   }
 
   .logo {
-    max-width: 200px;
+    max-width: 600px;
   }
 
   .main-content {
@@ -501,7 +503,7 @@ body {
   }
 
   .logo {
-    max-width: 150px;
+    max-width: 450px;
   }
 
   .step-indicator {
@@ -569,7 +571,7 @@ body {
 
 @media (max-width: 480px) {
   .logo {
-    max-width: 120px;
+    max-width: 350px;
   }
 
   .step-indicator h6 {
@@ -643,7 +645,7 @@ body {
   }
 
   .logo {
-    max-width: 100px;
+    max-width: 250px;
   }
 
   .step-indicator {
