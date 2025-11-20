@@ -55,6 +55,8 @@
             <span class="step-name">Additional Details</span>
           </a>
         </nav>
+
+        
       </div>
 
       <!-- Main Content -->
@@ -75,65 +77,11 @@
                   <img id="photoPreview" src="{% static 'images/default-avatar.png' %}" alt="Photo">
                 </div>
                 <div class="photo-upload-controls">
-                  <label class="form-label">Passport Size Photo</label>
+                  <label class="form-label">Passport Size Photo <span class="text-danger">*</span></label>
                   <p class="form-text">Supports jpg, jpeg and png. 300KB max.</p>
-                  <input type="file" id="photoUpload" name="photo" accept="image/*" style="display:none;">
-                  <button type="button" class="btn btn-outline-primary btn-sm" onclick="document.getElementById('photoUpload').click()">Upload</button>
+                  <input type="file" id="photoUpload" name="photo" accept="image/*" style="display:none;" required>
+                  <button id ="photoBtn" type="button" class="btn btn-outline-primary btn-sm mb-1" onclick="document.getElementById('photoUpload').click()">Upload</button>
                   <button type="button" class="btn btn-link btn-sm text-danger" id="removePhoto">Remove</button>
-                </div>
-              </div>
-
-              <!-- Document Uploads Citizenship -->
-              <div class="row mb-4">
-                <div class="col-md-6">
-                  <div class="document-upload" id="citizenship_front">
-                    <div class="upload-icon">📄</div>
-                    <label class="form-label">Citizenship Front</label>
-                    <p class="form-text">Supports jpg, jpeg and png. 500KB max.</p>
-                    <input type="file" id="citizenshipUpload" name="citizenship" accept="image/*,application/pdf" style="display:none;">
-                    <button type="button" class="btn btn-outline-secondary btn-sm" onclick="document.getElementById('citizenshipUpload').click()">
-                      <span class="upload-icon-btn">⬇</span>
-                    </button>
-                    <span class="file-name" id="citizenshipFileName"></span>
-                  </div>
-                </div>
-                <div class="col-md-6">
-                  <div class="document-upload">
-                    <div class="upload-icon">📄</div>
-                    <label class="form-label">Citizenship Back</label>
-                    <p class="form-text">Supports jpg, jpeg and png. 500KB max.</p>
-                    <input type="file" id="citizenshipUpload" name="citizenship" accept="image/*,application/pdf" style="display:none;">
-                    <button type="button" class="btn btn-outline-secondary btn-sm" onclick="document.getElementById('citizenshipUpload').click()">
-                      <span class="upload-icon-btn">⬇</span>
-                    </button>
-                    <span class="file-name" id="citizenshipFileName"></span>
-                  </div>
-                </div>
-              </div>
-              <!-- Document Uploads NID & Signature-->
-              <div class="row mb-4">
-                <div class="col-md-6">
-                  <div class="document-upload">
-                    <div class="upload-icon">📄</div>
-                    <label class="form-label">National Identity Card (optional)</label>
-                    <p class="form-text">Supports jpg, jpeg and png. 500KB max.</p>
-                    <input type="file" id="citizenshipUpload" name="citizenship" accept="image/*,application/pdf" style="display:none;">
-                    <button type="button" class="btn btn-outline-secondary btn-sm" onclick="document.getElementById('citizenshipUpload').click()">
-                      <span class="upload-icon-btn">⬇</span>
-                    </button>
-                    <span class="file-name" id="citizenshipFileName"></span>
-                  </div>
-                </div>
-                
-                <div class="col-md-6">
-                  <div class="document-upload">
-                    <div class="upload-icon">📄</div>
-                    <label class="form-label">Signature.png</label>
-                    <p class="form-text"></p>
-                    <input type="file" id="signatureUpload" name="signature" accept="image/*" style="display:none;">
-                    <button type="button" class="btn btn-link btn-sm text-danger" id="removeSignature">✕</button>
-                    <span class="file-name" id="signatureFileName">Signature.png</span>
-                  </div>
                 </div>
               </div>
 
@@ -229,6 +177,8 @@
                   <input type="text" name="mother_name" class="form-control">
                 </div> -->
               </div>
+
+
               <!-- Documents-->
               <div class="row">
                 <div class="col-md-4 mb-3">
@@ -259,6 +209,72 @@
                   <input type="text" name="passport_no" class="form-control">
                 </div>
               </div>
+
+
+              <!-- Document Uploads Citizenship -->
+              <div class="row mb-4">  
+                <div class="col-md-6">
+                    <div class="document-upload" id="citizenship_front">
+                      <div class="transparent-dark-div">
+                        <div class="upload-icon">📄</div>
+                        <label class="form-label">Citizenship Front <span class="text-danger">*</span></label>
+                        <p class="form-text">Supports jpg, jpeg and png. 500KB max.</p>
+                        <input type="file" data-filename="citizenshipFrontFileName" id="citizenshipFrontUpload" name="citizenship-front" accept="image/*,application/pdf" data-preview="citizenship_front" style="display:none;" required>
+                        <button type="button" class="btn btn-outline-secondary btn-sm" onclick="document.getElementById('citizenshipFrontUpload').click()">
+                          <span class="upload-icon-btn">⬇</span>
+                        </button>
+                        <span class="file-name" id="citizenshipFrontFileName">Citizenship Front</span>
+                      </div>
+                    </div>
+                </div>
+                
+                <div class="col-md-6">
+                  <div class="document-upload" id = "citizenship_back">
+                    <div class="transparent-dark-div">
+                      <div class="upload-icon">📄</div>
+                      <label class="form-label">Citizenship Back <span class="text-danger">*</span></label>
+                      <p class="form-text">Supports jpg, jpeg and png. 500KB max.</p>
+                      <input type="file" data-filename="citizenshipBackFileName" id="citizenshipBackUpload" name="citizenship-back" accept="image/*,application/pdf" data-preview="citizenship_back" style="display:none;" required>
+                      <button type="button" class="btn btn-outline-secondary btn-sm" onclick="document.getElementById('citizenshipBackUpload').click()">
+                        <span class="upload-icon-btn">⬇</span>
+                      </button>
+                      <span class="file-name" id="citizenshipBackFileName">Citizenship Back</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+               <!-- Document Uploads NID & Signature-->
+              <div class="row mb-4">
+                <div class="col-md-6">
+                  <div class="document-upload" id = "Nid_doc">
+                    <div class="transparent-dark-div">
+                      <div class="upload-icon">📄</div>
+                      <label class="form-label">National Identity Card (optional)</label>
+                      <p class="form-text">Supports jpg, jpeg and png. 500KB max.</p>
+                      <input type="file" data-filename="nidFileName" id="NidUpload" name="nid" accept="image/*,application/pdf" data-preview="Nid_doc" style="display:none;">
+                      <button type="button" class="btn btn-outline-secondary btn-sm" onclick="document.getElementById('NidUpload').click()">
+                        <span class="upload-icon-btn">⬇</span>
+                      </button>
+                      <span class="file-name" id="nidFileName">Rastriya Parichaya Patra</span>
+                    </div>
+                  </div>
+                </div>
+                
+                <div class="col-md-6">
+                  <div class="document-upload" id = "signature">
+                    <div class="transparent-dark-div">
+                      <div class="upload-icon">📄</div>
+                      <label class="form-label">Signature <span class="text-danger">*</span></label>
+                      <p class="form-text">Supports jpg, jpeg and png. 500KB max.</p>
+                      <input type="file" data-filename="signatureFileName" id="signatureUpload" name="signature" accept="image/*,application/pdf" data-preview="signature" style="display:none;" required>
+                      <button type="button" class="btn btn-outline-secondary btn-sm" onclick="document.getElementById('signatureUpload').click()">
+                        <span class="upload-icon-btn">⬇</span>
+                      </button>
+                      <span class="file-name" id="signatureFileName">Your Signature</span>
+                    </div>
+                  </div>
+                </div>
+              </div>  
 
               <h4 class="form-step-title">Family Details</h4>
               <!-- Married Details -->

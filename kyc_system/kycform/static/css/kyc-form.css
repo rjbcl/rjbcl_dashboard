@@ -237,18 +237,21 @@ body {
   color: #6c757d;
   margin-bottom: 15px;
 }
+#removePhoto:hover {
+  background-color: #dc3545; 
+  color: #fff!important  ;         
+  text-decoration: none;     
+}
 
 /* Document Upload */
 .document-upload {
-  padding: 20px;
-  border: 2px dashed #dee2e6;
+  /* border: 2px dashed #dee2e6; */
   border-radius: 8px;
   text-align: center;
   margin-bottom: 20px;
   position: relative;
   background-color: #f8f9fa;
   transition: all 0.3s ease;
-
 }
 
 .document-upload:hover {
@@ -287,6 +290,12 @@ body {
   font-size: 13px;
   color: #495057;
 }
+.transparent-dark-div {
+  background-color: rgba(0, 0, 0, 0.673); 
+  color: white;                        
+  padding: 20px;                      
+  border-radius: 0.5rem;              
+}
 
 /* Form Controls */
 .form-label {
@@ -312,6 +321,14 @@ body {
 }
 
 .form-control.is-invalid {
+  border-color: #dc3545;
+}
+button.is-invalid {
+  border-color: #dc3545;
+  color:#dc3545 ;
+}
+
+div.is-invalid {
   border-color: #dc3545;
 }
 

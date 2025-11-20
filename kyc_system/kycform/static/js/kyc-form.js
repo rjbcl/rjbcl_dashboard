@@ -1,231 +1,296 @@
-$(function() {
+$(function () {
   // =============================
   // 1. Multi-Step Form Logic
   // =============================
-  let currentStep = 1;
-  const totalSteps = 5;
+let currentStep = 1;
+const totalSteps = 5;
+let highestStepReached = 1; // Track the furthest step user has reached
 
-  function showStep(step) {
-    $('.form-step').removeClass('active');
-    $(`.form-step[data-step="${step}"]`).addClass('active');
-    
-    $('.nav-step').removeClass('active');
-    $(`.nav-step[data-step="${step}"]`).addClass('active');
-    
-    // Mark completed steps and make them clickable
-    for(let i = 1; i < step; i++) {
-      $(`.nav-step[data-step="${i}"]`).addClass('completed').css('cursor', 'pointer');
-    }
-    
-    // Make current and future steps look appropriate
-    for(let i = step; i <= totalSteps; i++) {
-      if(i === step) {
-        $(`.nav-step[data-step="${i}"]`).css('cursor', 'pointer');
-      } else {
-        $(`.nav-step[data-step="${i}"]`).removeClass('completed').css('cursor', 'default');
-      }
-    }
-    
-    $('#currentStep').text(step);
-    
-    // Button visibility
-    if(step === 1) {
-      $('#prevBtn').hide();
-    } else {
-      $('#prevBtn').show();
-    }
-    
-    if(step === totalSteps) {
-      $('#nextBtn').hide();
-      $('#submitBtn').show();
-    } else {
-      $('#nextBtn').show();
-      $('#submitBtn').hide();
-    }
-    
-    // Scroll to top
-    $('.main-content').scrollTop(0);
+function showStep(step) {
+  $('.form-step').removeClass('active');
+  $(`.form-step[data-step="${step}"]`).addClass('active');
+
+  $('.nav-step').removeClass('active');
+  $(`.nav-step[data-step="${step}"]`).addClass('active');
+
+  // Mark completed steps and make them clickable
+  for (let i = 1; i < step; i++) {
+    $(`.nav-step[data-step="${i}"]`).addClass('completed').css('cursor', 'pointer');
   }
 
-  function validateStep(step) {
-    let valid = true;
-    const $currentStep = $(`.form-step[data-step="${step}"]`);
-    let missingFields = [];
-    
-    $currentStep.find('[required]').each(function() {
-      const $field = $(this);
-      const fieldLabel = $field.closest('.mb-3').find('label').first().text().replace('*', '').trim();
-      
-      if($field.attr('type') === 'radio') {
-        const name = $field.attr('name');
-        if(!$(`input[name="${name}"]:checked`).length) {
-          valid = false;
-          $field.closest('.row, .mb-3').addClass('is-invalid-group');
-          if(fieldLabel && !missingFields.includes(fieldLabel)) {
-            missingFields.push(fieldLabel);
-          }
-        } else {
-          $field.closest('.row, .mb-3').removeClass('is-invalid-group');
-        }
-      } else if($field.attr('type') === 'checkbox') {
-        if(!$field.is(':checked')) {
-          valid = false;
-          $field.addClass('is-invalid');
-          if(fieldLabel && !missingFields.includes(fieldLabel)) {
-            missingFields.push(fieldLabel);
-          }
-        } else {
-          $field.removeClass('is-invalid');
+  // Make current step clickable
+  $(`.nav-step[data-step="${step}"]`).css('cursor', 'pointer');
+
+  // Mark steps that user has reached before as accessible
+  for (let i = step + 1; i <= highestStepReached; i++) {
+    $(`.nav-step[data-step="${i}"]`).addClass('completed').css('cursor', 'pointer');
+  }
+
+  // Make unreached future steps non-clickable
+  for (let i = highestStepReached + 1; i <= totalSteps; i++) {
+    $(`.nav-step[data-step="${i}"]`).removeClass('completed').css('cursor', 'default');
+  }
+
+  $('#currentStep').text(step);
+
+  // Button visibility
+  if (step === 1) {
+    $('#prevBtn').hide();
+  } else {
+    $('#prevBtn').show();
+  }
+
+  if (step === totalSteps) {
+    $('#nextBtn').hide();
+    $('#submitBtn').show();
+  } else {
+    $('#nextBtn').show();
+    $('#submitBtn').hide();
+  }
+
+  // Scroll to top
+  $('.main-content').scrollTop(0);
+}
+
+function validateStep(step) {
+  let valid = true;
+  const $currentStep = $(`.form-step[data-step="${step}"]`);
+  let missingFields = [];
+
+  $currentStep.find('[required]').each(function () {
+    const $field = $(this);
+    const fieldLabel = $field.closest('.mb-3').find('label').first().text().replace('*', '').trim();
+    if ($field.attr('type') === 'radio') {
+      const name = $field.attr('name');
+      if (!$(`input[name="${name}"]:checked`).length) {
+        valid = false;
+        $field.closest('.row, .mb-3').addClass('is-invalid-group');
+        if (fieldLabel && !missingFields.includes(fieldLabel)) {
+          missingFields.push(fieldLabel);
         }
       } else {
-        if(!$field.val() || $field.val().trim() === '') {
-          valid = false;
-          $field.addClass('is-invalid');
-          if(fieldLabel && !missingFields.includes(fieldLabel)) {
-            missingFields.push(fieldLabel);
-          }
-        } else {
-          $field.removeClass('is-invalid');
+        $field.closest('.row, .mb-3').removeClass('is-invalid-group');
+      }
+    } else if ($field.attr('type') === 'checkbox') {
+      if (!$field.is(':checked')) {
+        valid = false;
+        $field.addClass('is-invalid');
+        if (fieldLabel && !missingFields.includes(fieldLabel)) {
+          missingFields.push(fieldLabel);
         }
+      } else {
+        $field.removeClass('is-invalid');
       }
-    });
-    
-    if(!valid) {
-      let errorMessage = 'कृपया सबै आवश्यक विवरण भर्नुहोस्।<br><small>Please fill all required fields.</small>';
-      
-      if(missingFields.length > 0 && missingFields.length <= 5) {
-        errorMessage += '<br><br><div style="text-align: left; font-size: 13px;"><strong>Missing:</strong><br>';
-        missingFields.forEach(field => {
-          errorMessage += `• ${field}<br>`;
-        });
-        errorMessage += '</div>';
-      }
-      swalError('Incomplete Form', errorMessage);
     }
-    
-    return valid;
-  }
- 
-  $('#nextBtn').on('click', function() {
-    if(validateStep(currentStep)) {
-      currentStep++;
-      showStep(currentStep);
+    else if ($field.attr('type') === 'file') {
+      const files = $field[0].files;
+      if (!files || files.length === 0) {
+        valid = false;
+        $field.next('button').addClass('is-invalid');
+        $field.next('#photoBtn').removeClass('is-invalid');
+        $field.parent().siblings('.photo-preview').addClass('is-invalid');
+
+        if (fieldLabel && !missingFields.includes(fieldLabel)) {
+          missingFields.push(fieldLabel);
+        }
+      } else {
+        $field.next('button').removeClass('is-invalid');
+        $field.parent().siblings('.photo-preview').removeClass('is-invalid');
+      }
+    }
+    else {
+      if (!$field.val() || $field.val().trim() === '') {
+        valid = false;
+        $field.addClass('is-invalid');
+        if (fieldLabel && !missingFields.includes(fieldLabel)) {
+          missingFields.push(fieldLabel);
+        }
+      } else {
+        $field.removeClass('is-invalid');
+      }
     }
   });
 
-  $('#prevBtn').on('click', function() {
-    currentStep--;
+  if (!valid) {
+    let errorMessage = 'कृपया सबै आवश्यक विवरण भर्नुहोस्।<br><small>Please fill all required fields.</small>';
+
+    if (missingFields.length > 0 && missingFields.length <= 5) {
+      errorMessage += '<br><br><div style="text-align: left; font-size: 13px;"><strong>Missing:</strong><br>';
+      missingFields.forEach(field => {
+        errorMessage += `• ${field}<br>`;
+      });
+      errorMessage += '</div>';
+    }
+    swalError('Incomplete Form', errorMessage);
+  }
+
+  return valid;
+}
+
+$('#nextBtn').on('click', function () {
+  if (validateStep(currentStep)) {
+    currentStep++;
+    if (currentStep > highestStepReached) {
+      highestStepReached = currentStep;
+    }
     showStep(currentStep);
-  });
+  }
+});
 
-  // Allow navigation through sidebar
-  $('.nav-step').on('click', function(e) {
-    e.preventDefault();
-    const targetStep = parseInt($(this).data('step'));
-    
-    // Allow navigation to any step that has been visited (up to currentStep + 1)
-    if(targetStep <= currentStep) {
-      // Going back - no validation needed
-      currentStep = targetStep;
-      showStep(currentStep);
-    } else if(targetStep === currentStep + 1) {
-      // Going forward - validate current step first
-      if(validateStep(currentStep)) {
+$('#prevBtn').on('click', function () {
+  currentStep--;
+  showStep(currentStep);
+});
+
+// Allow navigation through sidebar
+$('.nav-step').on('click', function (e) {
+  e.preventDefault();
+  const targetStep = parseInt($(this).data('step'));
+
+  // Can't click on the same step
+  if (targetStep === currentStep) {
+    return;
+  }
+
+  // Allow navigation to any previously reached step
+  if (targetStep <= highestStepReached) {
+    // If going forward, validate current step first
+    if (targetStep > currentStep) {
+      if (validateStep(currentStep)) {
         currentStep = targetStep;
         showStep(currentStep);
       }
+    } else {
+      // Going backward - no validation needed
+      currentStep = targetStep;
+      showStep(currentStep);
     }
-    // Can't skip ahead to unvisited steps
-  });
+  } else {
+    // Trying to skip to an unreached step - show error
+    swalError('Cannot Skip Steps', 'कृपया पहिले हालको पृष्ठ पूरा गर्नुहोस्।<br><small>Please complete the current page first.</small>');
+  }
+});
 
-  // Initialize first step
-  showStep(1);
+// Initialize first step
+showStep(1);
 
   // =============================
   // 2. Photo Upload Preview
   // =============================
-  $('#photoUpload').on('change', function(e) {
+  $('#photoUpload').on('change', function (e) {
     const file = e.target.files[0];
-    if(file && file.type.startsWith('image/')) {
+    if (file && file.type.startsWith('image/')) {
       const reader = new FileReader();
-      reader.onload = function(e) {
+      reader.onload = function (e) {
         $('#photoPreview').attr('src', e.target.result);
       };
       reader.readAsDataURL(file);
     }
   });
 
-  $('#removePhoto').on('click', function() {
+  $('#removePhoto').on('click', function () {
     $('#photoUpload').val('');
     $('#photoPreview').attr('src', '/static/images/default-avatar.png');
   });
 
   // =============================
-  // 3. Document Upload File Names
+  // 3. Document Upload 
   // =============================
-  $('#citizenshipUpload').on('change', function(e) {
-    const file = e.target.files[0]?.name || '';
-    $('#citizenshipFileName').text(file);
 
+  //  Name displayer
+  $(document).ready(function () {
+    $('input[type="file"]').on('change', function () {
+      const file = this.files[0];
+      const $input = $(this);
+      const fileNameTarget = $input.data('filename');
 
-    // const file = e.target.files[0];
-    if(file && file.type.startsWith('image/')) {
-      const reader = new FileReader();
-      reader.onload = function(e) {
-        $('#citizenship_front').attr('src', e.target.result);
-      };
-      reader.readAsDataURL(file);
-    }
+      if (file && fileNameTarget) {
+        $('#' + fileNameTarget).text(file.name);
+      }
+
+      // Optional: preview image if it's an image
+      // const previewTarget = $input.data('preview');
+      // if (file && previewTarget && file.type.startsWith('image/')) {
+      //   const reader = new FileReader();
+      //   reader.onload = function (e) {
+      //     $('#' + previewTarget).css({
+      //       'background-image': `url('${e.target.result}')`,
+      //       'background-size': 'cover',
+      //       'background-position': 'center',
+      //       'background-repeat': 'no-repeat'
+      //     });
+      //   };
+      //   reader.readAsDataURL(file);
+      // }
+    });
   });
 
 
 
-  $('#signatureUpload').on('change', function(e) {
-    const fileName = e.target.files[0]?.name || '';
-    $('#signatureFileName').text(fileName);
+  // DISPLAY THE IMAGE
+  $(document).ready(function () {
+
+    $('input[type="file"]').on('change', function () {
+      const file = this.files[0];
+      const $input = $(this);
+      debugger
+      if (file && file.type.startsWith('image/')) {
+        const reader = new FileReader();
+
+        reader.onload = function (e) {
+          // Get the preview target using a data-preview attribute
+          const targetId = $input.data('preview');
+          const $previewDiv = $('#' + targetId);
+
+          $previewDiv.css({
+            'background-image': `url('${e.target.result}')`,
+            'background-size': 'cover',
+            'background-position': 'center',
+            'background-repeat': 'no-repeat'
+          });
+        };
+
+        reader.readAsDataURL(file);
+      }
+    });
   });
 
-  $('#removeSignature').on('click', function() {
-    $('#signatureUpload').val('');
-    $('#signatureFileName').text('Signature.png');
-  });
-
-  // =============================
+  // ============================
   // 4. Spouse Name Manupulation
   // =============================
-  $(document).ready(function() {
-  
-  // Handle marital status change
-  $('input[name="marital_status"]').on('change', function() {
-    const $spouseNameInput = $('#spouse_name');
-    const $spouseLabel = $spouseNameInput.closest('.mb-3').find('label');
-    const $requiredStar = $spouseLabel.find('.text-danger');
-    
-    if ($(this).val() === 'Married') {
-      // Married: Make field required and editable
-      $spouseNameInput.prop('required', true);
-      $spouseNameInput.prop('readonly', false);
-      
-      // Add * sign if not exists
-      if ($requiredStar.length === 0) {
-        $spouseLabel.append(' <span class="text-danger">*</span>');
+  $(document).ready(function () {
+
+    // Handle marital status change
+    $('input[name="marital_status"]').on('change', function () {
+      const $spouseNameInput = $('#spouse_name');
+      const $spouseLabel = $spouseNameInput.closest('.mb-3').find('label');
+      const $requiredStar = $spouseLabel.find('.text-danger');
+
+      if ($(this).val() === 'Married') {
+        // Married: Make field required and editable
+        $spouseNameInput.prop('required', true);
+        $spouseNameInput.prop('readonly', false);
+
+        // Add * sign if not exists
+        if ($requiredStar.length === 0) {
+          $spouseLabel.append(' <span class="text-danger">*</span>');
+        }
+      } else {
+        // Unmarried: Make field readonly and not required
+        $spouseNameInput.prop('required', false);
+        $spouseNameInput.prop('readonly', true);
+        $spouseNameInput.removeClass('is-invalid');
+        $spouseNameInput.val(''); // Clear the value
+
+        // Remove * sign
+        $requiredStar.remove();
       }
-    } else {
-      // Unmarried: Make field readonly and not required
-      $spouseNameInput.prop('required', false);
-      $spouseNameInput.prop('readonly', true);
-      $spouseNameInput.removeClass('is-invalid');
-      $spouseNameInput.val(''); // Clear the value
-      
-      // Remove * sign
-      $requiredStar.remove();
-    }
+    });
+
+    // Initialize on page load (if a value is already selected)
+    $('input[name="marital_status"]:checked').trigger('change');
+
   });
-  
-  // Initialize on page load (if a value is already selected)
-  $('input[name="marital_status"]:checked').trigger('change');
-  
-});
 
 
 
@@ -236,7 +301,7 @@ $(function() {
   function initAddressCascade(locations) {
     function populateProvince(sel) {
       sel.html('<option value="">Select Province</option>');
-      for(let province in locations) {
+      for (let province in locations) {
         sel.append(`<option value="${province}">${province}</option>`);
       }
     }
@@ -244,8 +309,8 @@ $(function() {
     function populateDistricts(province, districtSel, muniSel) {
       districtSel.html('<option value="">Select District</option>');
       muniSel.html('<option value="">Select Municipality</option>');
-      
-      if(locations[province]) {
+
+      if (locations[province]) {
         Object.keys(locations[province]).forEach(district => {
           districtSel.append(`<option value="${district}">${district}</option>`);
         });
@@ -254,8 +319,8 @@ $(function() {
 
     function populateMunicipalities(province, district, muniSel) {
       muniSel.html('<option value="">Select Municipality</option>');
-      
-      if(locations[province] && locations[province][district]) {
+
+      if (locations[province] && locations[province][district]) {
         locations[province][district].forEach(muni => {
           muniSel.append(`<option value="${muni}">${muni}</option>`);
         });
@@ -264,37 +329,37 @@ $(function() {
 
     // Permanent Address
     populateProvince($('#perm_province'));
-    
-    $('#perm_province').on('change', function() {
+
+    $('#perm_province').on('change', function () {
       populateDistricts($(this).val(), $('#perm_district'), $('#perm_muni'));
     });
-    
-    $('#perm_district').on('change', function() {
+
+    $('#perm_district').on('change', function () {
       populateMunicipalities($('#perm_province').val(), $(this).val(), $('#perm_muni'));
     });
 
     // Temporary Address
     populateProvince($('#temp_province'));
-    
-    $('#temp_province').on('change', function() {
+
+    $('#temp_province').on('change', function () {
       populateDistricts($(this).val(), $('#temp_district'), $('#temp_muni'));
     });
-    
-    $('#temp_district').on('change', function() {
+
+    $('#temp_district').on('change', function () {
       populateMunicipalities($('#temp_province').val(), $(this).val(), $('#temp_muni'));
     });
   }
 
   // Load Nepal locations data
   $.getJSON('/static/nepal_locations.json')
-    .done(function(data) {
+    .done(function (data) {
       console.log('✅ Loaded Nepal location data');
       initAddressCascade(data);
     })
-    .fail(function() {
+    .fail(function () {
       console.error('⚠️ Could not load nepal_locations.json');
       // Calling Sweetalert for error message
-      swalFire('Data Loading Error','Location data could not be loaded. Please refresh the page.').then((result) => {
+      swalFire('Data Loading Error', 'Location data could not be loaded. Please refresh the page.').then((result) => {
         if (result.isConfirmed) {
           location.reload();
         }
@@ -304,8 +369,8 @@ $(function() {
   // =============================
   // 6. Same Address Checkbox
   // =============================
-  $('#sameAddress').on('change', function() {
-    if($(this).is(':checked')) {
+  $('#sameAddress').on('change', function () {
+    if ($(this).is(':checked')) {
       const permProvince = $('#perm_province').val();
       const permDistrict = $('#perm_district').val();
       const permMuni = $('#perm_muni').val();
@@ -314,7 +379,7 @@ $(function() {
       const permHouse = $('input[name="perm_house_number"]').val();
 
       $('#temp_province').val(permProvince).trigger('change');
-      
+
       setTimeout(() => {
         $('#temp_district').val(permDistrict).trigger('change');
         mm
@@ -337,23 +402,23 @@ $(function() {
   // =============================
   // 7. Form Submission
   // =============================
-  $('#kycForm').on('submit', function(e) {
+  $('#kycForm').on('submit', function (e) {
     e.preventDefault();
-    
-    if(!validateStep(totalSteps)) {
+
+    if (!validateStep(totalSteps)) {
       return false;
     }
     debugger
     // Show confirmation dialog
-      swalQuestion(
-        'Submit KYC Form?', 
-        '<p>के तपाईं यो फारम पेश गर्न चाहनुहुन्छ?</p><small>Do you want to submit this form?</small>',
-        'Yes, Submit'
+    swalQuestion(
+      'Submit KYC Form?',
+      '<p>के तपाईं यो फारम पेश गर्न चाहनुहुन्छ?</p><small>Do you want to submit this form?</small>',
+      'Yes, Submit'
     ).then((result) => {
       if (result.isConfirmed) {
         // Re-enable disabled fields before submission
         $('#temp_province, #temp_district, #temp_muni, input[name="temp_ward"]').prop('disabled', false);
-        
+
         // Show loading
         Swal.fire({
           title: 'Submitting...',
@@ -365,36 +430,36 @@ $(function() {
             Swal.showLoading();
           }
         });
-        
+
         // Submit the form
         this.submit();
       }
     });
-    
+
     return false;
   });
 
   // =============================
   // 8. Real-time Validation Feedback
   // =============================
-  $('input[required], select[required], textarea[required]').on('blur', function() {
+  $('input[required], select[required], textarea[required]').on('blur', function () {
     const $field = $(this);
-    
-    if($field.attr('type') === 'radio') {
+
+    if ($field.attr('type') === 'radio') {
       return; // Skip radio buttons
     }
-    
-    if(!$field.val() || $field.val().trim() === '') {
+
+    if (!$field.val() || $field.val().trim() === '') {
       $field.addClass('is-invalid');
     } else {
       $field.removeClass('is-invalid');
     }
   });
 
-  $('input[required], select[required], textarea[required]').on('input change', function() {
+  $('input[required], select[required], textarea[required]').on('input change', function () {
     const $field = $(this);
-    
-    if($field.val() && $field.val().trim() !== '') {
+
+    if ($field.val() && $field.val().trim() !== '') {
       $field.removeClass('is-invalid');
     }
   });
@@ -404,29 +469,29 @@ $(function() {
 
 
 
-  // =============================
-  // 9. Email  and  Ph.no Format Checker
-  // =============================
+// =============================
+// 9. Email  and  Ph.no Format Checker
+// =============================
 
-$(document).ready(function() {
-  
+$(document).ready(function () {
+
   // Email validation regex
   const emailRegex = /^[a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
-  
+
   // Validate email on blur and input
-  $('input[name="email"]').on('blur input', function() {
+  $('input[name="email"]').on('blur input', function () {
     const $emailInput = $(this);
     const emailValue = $emailInput.val().trim();
-    
+
     // Remove previous error message if exists
     $emailInput.next('.invalid-feedback').remove();
     $emailInput.removeClass('is-invalid is-valid');
-    
+
     // Skip validation if empty (let required attribute handle it)
     if (emailValue === '') {
       return;
     }
-    
+
     // Check email format
     if (!emailRegex.test(emailValue)) {
       // Invalid email
@@ -437,12 +502,12 @@ $(document).ready(function() {
       $emailInput.addClass('is-valid');
     }
   });
-  
+
   // Validate on form submit
-  $('form').on('submit', function(e) {
+  $('form').on('submit', function (e) {
     const $emailInput = $('input[name="email"]');
     const emailValue = $emailInput.val().trim();
-    
+
     if (emailValue && !emailRegex.test(emailValue)) {
       e.preventDefault();
       $emailInput.focus();
@@ -450,7 +515,7 @@ $(document).ready(function() {
       return false;
     }
   });
-  
+
 });
 
 
