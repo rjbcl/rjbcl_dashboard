@@ -39,7 +39,7 @@
       <p class="small mb-0">Know Your Customer (KYC) Update Form</p>
     </div>
 
-    <form id="kycForm" method="POST" action="{% url 'kyc_form' %}">
+<form id="kycForm" method="POST" action="{% url 'kyc:kyc_submit' %}">
   {% csrf_token %}
 
 <input type="hidden" name="policy_no" id="policyField">

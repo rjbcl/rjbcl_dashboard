@@ -1,170 +1,247 @@
 from django.shortcuts import render, redirect
-from django.http import HttpResponse
 from django.contrib import messages
-from .models import KycUserInfo, KycAgentInfo
+from django.urls import reverse
+from .models import KycUserInfo, KycAgentInfo, KycPolicy
 
 
-# ============================
-# POLICYHOLDER LOGIN
-# ============================
+# ============================================================
+#  UTIL: BUILD URL WITH QUERY PARAMETERS
+# ============================================================
+
+def url_with_query(name, **params):
+    base = reverse(name)
+    if not params:
+        return base
+    query = "&".join(f"{k}={v}" for k, v in params.items())
+    return f"{base}?{query}"
+
+
+# ============================================================
+#  POLICYHOLDER LOGIN
+# ============================================================
+
 def policyholder_login(request):
+
     if request.method == "GET":
-        return render(request, "kyc_auth.html", {
-            "error": None,
-            "agent_error": None,
-            "active_tab": "policy"
-        })
+        return render(request, "kyc_auth.html", {"active_tab": "policy"})
 
     policy_no = request.POST.get("policy_no")
     password = request.POST.get("password")
 
+    print("POLICY ENTERED:", repr(policy_no))
+    print("ALL DB POLICIES:", list(KycPolicy.objects.values_list("policy_number", flat=True)))
+
     try:
-        user = KycUserInfo.objects.get(policy_number=policy_no)
+        policy = KycPolicy.objects.get(policy_number__iexact=policy_no)
 
-        if user.password == password:
-            return redirect(f"/kyc-form/?policy_no={policy_no}")
+        print("policy.user_id =", policy.user_id)
+        print("ALL USER IDS:", list(KycUserInfo.objects.values_list("user_id", flat=True)))
 
-        return render(request, "kyc_auth.html", {
-            "error": "Incorrect password for policyholder!",
-            "agent_error": None,
-            "active_tab": "policy"
-        })
+    except KycPolicy.DoesNotExist:
+        print("DEBUG: Policy not found in DB")
+        messages.error(request, "Policy number not found!", extra_tags="error")
+        return redirect("/auth/policy/")
 
+    try:
+        user = KycUserInfo.objects.get(user_id=policy.user_id)
     except KycUserInfo.DoesNotExist:
-        return render(request, "kyc_auth.html", {
-            "error": "Policy number not found!",
-            "agent_error": None,
-            "active_tab": "policy"
-        })
+        print("DEBUG: User record NOT FOUND for policy.user_id =", policy.user_id)
+        messages.error(request, "Customer record missing for this policy!", extra_tags="error")
+        return redirect("/auth/policy/")
+
+    # PASSWORD CHECK
+    expected_password = user.dob.strftime("%Y%m%d")
+    if password != expected_password:
+        messages.error(request, "Incorrect password!", extra_tags="error")
+        return redirect("/auth/policy/")
+
+    # =============== FIX: Normalize STATUS ==================
+    kyc_status = (user.kyc_status or "").upper().replace(" ", "_")
+    print("DEBUG: NORMALIZED KYC STATUS =", kyc_status)
+
+    # =============== CORRECT ROUTING ========================
+    if kyc_status in ["NOT_INITIATED", "INCOMPLETE", "REJECTED"]:
+        return redirect(f"/kyc-form/?policy_no={policy_no}")
+
+    if kyc_status in ["PENDING", "VERIFIED"]:
+        return redirect(f"/dashboard/?policy_no={policy_no}")
+
+    # Default fallback
+    return redirect(f"/kyc-form/?policy_no={policy_no}")
 
 
 
-# ============================
-# AGENT LOGIN
-# ============================
+
+# ============================================================
+#  AGENT LOGIN
+# ============================================================
+
 def agent_login(request):
+
     if request.method == "GET":
-        return render(request, "kyc_auth.html", {
-            "error": None,
-            "agent_error": None,
-            "active_tab": "agent"
-        })
+        return render(request, "kyc_auth.html", {"active_tab": "agent"})
 
     agent_code = request.POST.get("agent_code")
     password = request.POST.get("password")
 
+    if not agent_code or not password:
+        messages.error(request, "Both fields are required.", extra_tags="error")
+        return redirect("kyc:agent_login")
+
     try:
         agent = KycAgentInfo.objects.get(agent_code=agent_code)
 
-        if agent.password == password:
-            return redirect("/agent-dashboard/")
+        expected_password = agent.dob.strftime("%Y%m%d")
 
-        return render(request, "kyc_auth.html", {
-            "error": None,
-            "agent_error": "Incorrect agent password!",
-            "active_tab": "agent"
-        })
+        if password != expected_password:
+            messages.error(request, "Incorrect password!", extra_tags="error")
+            return redirect("kyc:agent_login")
+
+        return redirect(url_with_query("kyc:agent_dashboard", agent_code=agent_code))
 
     except KycAgentInfo.DoesNotExist:
-        return render(request, "kyc_auth.html", {
-            "error": None,
-            "agent_error": "Agent code not found!",
-            "active_tab": "agent"
-        })
+        messages.error(request, "Agent code not found!", extra_tags="error")
+        return redirect("kyc:agent_login")
 
 
+# ============================================================
+#  POLICYHOLDER REGISTRATION
+# ============================================================
 
-# ============================
-# POLICYHOLDER REGISTRATION
-# ============================
 def policyholder_register_view(request):
-    if request.method == "POST":
 
-        first_name = request.POST.get("first_name")
-        last_name = request.POST.get("last_name")
-        email = request.POST.get("email")
-        mobile = request.POST.get("mobile")
-        policy_number = request.POST.get("policy_number")
-        password = request.POST.get("password")
-        confirm_password = request.POST.get("confirm_password")
+    if request.method == "GET":
+        return render(request, "register.html")
 
-        full_name = f"{first_name} {last_name}"
+    # FIXED: Your register form uses name="policy_number"
+    policy_no = request.POST.get("policy_number")
+    email = request.POST.get("email")
+    mobile = request.POST.get("mobile")
 
-        if password != confirm_password:
-            messages.error(request, "Passwords do not match!")
-            return render(request, "register.html")
+    if not policy_no or not email or not mobile:
+        messages.error(request, "All fields are required.", extra_tags="error")
+        return redirect("kyc:policy_register")
 
-        if KycUserInfo.objects.filter(policy_number=policy_number).exists():
-            messages.error(request, "This policy number is already registered!")
-            return render(request, "register.html")
+    try:
+        policy = KycPolicy.objects.get(policy_number=policy_no)
+        user = KycUserInfo.objects.get(user_id=policy.user_id)
 
-        KycUserInfo.objects.create(
-            policy_number=policy_number,
-            Name=full_name,
-            User_email=email,
-            Phone_number=mobile,
-            password=password
+        # ----------------------------------------------------
+        # UPDATE EMAIL IF NULL
+        # ----------------------------------------------------
+        if not user.user_email:
+            user.user_email = email
+        elif user.user_email.lower() != email.lower():
+            messages.error(request, "Email does not match our records!", extra_tags="error")
+            return redirect("kyc:policy_register")
+
+        # ----------------------------------------------------
+        # UPDATE MOBILE IF NULL
+        # ----------------------------------------------------
+        if not user.phone_number:
+            user.phone_number = mobile
+        elif user.phone_number != mobile:
+            messages.error(request, "Mobile number does not match our records!", extra_tags="error")
+            return redirect("kyc:policy_register")
+
+        # ----------------------------------------------------
+        # SET PASSWORD = DOB
+        # ----------------------------------------------------
+        user.password = user.dob.strftime("%Y%m%d")
+        user.save()
+
+        messages.success(
+            request,
+            "Password has been sent to your mobile number and email. Please login.",
+            extra_tags="success"
         )
 
-        messages.success(request, "Account created successfully! Please login.")
-        return redirect("/auth/policy/")
+        return redirect("/auth/policy/?tab=policy")
 
-    return render(request, "register.html")
+    except (KycPolicy.DoesNotExist, KycUserInfo.DoesNotExist):
+        messages.error(request, "Policy not found!", extra_tags="error")
+        return redirect("kyc:policy_register")
 
 
-# ============================
-# AGENT REGISTRATION
-# ============================
+# ============================================================
+#  AGENT REGISTRATION
+# ============================================================
+
 def agent_register_view(request):
-    if request.method == "POST":
-        agent_code = request.POST.get("agent_code")
-        name = request.POST.get("name")
-        phone = request.POST.get("phone")
-        dob = request.POST.get("dob")
-        password = request.POST.get("password")
-        confirm_password = request.POST.get("confirm_password")
 
-        if password != confirm_password:
-            messages.error(request, "Passwords do not match!")
-            return render(request, "agent_register.html")
+    if request.method == "GET":
+        return render(request, "agent_register.html")
 
-        if KycAgentInfo.objects.filter(agent_code=agent_code).exists():
-            messages.error(request, "Agent Code already exists!")
-            return render(request, "agent_register.html")
+    agent_code = request.POST.get("agent_code")
+    first_name = request.POST.get("first_name")
+    last_name = request.POST.get("last_name")
+    phone = request.POST.get("phone_number")
+    email = request.POST.get("email")
 
-        KycAgentInfo.objects.create(
-            agent_code=agent_code,
-            name=name,
-            phone_number=phone,
-            DOB=dob,
-            password=password
+    if not all([agent_code, first_name, last_name, phone, email]):
+        messages.error(request, "All fields are required.", extra_tags="error")
+        return redirect("kyc:agent_register")
+
+    try:
+        agent = KycAgentInfo.objects.get(agent_code=agent_code)
+
+        # VALIDATE FIELDS
+        if agent.first_name.lower() != first_name.lower():
+            messages.error(request, "First name does not match!", extra_tags="error")
+            return redirect("kyc:agent_register")
+
+        if agent.last_name.lower() != last_name.lower():
+            messages.error(request, "Last name does not match!", extra_tags="error")
+            return redirect("kyc:agent_register")
+
+        if agent.phone_number != phone:
+            messages.error(request, "Phone number does not match!", extra_tags="error")
+            return redirect("kyc:agent_register")
+
+        if agent.email.lower() != email.lower():
+            messages.error(request, "Email does not match our records!", extra_tags="error")
+            return redirect("kyc:agent_register")
+
+        # SET PASSWORD
+        agent.password = agent.dob.strftime("%Y%m%d")
+        agent.save()
+
+        messages.success(
+            request,
+            "Password has been sent to your mobile number and email. Please login.",
+            extra_tags="success"
         )
 
-        messages.success(request, "Agent account created successfully!")
-        return redirect("/auth/agent/")
+        return redirect("/auth/agent/?tab=agent")
 
-    return render(request, "agent_register.html")
+    except KycAgentInfo.DoesNotExist:
+        messages.error(request, "Agent code not found!", extra_tags="error")
+        return redirect("kyc:agent_register")
 
 
-# ============================
-# KYC FORM VIEW
-# ============================
+# ============================================================
+#  KYC FORM + DASHBOARD VIEWS
+# ============================================================
+
 def kyc_form_view(request):
-    policy_no = request.GET.get("policy_no")
-    return render(request, "kyc_form_update.html", {"policy_no": policy_no})
+    return render(request, "kyc_form_update.html", {"policy_no": request.GET.get("policy_no")})
 
 
-# ============================
-# POLICYHOLDER DASHBOARD
-# ============================
 def dashboard_view(request):
-    policy_no = request.GET.get("policy_no")
-    return render(request, "dashboard.html", {"policy_no": policy_no})
+    return render(request, "dashboard.html", {"policy_no": request.GET.get("policy_no")})
 
 
-# ============================
-# AGENT DASHBOARD
-# ============================
 def agent_dashboard_view(request):
-    agent_code = request.GET.get("agent_code")
-    return HttpResponse(f"Welcome Agent {agent_code} — Dashboard coming soon!")
+    return render(request, "dashboard.html", {"agent_code": request.GET.get("agent_code")})
+
+def kyc_form_submit(request):
+    if request.method != "POST":
+        messages.error(request, "Invalid request!", extra_tags="error")
+        return redirect("/")
+
+    policy_no = request.POST.get("policy_no")
+
+    # TODO: Save form data later
+
+    messages.success(request, "Your KYC form has been submitted.", extra_tags="success")
+    return redirect(f"/dashboard/?policy_no={policy_no}")
