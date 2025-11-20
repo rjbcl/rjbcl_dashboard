@@ -164,9 +164,21 @@ $(function() {
   // 3. Document Upload File Names
   // =============================
   $('#citizenshipUpload').on('change', function(e) {
-    const fileName = e.target.files[0]?.name || '';
-    $('#citizenshipFileName').text(fileName);
+    const file = e.target.files[0]?.name || '';
+    $('#citizenshipFileName').text(file);
+
+
+    // const file = e.target.files[0];
+    if(file && file.type.startsWith('image/')) {
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        $('#citizenship_front').attr('src', e.target.result);
+      };
+      reader.readAsDataURL(file);
+    }
   });
+
+
 
   $('#signatureUpload').on('change', function(e) {
     const fileName = e.target.files[0]?.name || '';
@@ -177,6 +189,46 @@ $(function() {
     $('#signatureUpload').val('');
     $('#signatureFileName').text('Signature.png');
   });
+
+  // =============================
+  // 4. Spouse Name Manupulation
+  // =============================
+  $(document).ready(function() {
+  
+  // Handle marital status change
+  $('input[name="marital_status"]').on('change', function() {
+    const $spouseNameInput = $('#spouse_name');
+    const $spouseLabel = $spouseNameInput.closest('.mb-3').find('label');
+    const $requiredStar = $spouseLabel.find('.text-danger');
+    
+    if ($(this).val() === 'Married') {
+      // Married: Make field required and editable
+      $spouseNameInput.prop('required', true);
+      $spouseNameInput.prop('readonly', false);
+      
+      // Add * sign if not exists
+      if ($requiredStar.length === 0) {
+        $spouseLabel.append(' <span class="text-danger">*</span>');
+      }
+    } else {
+      // Unmarried: Make field readonly and not required
+      $spouseNameInput.prop('required', false);
+      $spouseNameInput.prop('readonly', true);
+      $spouseNameInput.removeClass('is-invalid');
+      $spouseNameInput.val(''); // Clear the value
+      
+      // Remove * sign
+      $requiredStar.remove();
+    }
+  });
+  
+  // Initialize on page load (if a value is already selected)
+  $('input[name="marital_status"]:checked').trigger('change');
+  
+});
+
+
+
 
   // =============================
   // 5. Address Cascading Dropdowns
@@ -349,4 +401,133 @@ $(function() {
 
   console.log('✅ KYC Form initialized successfully');
 });
+
+
+
+  // =============================
+  // 9. Email  and  Ph.no Format Checker
+  // =============================
+
+$(document).ready(function() {
+  
+  // Email validation regex
+  const emailRegex = /^[a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+  
+  // Validate email on blur and input
+  $('input[name="email"]').on('blur input', function() {
+    const $emailInput = $(this);
+    const emailValue = $emailInput.val().trim();
+    
+    // Remove previous error message if exists
+    $emailInput.next('.invalid-feedback').remove();
+    $emailInput.removeClass('is-invalid is-valid');
+    
+    // Skip validation if empty (let required attribute handle it)
+    if (emailValue === '') {
+      return;
+    }
+    
+    // Check email format
+    if (!emailRegex.test(emailValue)) {
+      // Invalid email
+      $emailInput.addClass('is-invalid');
+      $emailInput.after('<div class="invalid-feedback d-block">Please enter a valid email address (e.g., example@domain.com)</div>');
+    } else {
+      // Valid email
+      $emailInput.addClass('is-valid');
+    }
+  });
+  
+  // Validate on form submit
+  $('form').on('submit', function(e) {
+    const $emailInput = $('input[name="email"]');
+    const emailValue = $emailInput.val().trim();
+    
+    if (emailValue && !emailRegex.test(emailValue)) {
+      e.preventDefault();
+      $emailInput.focus();
+      $emailInput.trigger('blur'); // Trigger validation display
+      return false;
+    }
+  });
+  
+});
+
+
+// Phone number checker
+
+$(document).ready(function () {
+  function setupMobileValidation($input) {
+    // Allow only numbers and + symbol
+    $input.on('keypress', function (e) {
+      const char = String.fromCharCode(e.which);
+      const allowedChars = /[0-9+]/;
+
+      if (e.which === 8 || e.which === 0 || e.which === 9) return true;
+      if (!allowedChars.test(char)) {
+        e.preventDefault();
+        return false;
+      }
+    });
+
+    // Prevent pasting invalid characters
+    $input.on('paste', function () {
+      setTimeout(() => {
+        let value = $(this).val();
+        value = value.replace(/[^0-9+]/g, '');
+        $(this).val(value);
+      }, 0);
+    });
+
+    // Validate on blur and input
+    $input.on('blur input', function () {
+      const $el = $(this);
+      const value = $el.val().trim();
+
+      $el.next('.invalid-feedback').remove();
+      $el.removeClass('is-invalid is-valid');
+
+      if (value === '') return;
+
+      const digitCount = value.replace(/[^0-9]/g, '').length;
+
+      if (digitCount < 10) {
+        $el.addClass('is-invalid');
+        $el.after('<div class="invalid-feedback d-block">Mobile number must have at least 10 digits</div>');
+      } else {
+        $el.addClass('is-valid');
+      }
+    });
+  }
+
+  // Apply to all mobile fields
+  const $mobileFields = $('#mobile, #contact_mobile');
+  $mobileFields.each(function () {
+    setupMobileValidation($(this));
+  });
+
+  // Validate on form submit
+  $('form').on('submit', function (e) {
+    let isValid = true;
+
+    $mobileFields.each(function () {
+      const $input = $(this);
+      const value = $input.val().trim();
+      const digitCount = value.replace(/[^0-9]/g, '').length;
+
+      if (value && digitCount < 10) {
+        isValid = false;
+        $input.focus();
+        $input.trigger('blur');
+        return false; // break loop
+      }
+    });
+
+    if (!isValid) {
+      e.preventDefault();
+      return false;
+    }
+  });
+});
+
 

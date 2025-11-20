@@ -83,10 +83,10 @@
                 </div>
               </div>
 
-              <!-- Document Uploads -->
+              <!-- Document Uploads Citizenship -->
               <div class="row mb-4">
                 <div class="col-md-6">
-                  <div class="document-upload">
+                  <div class="document-upload" id="citizenship_front">
                     <div class="upload-icon">📄</div>
                     <label class="form-label">Citizenship Front</label>
                     <p class="form-text">Supports jpg, jpeg and png. 500KB max.</p>
@@ -110,6 +110,7 @@
                   </div>
                 </div>
               </div>
+              <!-- Document Uploads NID & Signature-->
               <div class="row mb-4">
                 <div class="col-md-6">
                   <div class="document-upload">
@@ -136,7 +137,7 @@
                 </div>
               </div>
 
-              <!-- NAME Fields -->
+              <!-- Name Fields -->
               <div class="row">
                 <div class="col-md-4 mb-3">
                   <label class="form-label">First Name <span class="text-danger">*</span></label>
@@ -164,13 +165,13 @@
                   </select>
                 </div>
                 <div class="col-md-4 mb-3">
-                  <label class="form-label">Nationality</label>
-                  <select name="nationality" class="form-select">
-                    <option value="">Select</option>
-                    <option value="Kathmandu">Nepalese</option>
-                    <option value="Bhaktapur">Indian</option>
-                    <option value="Bhaktapur">Chinese</option>
-                    <option value="Lalitpur">Other</option>
+                  <label class="form-label">Nationality <span class="text-danger">*</span></label>
+                  <select name="nationality" class="form-select" required>
+                    <!-- <option value="">Select</option> -->
+                    <option selected value="Nepalese">Nepalese</option>
+                    <option value="Indian">Indian</option>
+                    <option value="Chinese">Chinese</option>
+                    <option value="Others">Other</option>
                   </select>
                 </div>
                 <div class="col-md-4 mb-3">
@@ -207,13 +208,17 @@
               </div>
               <!-- Personal Information Fields 3-->
               <div class="row mb-4">
-                <div class="col-md-6 mb-3">
+                <div class="col-md-4 mb-3">
                   <label class="form-label">Email Address <span class="text-danger">*</span></label>
                   <input type="email" name="email" class="form-control" required >
                 </div>
-                <div class="col-md-6 mb-3">
+                <div class="col-md-4 mb-3">
                   <label class="form-label">Mobile No. <span class="text-danger">*</span></label>
-                  <input type="tel" name="mobile" class="form-control" required>
+                  <input type="text" id= "mobile" name="mobile" class="form-control" required>
+                </div>
+                <div class="col-md-4 mb-3">
+                  <label class="form-label">Telephone No.  </label>
+                  <input type="text" name="telephone" class="form-control" >
                 </div>
                 <!-- <div class="col-md-4 mb-3">
                   <label class="form-label">Father's Name</label>
@@ -273,7 +278,7 @@
                 </div>
                 <div class="col-md-4 mb-3">
                   <label class="form-label">Spouse Name <span class="text-danger">*</span></label>
-                  <input type="text" name="spouse_name" class="form-control">
+                  <input type="text" id ="spouse_name" name="spouse_name" class="form-control">
                 </div>
               </div>
 
@@ -307,15 +312,15 @@
                   <input type="text" name="father_in_law_name" class="form-control">
                 </div>
               </div>
-
+              <!-- Contact Person -->
               <div class="row">
                 <div class="col-md-6 mb-3">
                   <label class="form-label">Contact Person <span class="text-danger">*</span></label>
-                  <input type="text" name="contact_person" class="form-control" required>
+                  <input type="text"   name="contact_person" class="form-control" required>
                 </div>
                 <div class="col-md-6 mb-3">
                   <label class="form-label">Mobile No. <span class="text-danger">*</span></label>
-                  <input type="tel" name="contact_mobile" class="form-control" required>
+                  <input type="tel" id ="contact_mobile" name="contact_mobile" class="form-control" required>
                 </div>
               </div>
             </div>
