@@ -2,196 +2,198 @@ $(function () {
   // =============================
   // 1. Multi-Step Form Logic
   // =============================
-let currentStep = 1;
-const totalSteps = 5;
-let highestStepReached = 1; // Track the furthest step user has reached
+  let currentStep = 1;
+  const totalSteps = 5;
+  let highestStepReached = 1; // Track the furthest step user has reached
 
-function showStep(step) {
-  $('.form-step').removeClass('active');
-  $(`.form-step[data-step="${step}"]`).addClass('active');
+  function showStep(step) {
+    $('.form-step').removeClass('active');
+    $(`.form-step[data-step="${step}"]`).addClass('active');
 
-  $('.nav-step').removeClass('active');
-  $(`.nav-step[data-step="${step}"]`).addClass('active');
+    $('.nav-step').removeClass('active');
+    $(`.nav-step[data-step="${step}"]`).addClass('active');
 
-  // Mark completed steps and make them clickable
-  for (let i = 1; i < step; i++) {
-    $(`.nav-step[data-step="${i}"]`).addClass('completed').css('cursor', 'pointer');
-  }
-
-  // Make current step clickable
-  $(`.nav-step[data-step="${step}"]`).css('cursor', 'pointer');
-
-  // Mark steps that user has reached before as accessible
-  for (let i = step + 1; i <= highestStepReached; i++) {
-    $(`.nav-step[data-step="${i}"]`).addClass('completed').css('cursor', 'pointer');
-  }
-
-  // Make unreached future steps non-clickable
-  for (let i = highestStepReached + 1; i <= totalSteps; i++) {
-    $(`.nav-step[data-step="${i}"]`).removeClass('completed').css('cursor', 'default');
-  }
-
-  $('#currentStep').text(step);
-
-  // Button visibility
-  if (step === 1) {
-    $('#prevBtn').hide();
-  } else {
-    $('#prevBtn').show();
-  }
-
-  if (step === totalSteps) {
-    $('#nextBtn').hide();
-    $('#submitBtn').show();
-  } else {
-    $('#nextBtn').show();
-    $('#submitBtn').hide();
-  }
-
-  // Scroll to top
-  $('.main-content').scrollTop(0);
-}
-
-function validateStep(step) {
-  let valid = true;
-  const $currentStep = $(`.form-step[data-step="${step}"]`);
-  let missingFields = [];
-
-  $currentStep.find('[required]').each(function () {
-    const $field = $(this);
-    const fieldLabel = $field.closest('.mb-3').find('label').first().text().replace('*', '').trim();
-    if ($field.attr('type') === 'radio') {
-      const name = $field.attr('name');
-      if (!$(`input[name="${name}"]:checked`).length) {
-        valid = false;
-        $field.closest('.row, .mb-3').addClass('is-invalid-group');
-        if (fieldLabel && !missingFields.includes(fieldLabel)) {
-          missingFields.push(fieldLabel);
-        }
-      } else {
-        $field.closest('.row, .mb-3').removeClass('is-invalid-group');
-      }
-    } else if ($field.attr('type') === 'checkbox') {
-      if (!$field.is(':checked')) {
-        valid = false;
-        $field.addClass('is-invalid');
-        if (fieldLabel && !missingFields.includes(fieldLabel)) {
-          missingFields.push(fieldLabel);
-        }
-      } else {
-        $field.removeClass('is-invalid');
-      }
+    // Mark completed steps and make them clickable
+    for (let i = 1; i < step; i++) {
+      $(`.nav-step[data-step="${i}"]`).addClass('completed').css('cursor', 'pointer');
     }
-    else if ($field.attr('type') === 'file') {
-      const files = $field[0].files;
-      if (!files || files.length === 0) {
-        valid = false;
-        $field.next('button').addClass('is-invalid');
-        $field.next('#photoBtn').removeClass('is-invalid');
-        $field.parent().siblings('.photo-preview').addClass('is-invalid');
 
-        if (fieldLabel && !missingFields.includes(fieldLabel)) {
-          missingFields.push(fieldLabel);
-        }
-      } else {
-        $field.next('button').removeClass('is-invalid');
-        $field.parent().siblings('.photo-preview').removeClass('is-invalid');
-      }
+    // Make current step clickable
+    $(`.nav-step[data-step="${step}"]`).css('cursor', 'pointer');
+
+    // Mark steps that user has reached before as accessible
+    for (let i = step + 1; i <= highestStepReached; i++) {
+      $(`.nav-step[data-step="${i}"]`).addClass('completed').css('cursor', 'pointer');
     }
-    else {
-      if (!$field.val() || $field.val().trim() === '') {
-        valid = false;
-        $field.addClass('is-invalid');
-        if (fieldLabel && !missingFields.includes(fieldLabel)) {
-          missingFields.push(fieldLabel);
+
+    // Make unreached future steps non-clickable
+    for (let i = highestStepReached + 1; i <= totalSteps; i++) {
+      $(`.nav-step[data-step="${i}"]`).removeClass('completed').css('cursor', 'default');
+    }
+
+    $('#currentStep').text(step);
+
+    // Button visibility
+    if (step === 1) {
+      $('#prevBtn').hide();
+    } else {
+      $('#prevBtn').show();
+    }
+
+    if (step === totalSteps) {
+      $('#nextBtn').hide();
+      $('#submitBtn').show();
+    } else {
+      $('#nextBtn').show();
+      $('#submitBtn').hide();
+    }
+
+    // Scroll to top
+    $('.main-content').scrollTop(0);
+  }
+
+  function validateStep(step) {
+    let valid = true;
+    const $currentStep = $(`.form-step[data-step="${step}"]`);
+    let missingFields = [];
+
+    $currentStep.find('[required]').each(function () {
+      const $field = $(this);
+      const fieldLabel = $field.closest('.mb-3').find('label').first().text().replace('*', '').trim();
+      if ($field.attr('type') === 'radio') {
+        const name = $field.attr('name');
+        if (!$(`input[name="${name}"]:checked`).length) {
+          valid = false;
+          $field.closest('.row, .mb-3').addClass('is-invalid-group');
+          if (fieldLabel && !missingFields.includes(fieldLabel)) {
+            missingFields.push(fieldLabel);
+          }
+        } else {
+          $field.closest('.row, .mb-3').removeClass('is-invalid-group');
         }
-      } else {
-        $field.removeClass('is-invalid');
+      } else if ($field.attr('type') === 'checkbox') {
+        if (!$field.is(':checked')) {
+          valid = false;
+          $field.addClass('is-invalid');
+          if (fieldLabel && !missingFields.includes(fieldLabel)) {
+            missingFields.push(fieldLabel);
+          }
+        } else {
+          $field.removeClass('is-invalid');
+        }
       }
+      else if ($field.attr('type') === 'file') {
+        const files = $field[0].files;
+        if (!files || files.length === 0) {
+          valid = false;
+          $field.next('button').addClass('is-invalid');
+          $field.next('#photoBtn').removeClass('is-invalid');
+          $field.parent().siblings('.photo-preview').addClass('is-invalid');
+
+          if (fieldLabel && !missingFields.includes(fieldLabel)) {
+            missingFields.push(fieldLabel);
+          }
+        } else {
+          $field.next('button').removeClass('is-invalid');
+          $field.parent().siblings('.photo-preview').removeClass('is-invalid');
+        }
+      }
+      else {
+        if (!$field.val() || $field.val().trim() === '') {
+          valid = false;
+          $field.addClass('is-invalid');
+          if (fieldLabel && !missingFields.includes(fieldLabel)) {
+            missingFields.push(fieldLabel);
+          }
+        } else {
+          $field.removeClass('is-invalid');
+        }
+      }
+    });
+
+    if (!valid) {
+      let errorMessage = 'कृपया सबै आवश्यक विवरण भर्नुहोस्।<br><small>Please fill all required fields.</small>';
+
+      if (missingFields.length > 0 && missingFields.length <= 5) {
+        errorMessage += '<br><br><div style="text-align: left; font-size: 13px;"><strong>Missing:</strong><br>';
+        missingFields.forEach(field => {
+          errorMessage += `• ${field}<br>`;
+        });
+        errorMessage += '</div>';
+      }
+      swalError('Incomplete Form', errorMessage);
+    }
+
+    return valid;
+  }
+
+  $('#nextBtn').on('click', function () {
+    if (validateStep(currentStep)) {
+      currentStep++;
+      if (currentStep > highestStepReached) {
+        highestStepReached = currentStep;
+      }
+      showStep(currentStep);
     }
   });
 
-  if (!valid) {
-    let errorMessage = 'कृपया सबै आवश्यक विवरण भर्नुहोस्।<br><small>Please fill all required fields.</small>';
-
-    if (missingFields.length > 0 && missingFields.length <= 5) {
-      errorMessage += '<br><br><div style="text-align: left; font-size: 13px;"><strong>Missing:</strong><br>';
-      missingFields.forEach(field => {
-        errorMessage += `• ${field}<br>`;
-      });
-      errorMessage += '</div>';
-    }
-    swalError('Incomplete Form', errorMessage);
-  }
-
-  return valid;
-}
-
-$('#nextBtn').on('click', function () {
-  if (validateStep(currentStep)) {
-    currentStep++;
-    if (currentStep > highestStepReached) {
-      highestStepReached = currentStep;
-    }
+  $('#prevBtn').on('click', function () {
+    currentStep--;
     showStep(currentStep);
-  }
-});
+  });
 
-$('#prevBtn').on('click', function () {
-  currentStep--;
-  showStep(currentStep);
-});
+  // Allow navigation through sidebar
+  $('.nav-step').on('click', function (e) {
+    e.preventDefault();
+    const targetStep = parseInt($(this).data('step'));
 
-// Allow navigation through sidebar
-$('.nav-step').on('click', function (e) {
-  e.preventDefault();
-  const targetStep = parseInt($(this).data('step'));
+    // Can't click on the same step
+    if (targetStep === currentStep) {
+      return;
+    }
 
-  // Can't click on the same step
-  if (targetStep === currentStep) {
-    return;
-  }
-
-  // Allow navigation to any previously reached step
-  if (targetStep <= highestStepReached) {
-    // If going forward, validate current step first
-    if (targetStep > currentStep) {
-      if (validateStep(currentStep)) {
+    // Allow navigation to any previously reached step
+    if (targetStep <= highestStepReached) {
+      // If going forward, validate current step first
+      if (targetStep > currentStep) {
+        if (validateStep(currentStep)) {
+          currentStep = targetStep;
+          showStep(currentStep);
+        }
+      } else {
+        // Going backward - no validation needed
         currentStep = targetStep;
         showStep(currentStep);
       }
     } else {
-      // Going backward - no validation needed
-      currentStep = targetStep;
-      showStep(currentStep);
+      // Trying to skip to an unreached step - show error
+      swalError('Cannot Skip Steps', 'कृपया पहिले हालको पृष्ठ पूरा गर्नुहोस्।<br><small>Please complete the current page first.</small>');
     }
-  } else {
-    // Trying to skip to an unreached step - show error
-    swalError('Cannot Skip Steps', 'कृपया पहिले हालको पृष्ठ पूरा गर्नुहोस्।<br><small>Please complete the current page first.</small>');
-  }
-});
+  });
 
-// Initialize first step
-showStep(1);
+  // Initialize first step
+  showStep(1);
 
   // =============================
   // 2. Photo Upload Preview
   // =============================
-  $('#photoUpload').on('change', function (e) {
+$('#photoUpload').on('change', function (e) {
     const file = e.target.files[0];
     if (file && file.type.startsWith('image/')) {
-      const reader = new FileReader();
-      reader.onload = function (e) {
-        $('#photoPreview').attr('src', e.target.result);
-      };
-      reader.readAsDataURL(file);
+        const reader = new FileReader();
+        reader.onload = function (e) {
+            $('#photoPreview').attr('src', e.target.result);
+            // Remove is-invalid class from photo-preview div
+            $('.photo-preview').removeClass('is-invalid');
+        };
+        reader.readAsDataURL(file);
     }
-  });
+});
 
-  $('#removePhoto').on('click', function () {
+$('#removePhoto').on('click', function () {
     $('#photoUpload').val('');
     $('#photoPreview').attr('src', '/static/images/default-avatar.png');
-  });
+});
 
   // =============================
   // 3. Document Upload 
@@ -207,21 +209,6 @@ showStep(1);
       if (file && fileNameTarget) {
         $('#' + fileNameTarget).text(file.name);
       }
-
-      // Optional: preview image if it's an image
-      // const previewTarget = $input.data('preview');
-      // if (file && previewTarget && file.type.startsWith('image/')) {
-      //   const reader = new FileReader();
-      //   reader.onload = function (e) {
-      //     $('#' + previewTarget).css({
-      //       'background-image': `url('${e.target.result}')`,
-      //       'background-size': 'cover',
-      //       'background-position': 'center',
-      //       'background-repeat': 'no-repeat'
-      //     });
-      //   };
-      //   reader.readAsDataURL(file);
-      // }
     });
   });
 
@@ -233,7 +220,9 @@ showStep(1);
     $('input[type="file"]').on('change', function () {
       const file = this.files[0];
       const $input = $(this);
-      debugger
+      const $container = $input.closest('.transparent-dark-div');
+      const $removeBtn = $container.find('.remove-btn');
+
       if (file && file.type.startsWith('image/')) {
         const reader = new FileReader();
 
@@ -241,19 +230,47 @@ showStep(1);
           // Get the preview target using a data-preview attribute
           const targetId = $input.data('preview');
           const $previewDiv = $('#' + targetId);
-
           $previewDiv.css({
             'background-image': `url('${e.target.result}')`,
             'background-size': 'cover',
             'background-position': 'center',
             'background-repeat': 'no-repeat'
           });
+
+          // Show remove button
+          $removeBtn.show();
         };
 
+        $container.find('button').removeClass('is-invalid');
+        // $container.find('button').addClass('is-valid');
         reader.readAsDataURL(file);
       }
     });
+
+    // Handle remove button click
+    $('.remove-btn').on('click', function () {
+      const $container = $(this).closest('.transparent-dark-div');
+      const $input = $container.find('input[type="file"]');
+      const targetId = $input.data('preview');
+      const $previewDiv = $('#' + targetId);
+      const $fileName = $container.find('.file-name');
+
+      // Clear the file input
+      $input.val('');
+
+      // Remove background image
+      $previewDiv.css('background-image', '');
+
+      // Hide remove button
+      $(this).hide();
+
+      // Reset file name text if it has a data-filename attribute
+      const defaultText = $input.data('filename').replace(/([A-Z])/g, ' $1').trim();
+      $fileName.text(defaultText.charAt(0).toUpperCase() + defaultText.slice(1));
+    });
   });
+
+
 
   // ============================
   // 4. Spouse Name Manupulation

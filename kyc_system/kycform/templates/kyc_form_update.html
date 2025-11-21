@@ -1,6 +1,7 @@
 {% load static %}
 <!DOCTYPE html>
 <html lang="ne">
+
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
@@ -8,13 +9,14 @@
 
   <!-- Bootstrap (Local) -->
   <link href="{% static 'bootstrap/css/bootstrap.min.css' %}" rel="stylesheet">
-  
+
   <!-- Nepali Datepicker -->
-  <link href="https://nepalidatepicker.sajanmaharjan.com.np/v5/nepali.datepicker/css/nepali.datepicker.v5.0.6.min.css" rel="stylesheet">
-  
+  <link href="https://nepalidatepicker.sajanmaharjan.com.np/v5/nepali.datepicker/css/nepali.datepicker.v5.0.6.min.css"
+    rel="stylesheet">
+
   <!-- SweetAlert2 -->
   <link href="{% static 'css/sweetalert2.min.css' %}" rel="stylesheet">
-  
+
   <!-- Custom CSS -->
   <link href="{% static 'css/kyc-form.css' %}" rel="stylesheet">
 </head>
@@ -27,7 +29,7 @@
         <div class="logo-section">
           <img src="{% static 'images/rjbclogo.png' %}" alt="RJBC Logo" class="logo">
         </div>
-        
+
         <div class="step-indicator">
           <h6 class="step-title">KYC Form</h6>
           <p class="step-subtitle">Step <span id="currentStep">1</span> of 5</p>
@@ -56,7 +58,7 @@
           </a>
         </nav>
 
-        
+
       </div>
 
       <!-- Main Content -->
@@ -64,7 +66,7 @@
         <div class="form-container">
           <form id="kycForm" method="POST" action="{% url 'kyc_form' %}" enctype="multipart/form-data">
             {% csrf_token %}
-            
+
             <input type="hidden" name="policy_no" id="policyField">
 
             <!-- Step 1: Personal Details -->
@@ -80,7 +82,8 @@
                   <label class="form-label">Passport Size Photo <span class="text-danger">*</span></label>
                   <p class="form-text">Supports jpg, jpeg and png. 300KB max.</p>
                   <input type="file" id="photoUpload" name="photo" accept="image/*" style="display:none;" required>
-                  <button id ="photoBtn" type="button" class="btn btn-outline-primary btn-sm mb-1" onclick="document.getElementById('photoUpload').click()">Upload</button>
+                  <button id="photoBtn" type="button" class="btn btn-outline-primary btn-sm mb-1"
+                    onclick="document.getElementById('photoUpload').click()">Upload</button>
                   <button type="button" class="btn btn-link btn-sm text-danger" id="removePhoto">Remove</button>
                 </div>
               </div>
@@ -89,15 +92,15 @@
               <div class="row">
                 <div class="col-md-4 mb-3">
                   <label class="form-label">First Name <span class="text-danger">*</span></label>
-                  <input type="text" name="first_name" class="form-control" required>
+                  <input type="text" name="first_name" class="form-control  alpha-text" required>
                 </div>
                 <div class="col-md-4 mb-3">
                   <label class="form-label">Middle Name</label>
-                  <input type="text" name="middle_name" class="form-control">
+                  <input type="text" name="middle_name" class="form-control  alpha-text">
                 </div>
-                <div class="col-md-4 mb-3">
+                <div class="col-md-4 mb-3 ">
                   <label class="form-label">Last Name <span class="text-danger">*</span></label>
-                  <input type="text" name="last_name" class="form-control" required>
+                  <input type="text" name="last_name" class="form-control  alpha-text" required>
                 </div>
               </div>
               <!-- Personal Information Fields 1 -->
@@ -139,35 +142,34 @@
                     </div>
                   </div>
                 </div>
-                
+
               </div>
               <!-- Personal Information Fields 2-->
               <div class="row">
                 <div class="col-md-4 mb-3">
                   <label class="form-label">Date of Birth (BS) <span class="text-danger">*</span></label>
-                  <input type="date" id="dob_bs" name="dob_bs" class="form-control" placeholder="YYYY/MM/DD"  required readonly>
+                  <input type="date" id="dob_bs" name="dob_bs" class="form-control" placeholder="YYYY/MM/DD" required
+                    readonly>
                 </div>
-                 <div class="col-md-4 mb-3" onclick="document.getElementById('dob_ad').showPicker()"> 
-                <!-- <div class="col-md-4 mb-3" onclick="$('#dob_ad')[0].showPicker()"> -->
+                <div class="col-md-4 mb-3" onclick="document.getElementById('dob_ad').showPicker()">
+                  <!-- <div class="col-md-4 mb-3" onclick="$('#dob_ad')[0].showPicker()"> -->
 
                   <label class="form-label">Date of Birth (AD) <span class="text-danger">*</span></label>
-                  <input type="date" id="dob_ad" name="dob_ad" class="form-control" placeholder="YYYY/MM/DD" required autocomplete="off">
+                  <input type="date" id="dob_ad" name="dob_ad" class="form-control" placeholder="YYYY/MM/DD" required
+                    autocomplete="off">
                 </div>
               </div>
               <!-- Personal Information Fields 3-->
               <div class="row mb-4">
                 <div class="col-md-4 mb-3">
                   <label class="form-label">Email Address <span class="text-danger">*</span></label>
-                  <input type="email" name="email" class="form-control" required >
+                  <input type="email" name="email" class="form-control" required>
                 </div>
                 <div class="col-md-4 mb-3">
                   <label class="form-label">Mobile No. <span class="text-danger">*</span></label>
-                  <input type="text" id= "mobile" name="mobile" class="form-control" required>
+                  <input type="text" id="mobile" name="mobile" class="form-control" required>
                 </div>
-                <div class="col-md-4 mb-3">
-                  <label class="form-label">Telephone No.  </label>
-                  <input type="text" name="telephone" class="form-control" >
-                </div>
+                
                 <!-- <div class="col-md-4 mb-3">
                   <label class="form-label">Father's Name</label>
                   <input type="text" name="father_name" class="form-control">
@@ -178,7 +180,7 @@
                 </div> -->
               </div>
 
-
+              <h4 class="form-step-title">Documents</h4>
               <!-- Documents-->
               <div class="row">
                 <div class="col-md-4 mb-3">
@@ -187,24 +189,26 @@
                 </div>
                 <div class="col-md-4 mb-3">
                   <label class="form-label">Document Issued Date(BS) <span class="text-danger">*</span></label>
-                  <input type="date" id="citizen_bs" name="citizenship_date" class="form-control" placeholder="YYYY/MM/DD" required>
+                  <input type="date" id="citizen_bs" name="citizenship_date" class="form-control"
+                    placeholder="YYYY/MM/DD" required>
                 </div>
                 <div class="col-md-4 mb-3" onclick="document.getElementById('citizen_ad').showPicker()">
                   <label class="form-label">Document Issued Date(AD) <span class="text-danger">*</span></label>
-                  <input type="date" id="citizen_ad" name="citizenship_date" class="form-control" placeholder="YYYY/MM/DD" required>
+                  <input type="date" id="citizen_ad" name="citizenship_date" class="form-control"
+                    placeholder="YYYY/MM/DD" required>
                 </div>
               </div>
               <!-- Documents 2-->
               <div class="row mb-4">
                 <div class="col-md-4 mb-3">
                   <label class="form-label">Document Issued Place <span class="text-danger">*</span></label>
-                  <input type="text" name="citizenship_place" class="form-control" required>
+                  <input type="text" name="citizenship_place" class="form-control alpha-text" required>
                 </div>
-              <div class="col-md-4 mb-3">
+                <div class="col-md-4 mb-3">
                   <label class="form-label">Passport No.</label>
                   <input type="text" name="passport_no" class="form-control">
                 </div>
-              <div class="col-md-4 mb-3">
+                <div class="col-md-4 mb-3">
                   <label class="form-label">National Identity Card No.</label>
                   <input type="text" name="passport_no" class="form-control">
                 </div>
@@ -212,69 +216,91 @@
 
 
               <!-- Document Uploads Citizenship -->
-              <div class="row mb-4">  
+              <div class="row mb-4">
                 <div class="col-md-6">
-                    <div class="document-upload" id="citizenship_front">
-                      <div class="transparent-dark-div">
-                        <div class="upload-icon">📄</div>
-                        <label class="form-label">Citizenship Front <span class="text-danger">*</span></label>
-                        <p class="form-text">Supports jpg, jpeg and png. 500KB max.</p>
-                        <input type="file" data-filename="citizenshipFrontFileName" id="citizenshipFrontUpload" name="citizenship-front" accept="image/*,application/pdf" data-preview="citizenship_front" style="display:none;" required>
-                        <button type="button" class="btn btn-outline-secondary btn-sm" onclick="document.getElementById('citizenshipFrontUpload').click()">
-                          <span class="upload-icon-btn">⬇</span>
-                        </button>
-                        <span class="file-name" id="citizenshipFrontFileName">Citizenship Front</span>
-                      </div>
+                  <div class="document-upload" id="citizenship_front">
+                    <div class="transparent-dark-div">
+                      <div class="upload-icon">📄</div>
+                      <label class="form-label">Citizenship Front <span class="text-danger">*</span></label>
+                      <p class="form-text">Supports jpg, jpeg and png. 500KB max.</p>
+                      <input type="file" data-filename="citizenshipFrontFileName" id="citizenshipFrontUpload"
+                        name="citizenship-front" accept="image/*,application/pdf" data-preview="citizenship_front"
+                        style="display:none;" required>
+                      <button type="button" class="btn btn-outline-secondary btn-sm"
+                        onclick="document.getElementById('citizenshipFrontUpload').click()">
+                        <span class="upload-icon-btn">⬇</span>
+                      </button>
+                      <button type="button" class="btn btn-outline-danger btn-sm remove-btn" style="display:none;">
+                        <span class="fw-bolder">✕</span>
+                      </button>
+                      <span class="file-name" id="citizenshipFrontFileName">Citizenship Front</span>
                     </div>
+                  </div>
                 </div>
-                
+
                 <div class="col-md-6">
-                  <div class="document-upload" id = "citizenship_back">
+                  <div class="document-upload" id="citizenship_back">
                     <div class="transparent-dark-div">
                       <div class="upload-icon">📄</div>
                       <label class="form-label">Citizenship Back <span class="text-danger">*</span></label>
                       <p class="form-text">Supports jpg, jpeg and png. 500KB max.</p>
-                      <input type="file" data-filename="citizenshipBackFileName" id="citizenshipBackUpload" name="citizenship-back" accept="image/*,application/pdf" data-preview="citizenship_back" style="display:none;" required>
-                      <button type="button" class="btn btn-outline-secondary btn-sm" onclick="document.getElementById('citizenshipBackUpload').click()">
+                      <input type="file" data-filename="citizenshipBackFileName" id="citizenshipBackUpload"
+                        name="citizenship-back" accept="image/*,application/pdf" data-preview="citizenship_back"
+                        style="display:none;" required>
+                      <button type="button" class="btn btn-outline-secondary btn-sm"
+                        onclick="document.getElementById('citizenshipBackUpload').click()">
                         <span class="upload-icon-btn">⬇</span>
+                      </button>
+                      <button type="button" class="btn btn-outline-danger btn-sm remove-btn" style="display:none;">
+                        <span class="fw-bolder">✕</span>
                       </button>
                       <span class="file-name" id="citizenshipBackFileName">Citizenship Back</span>
                     </div>
                   </div>
                 </div>
               </div>
-               <!-- Document Uploads NID & Signature-->
+              <!-- Document Uploads NID & Signature-->
               <div class="row mb-4">
                 <div class="col-md-6">
-                  <div class="document-upload" id = "Nid_doc">
+                  <div class="document-upload" id="Nid_doc">
                     <div class="transparent-dark-div">
                       <div class="upload-icon">📄</div>
                       <label class="form-label">National Identity Card (optional)</label>
                       <p class="form-text">Supports jpg, jpeg and png. 500KB max.</p>
-                      <input type="file" data-filename="nidFileName" id="NidUpload" name="nid" accept="image/*,application/pdf" data-preview="Nid_doc" style="display:none;">
-                      <button type="button" class="btn btn-outline-secondary btn-sm" onclick="document.getElementById('NidUpload').click()">
+                      <input type="file" data-filename="nidFileName" id="NidUpload" name="nid"
+                        accept="image/*,application/pdf" data-preview="Nid_doc" style="display:none;">
+                      <button type="button" class="btn btn-outline-secondary btn-sm"
+                        onclick="document.getElementById('NidUpload').click()">
                         <span class="upload-icon-btn">⬇</span>
+                      </button>
+                      <button type="button" class="btn btn-outline-danger btn-sm remove-btn" style="display:none;">
+                        <span class="fw-bolder">✕</span>
                       </button>
                       <span class="file-name" id="nidFileName">Rastriya Parichaya Patra</span>
                     </div>
                   </div>
                 </div>
-                
+
                 <div class="col-md-6">
-                  <div class="document-upload" id = "signature">
+                  <div class="document-upload" id="signature">
                     <div class="transparent-dark-div">
                       <div class="upload-icon">📄</div>
                       <label class="form-label">Signature <span class="text-danger">*</span></label>
                       <p class="form-text">Supports jpg, jpeg and png. 500KB max.</p>
-                      <input type="file" data-filename="signatureFileName" id="signatureUpload" name="signature" accept="image/*,application/pdf" data-preview="signature" style="display:none;" required>
-                      <button type="button" class="btn btn-outline-secondary btn-sm" onclick="document.getElementById('signatureUpload').click()">
+                      <input type="file" data-filename="signatureFileName" id="signatureUpload" name="signature"
+                        accept="image/*,application/pdf" data-preview="signature" style="display:none;" required>
+                      <button type="button" class="btn btn-outline-secondary btn-sm"
+                        onclick="document.getElementById('signatureUpload').click()">
                         <span class="upload-icon-btn">⬇</span>
+                      </button>
+                      <button type="button" class="btn btn-outline-danger btn-sm remove-btn" style="display:none;">
+                        <span class="fw-bolder">✕</span>
                       </button>
                       <span class="file-name" id="signatureFileName">Your Signature</span>
                     </div>
                   </div>
                 </div>
-              </div>  
+              </div>
 
               <h4 class="form-step-title">Family Details</h4>
               <!-- Married Details -->
@@ -294,7 +320,11 @@
                 </div>
                 <div class="col-md-4 mb-3">
                   <label class="form-label">Spouse Name <span class="text-danger">*</span></label>
-                  <input type="text" id ="spouse_name" name="spouse_name" class="form-control">
+                  <input type="text" id="spouse_name" name="spouse_name" class="form-control alpha-text">
+                </div>
+                <div class="col-md-4 mb-3">
+                  <label class="form-label">Grand Father's Name</label>
+                  <input type="text" name="grand_father_name" class="form-control alpha-text">
                 </div>
               </div>
 
@@ -302,41 +332,38 @@
               <div class="row">
                 <div class="col-md-4 mb-3">
                   <label class="form-label">Father's Name</label>
-                  <input type="text" name="father_name" class="form-control">
+                  <input type="text" name="father_name" class="form-control alpha-text">
                 </div>
                 <div class="col-md-4 mb-3">
                   <label class="form-label">Mother's Name</label>
-                  <input type="text" name="mother_name" class="form-control">
+                  <input type="text" name="mother_name" class="form-control alpha-text">
                 </div>
-                <div class="col-md-4 mb-3">
-                  <label class="form-label">Grand Father's Name</label>
-                  <input type="text" name="grand_father_name" class="form-control">
-                </div>
+
               </div>
               <!-- Close Family 2 -->
               <div class="row">
                 <div class="col-md-4 mb-3">
                   <label class="form-label">Son's Name</label>
-                  <input type="text" name="son_name" class="form-control">
+                  <input type="text" name="son_name" class="form-control alpha-text">
                 </div>
                 <div class="col-md-4 mb-3">
                   <label class="form-label">Daughter's Name</label>
-                  <input type="text" name="daughter_name" class="form-control">
+                  <input type="text" name="daughter_name" class="form-control alpha-text">
                 </div>
                 <div class="col-md-4 mb-3">
                   <label class="form-label">Father in Law's Name</label>
-                  <input type="text" name="father_in_law_name" class="form-control">
+                  <input type="text" name="father_in_law_name" class="form-control alpha-text">
                 </div>
               </div>
               <!-- Contact Person -->
               <div class="row">
-                <div class="col-md-6 mb-3">
+                <div class="col-md-4 mb-3">
                   <label class="form-label">Contact Person <span class="text-danger">*</span></label>
-                  <input type="text"   name="contact_person" class="form-control" required>
+                  <input type="text" name="contact_person" class="form-control alpha-text" required>
                 </div>
-                <div class="col-md-6 mb-3">
+                <div class="col-md-4 mb-3">
                   <label class="form-label">Mobile No. <span class="text-danger">*</span></label>
-                  <input type="tel" id ="contact_mobile" name="contact_mobile" class="form-control" required>
+                  <input type="tel" id="contact_mobile" name="contact_mobile" class="form-control" required>
                 </div>
               </div>
             </div>
@@ -371,7 +398,7 @@
                 </div>
               </div>
               <div class="row">
-                  <div class="col-md-3 mb-3">
+                <div class="col-md-3 mb-3">
                   <label class="form-label">Address <span class="text-danger">*</span></label>
                   <input type="text" name="perm_address" class="form-control" required>
                 </div>
@@ -413,7 +440,7 @@
                 </div>
               </div>
               <div class="row">
-                  <div class="col-md-3 mb-3">
+                <div class="col-md-3 mb-3">
                   <label class="form-label">Address <span class="text-danger">*</span></label>
                   <input type="text" name="temp_address" class="form-control" required>
                 </div>
@@ -570,7 +597,8 @@
                   <input class="form-check-input" type="checkbox" id="declaration" name="declaration" required>
                   <label class="form-check-label" for="declaration">
                     <strong>के तपाईंले दिएको विवरण सत्य र ठ्याक्कै हो?</strong><br>
-                    I hereby declare that all the information provided above is true and accurate to the best of my knowledge.
+                    I hereby declare that all the information provided above is true and accurate to the best of my
+                    knowledge.
                   </label>
                 </div>
               </div>
@@ -578,9 +606,11 @@
 
             <!-- Navigation Buttons -->
             <div class="form-navigation">
-              <button type="button" class="btn btn-outline-secondary" id="prevBtn" style="display:none;">Previous</button>
+              <button type="button" class="btn btn-outline-secondary" id="prevBtn"
+                style="display:none;">Previous</button>
               <button type="button" class="btn btn-primary" id="nextBtn">Continue</button>
-              <button type="submit" class="btn btn-success" id="submitBtn" style="display:none;">पेश गर्नुहोस् / Submit</button>
+              <button type="submit" class="btn btn-success" id="submitBtn" style="display:none;">पेश गर्नुहोस् /
+                Submit</button>
             </div>
           </form>
         </div>
@@ -588,7 +618,7 @@
         <footer class="form-footer">
           <p>© Rastriya Jeeewan Beema Company Limited</p>
         </footer>
-      </div>  
+      </div>
     </div>
   </div>
 
@@ -596,22 +626,22 @@
   <script src="{% static 'js/jquery-3.6.0.min.js' %}"></script>
   <script src="{% static 'js/nepali.datepicker.v5.0.6.min.js' %}"></script>
 
-  
+
   <!-- Bootstrap JS (Local) -->
   <script src="{% static 'bootstrap/js/bootstrap.bundle.min.js' %}"></script>
-  
+
   <!-- Nepali Datepicker -->
   <!-- <script src="https://nepalidatepicker.sajanmaharjan.com.np/v5/nepali.datepicker/js/nepali.datepicker.v5.0.6.min.js"></script> -->
   <!-- <script src="% static 'js/nepali.datepicker.v5.0.6.min.js' %"></script> -->
-  
+
   <!-- SweetAlert2 -->
   <script src="{% static 'js/sweetalert2.all.min.js' %}"></script>
   <script src="{% static 'js/sweetalert-messages.js' %}"></script>
-  
+
   <!-- Nepali Functions -->
   <script src="{% static 'js/nepaliFunctions.js' %}"></script>
   <script src="{% static 'js/date-conversion.js' %}"></script>
-  
+
   <!-- MAIN JS -->
   <script src="{% static 'js/kyc-form.js' %}"></script>
 
@@ -624,4 +654,5 @@
     }
   </script>
 </body>
+
 </html>

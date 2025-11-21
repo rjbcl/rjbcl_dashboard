@@ -282,6 +282,7 @@ body {
 
 .upload-icon-btn {
   font-size: 18px;
+  font-weight: bolder;
 }
 
 .file-name {
@@ -415,8 +416,8 @@ div.is-invalid {
 }
 
 .btn-outline-secondary:hover {
-  background-color: #6c757d;
-  border-color: #6c757d;
+  background-color: #218838;
+  border-color:#218838;
   color: #fff;
 }
 

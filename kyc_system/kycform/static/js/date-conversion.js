@@ -75,62 +75,8 @@
     ndpYearCount: 120
   });
 
-  // Auto-convert BS to AD for DOB
-//   const $dobBs = $('#dob_bs');
-  
-//   function updateDobAd() {
-//     debugger
-//     const ad = bsToAd($dobBs.val());
-//     if(ad) {
-//       // Store AD date in a hidden field if needed
-//       // console.log('DOB AD:', ad);
-//        $('#dob_ad').val(ad);
-//     }
-//   }
 
-
-
-  // anush test
-
-
- // *************DOB*********************
-// $('#dob_bs').on('input change blur', function () {
-//     const ad = bsToAd($(this).val());
-//     const today = new Date();
-//     const adDate = new Date(ad);
-
-//     if (adDate <= today) {
-//         $('#dob_ad').val(ad);
-//     } else {
-//         swalFire("Wrong Date", "Future Date Selected");
-//         $('#dob_ad, #dob_bs').val('');   // Optional: clear the AD field
-//     }
-// });
-
-// $('#dob_ad').on('input change blur', function () {
-//     const ad = adToBs($(this).val());
-//     $('#dob_bs').val(ad);
-// });
-//  // *************Citizenship Issue Date*********************
-// $('#citizen_bs').on('input change blur', function () {
-//     const ad = bsToAd($(this).val());
-//     $('#citizen_ad').val(ad);
-// });
-// $('#citizen_ad').on('input change blur', function () {
-//     const ad = adToBs($(this).val());
-//     $('#citizen_bs').val(ad);
-// });
- // *************Nominee DOB*********************
-// $('#nominee_dob_bs').on('input change blur', function () {
-//     const ad = bsToAd($(this).val());
-//     $('#nominee_dob_ad').val(ad);
-// });
-// $('#nominee_dob_ad').on('input change blur', function () {
-//     const ad = adToBs($(this).val());
-//     $('#nominee_dob_bs').val(ad);
-// });
-
-// **********Automation***************
+// **********Automatic Sync***************
 function bindBsAdSync(bsSelector, adSelector) {
     const today = new Date();
 
@@ -140,6 +86,7 @@ function bindBsAdSync(bsSelector, adSelector) {
 
         if (adDate <= today) {
             $(adSelector).val(ad);
+            $(adSelector).removeClass('is-invalid');
         } else {
             swalFire("Wrong Date", "Future Date Selected");
             $(bsSelector + ', ' + adSelector).val('');
@@ -153,6 +100,7 @@ function bindBsAdSync(bsSelector, adSelector) {
         debugger    
         if (adDate <= today) {
             $(bsSelector).val(bs);
+            $(bsSelector).removeClass('is-invalid')
         } else {
             swalFire("Wrong Date", "Future Date Selected");
             $(bsSelector + ', ' + adSelector).val('');
@@ -171,11 +119,20 @@ bindBsAdSync('#nominee_dob_bs', '#nominee_dob_ad');
 
 
 
+// =============================
+  // 10. Text Validation
+  // =============================
 
-//   //test for bs to ad
+$(document).ready(function () {
+  $('.alpha-text').on('keypress', function (e) {
+    const char = String.fromCharCode(e.which);
+    if (!/^[a-zA-Z\s]$/.test(char)) {
+      e.preventDefault();
+    }
+  });
 
-//   const dobObserver = new MutationObserver(() => updateDobAd());
-//   dobObserver.observe($dobBs[0], {attributes: true, attributeFilter: ['value']});
-//   $dobBs.on('input change blur', updateDobAd);
-
-
+  $('.alpha-text').on('input', function () {
+    const clean = $(this).val().replace(/[^a-zA-Z\s]/g, '');
+    $(this).val(clean);
+  });
+});
