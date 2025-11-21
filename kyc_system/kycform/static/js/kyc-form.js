@@ -345,25 +345,25 @@ $('#removePhoto').on('click', function () {
     }
 
     // Permanent Address
-    populateProvince($('#perm_province'));
+    populateProvince($('#perm-province'));
 
-    $('#perm_province').on('change', function () {
-      populateDistricts($(this).val(), $('#perm_district'), $('#perm_muni'));
+    $('#perm-province').on('change', function () {
+      populateDistricts($(this).val(), $('#perm-district'), $('#perm-muni'));
     });
 
-    $('#perm_district').on('change', function () {
-      populateMunicipalities($('#perm_province').val(), $(this).val(), $('#perm_muni'));
+    $('#perm-district').on('change', function () {
+      populateMunicipalities($('#perm-province').val(), $(this).val(), $('#perm-muni'));
     });
 
     // Temporary Address
-    populateProvince($('#temp_province'));
+    populateProvince($('#temp-province'));
 
-    $('#temp_province').on('change', function () {
-      populateDistricts($(this).val(), $('#temp_district'), $('#temp_muni'));
+    $('#temp-province').on('change', function () {
+      populateDistricts($(this).val(), $('#temp-district'), $('#temp-muni'));
     });
 
-    $('#temp_district').on('change', function () {
-      populateMunicipalities($('#temp_province').val(), $(this).val(), $('#temp_muni'));
+    $('#temp-district').on('change', function () {
+      populateMunicipalities($('#temp-province').val(), $(this).val(), $('#temp-muni'));
     });
   }
 
@@ -388,31 +388,32 @@ $('#removePhoto').on('click', function () {
   // =============================
   $('#sameAddress').on('change', function () {
     if ($(this).is(':checked')) {
-      const permProvince = $('#perm_province').val();
-      const permDistrict = $('#perm_district').val();
-      const permMuni = $('#perm_muni').val();
-      const permWard = $('input[name="perm_ward"]').val();
-      const permAddress = $('input[name="perm_address"]').val();
-      const permHouse = $('input[name="perm_house_number"]').val();
+      const permProvince = $('#perm-province').val();
+      const permDistrict = $('#perm-district').val();
+      const permMuni = $('#perm-muni').val();
+      const permWard = $('#perm-ward').val();
+      const permAddress = $('#perm-address').val();
+      const permHouse = $('#perm-house-number').val();
 
-      $('#temp_province').val(permProvince).trigger('change');
-
+      $('#temp-province').val(permProvince).trigger('change');
+      debugger
       setTimeout(() => {
-        $('#temp_district').val(permDistrict).trigger('change');
-        mm
+        $('#temp-district').val(permDistrict).trigger('change');
+  
         setTimeout(() => {
-          $('#temp_muni').val(permMuni);
-          $('input[name="temp_ward"]').val(permWard);
+          $('#temp-muni').val(permMuni);
+          $('#temp-ward').val(permWard);
+          $('#temp-address').val(permAddress);
+          $('#temp-house-number').val(permHouse);
+
         }, 100);
       }, 100);
 
       // Disable temporary address fields
-      $('#temp_province, #temp_district, #temp_muni').prop('disabled', true);
-      $('input[name="temp_ward"]').prop('disabled', true);
+      $('#temp-province, #temp-district, #temp-muni, #temp-ward, #temp-address, #temp-house-number').prop('disabled', true);
     } else {
       // Enable temporary address fields
-      $('#temp_province, #temp_district, #temp_muni').prop('disabled', false);
-      $('input[name="temp_ward"]').prop('disabled', false);
+      $('#temp-province, #temp-district, #temp-muni, #temp-ward, #temp-address, #temp-house-number').prop('disabled', false);
     }
   });
 
@@ -434,7 +435,7 @@ $('#removePhoto').on('click', function () {
     ).then((result) => {
       if (result.isConfirmed) {
         // Re-enable disabled fields before submission
-        $('#temp_province, #temp_district, #temp_muni, input[name="temp_ward"]').prop('disabled', false);
+        $('#temp-province, #temp-district, #temp-muni, #temp-ward, #temp-address, #temp-house-number').prop('disabled', false);
 
         // Show loading
         Swal.fire({

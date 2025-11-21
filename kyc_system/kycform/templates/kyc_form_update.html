@@ -46,7 +46,7 @@
           </a>
           <a href="#" class="nav-step" data-step="3">
             <span class="step-number">3</span>
-            <span class="step-name">Bank Details</span>
+            <span class="step-name">Financial Details</span>
           </a>
           <a href="#" class="nav-step" data-step="4">
             <span class="step-number">4</span>
@@ -70,7 +70,7 @@
             <input type="hidden" name="policy_no" id="policyField">
 
             <!-- Step 1: Personal Details -->
-            <div class="form-step active" data-step="1">
+            <div class="form-step active" data-step="3">
               <h4 class="form-step-title">Personal Details</h4>
 
               <!-- Photo Upload -->
@@ -129,16 +129,16 @@
                   <label class="form-label">Gender <span class="text-danger">*</span></label>
                   <div class="gender-options">
                     <div class="form-check form-check-inline">
-                      <input class="form-check-input" type="radio" name="gender" value="Male" required>
-                      <label class="form-check-label">Male</label>
+                      <input class="form-check-input" type="radio" id = "male" name="gender" value="Male" required>
+                      <label class="form-check-label" for="male">Male</label>
                     </div>
                     <div class="form-check form-check-inline">
-                      <input class="form-check-input" type="radio" name="gender" value="Female">
-                      <label class="form-check-label">Female</label>
+                      <input class="form-check-input" id="female" type="radio" name="gender" value="Female">
+                      <label class="form-check-label"for="female">Female</label>
                     </div>
                     <div class="form-check form-check-inline">
-                      <input class="form-check-input" type="radio" name="gender" value="Other">
-                      <label class="form-check-label">Other</label>
+                      <input class="form-check-input" id="other-gender" type="radio" name="gender" value="Other">
+                      <label class="form-check-label" for="other-gender">Other</label>
                     </div>
                   </div>
                 </div>
@@ -158,6 +158,19 @@
                   <input type="date" id="dob_ad" name="dob_ad" class="form-control" placeholder="YYYY/MM/DD" required
                     autocomplete="off">
                 </div>
+                <div class="col-md-4 mb-3">
+                  <label class="form-label">Marital Status <span class="text-danger">*</span></label>
+                  <div class="marital-options">
+                    <div class="form-check form-check-inline">
+                      <input class="form-check-input" id="Married" type="radio" name="marital_status" value="Married" required>
+                      <label class="form-check-label" for="Married">Married</label>
+                    </div>
+                    <div class="form-check form-check-inline">
+                      <input class="form-check-input" id="Unmarried" type="radio" name="marital_status" value="Unmarried">
+                      <label class="form-check-label" for="Unmarried">Unmarried</label>
+                    </div>
+                  </div>
+                </div>
               </div>
               <!-- Personal Information Fields 3-->
               <div class="row mb-4">
@@ -169,15 +182,10 @@
                   <label class="form-label">Mobile No. <span class="text-danger">*</span></label>
                   <input type="text" id="mobile" name="mobile" class="form-control" required>
                 </div>
-                
-                <!-- <div class="col-md-4 mb-3">
-                  <label class="form-label">Father's Name</label>
-                  <input type="text" name="father_name" class="form-control">
-                </div>
                 <div class="col-md-4 mb-3">
-                  <label class="form-label">Mother's Name</label>
-                  <input type="text" name="mother_name" class="form-control">
-                </div> -->
+                  <label class="form-label">Telephone No. </label>
+                  <input type="text" name="telephone" class="form-control">
+                </div>
               </div>
 
               <h4 class="form-step-title">Documents</h4>
@@ -306,39 +314,33 @@
               <!-- Married Details -->
               <div class="row">
                 <div class="col-md-4 mb-3">
-                  <label class="form-label">Marital Status <span class="text-danger">*</span></label>
-                  <div class="marital-options">
-                    <div class="form-check form-check-inline">
-                      <input class="form-check-input" type="radio" name="marital_status" value="Married" required>
-                      <label class="form-check-label">Married</label>
-                    </div>
-                    <div class="form-check form-check-inline">
-                      <input class="form-check-input" type="radio" name="marital_status" value="Unmarried">
-                      <label class="form-check-label">Unmarried</label>
-                    </div>
-                  </div>
-                </div>
-                <div class="col-md-4 mb-3">
                   <label class="form-label">Spouse Name <span class="text-danger">*</span></label>
                   <input type="text" id="spouse_name" name="spouse_name" class="form-control alpha-text">
                 </div>
                 <div class="col-md-4 mb-3">
-                  <label class="form-label">Grand Father's Name</label>
-                  <input type="text" name="grand_father_name" class="form-control alpha-text">
+                  <label class="form-label">Grand Father's Name <span class="text-danger">*</span></label>
+                  <input type="text" name="grand_father_name" class="form-control alpha-text" required>
+                </div>
+                <div class="col-md-4 mb-3">
+                  <label class="form-label">Proposer's Name <span style="font-size: 12px; color: grey;">(In case of a child)</span> </label>
+                  <input type="text" name="proposer_name" class="form-control alpha-text" >
                 </div>
               </div>
 
               <!-- Close Family -->
               <div class="row">
                 <div class="col-md-4 mb-3">
-                  <label class="form-label">Father's Name</label>
-                  <input type="text" name="father_name" class="form-control alpha-text">
+                  <label class="form-label">Father's Name <span class="text-danger">*</span></label>
+                  <input type="text" name="father_name" class="form-control alpha-text" required>
                 </div>
                 <div class="col-md-4 mb-3">
-                  <label class="form-label">Mother's Name</label>
-                  <input type="text" name="mother_name" class="form-control alpha-text">
+                  <label class="form-label">Mother's Name <span class="text-danger">*</span></label>
+                  <input type="text" name="mother_name" class="form-control alpha-text" required>
                 </div>
-
+                <div class="col-md-4 mb-3">
+                  <label class="form-label">Father in Law's Name</label>
+                  <input type="text" name="father_in_law_name" class="form-control alpha-text">
+                </div>
               </div>
               <!-- Close Family 2 -->
               <div class="row">
@@ -351,21 +353,10 @@
                   <input type="text" name="daughter_name" class="form-control alpha-text">
                 </div>
                 <div class="col-md-4 mb-3">
-                  <label class="form-label">Father in Law's Name</label>
-                  <input type="text" name="father_in_law_name" class="form-control alpha-text">
+                  <label class="form-label">Daughter in Law's Name</label>
+                  <input type="text" name="daughter_in_law_name" class="form-control alpha-text">
                 </div>
-              </div>
-              <!-- Contact Person -->
-              <div class="row">
-                <div class="col-md-4 mb-3">
-                  <label class="form-label">Contact Person <span class="text-danger">*</span></label>
-                  <input type="text" name="contact_person" class="form-control alpha-text" required>
-                </div>
-                <div class="col-md-4 mb-3">
-                  <label class="form-label">Mobile No. <span class="text-danger">*</span></label>
-                  <input type="tel" id="contact_mobile" name="contact_mobile" class="form-control" required>
-                </div>
-              </div>
+              </div>x`
             </div>
 
             <!-- Step 2: Address Details -->
@@ -376,35 +367,35 @@
               <div class="row">
                 <div class="col-md-3 mb-3">
                   <label class="form-label">Province <span class="text-danger">*</span></label>
-                  <select id="perm_province" name="perm_province" class="form-select" required>
+                  <select id="perm-province" name="perm_province" class="form-select" required>
                     <option value="">Select Province</option>
                   </select>
                 </div>
                 <div class="col-md-3 mb-3">
                   <label class="form-label">District <span class="text-danger">*</span></label>
-                  <select id="perm_district" name="perm_district" class="form-select" required>
+                  <select id="perm-district" name="perm_district" class="form-select" required>
                     <option value="">Select District</option>
                   </select>
                 </div>
                 <div class="col-md-3 mb-3">
                   <label class="form-label">Municipality <span class="text-danger">*</span></label>
-                  <select id="perm_muni" name="perm_municipality" class="form-select" required>
+                  <select id="perm-muni" name="perm_municipality" class="form-select" required>
                     <option value="">Select Municipality</option>
                   </select>
                 </div>
                 <div class="col-md-3 mb-3">
                   <label class="form-label">Ward <span class="text-danger">*</span></label>
-                  <input type="number" name="perm_ward" class="form-control" required>
+                  <input type="number" id="perm-ward" name="perm_ward" class="form-control" required>
                 </div>
               </div>
               <div class="row">
                 <div class="col-md-3 mb-3">
                   <label class="form-label">Address <span class="text-danger">*</span></label>
-                  <input type="text" name="perm_address" class="form-control" required>
+                  <input type="text" id="perm-address" name="perm_address" class="form-control" required>
                 </div>
                 <div class="col-md-3 mb-3">
-                  <label class="form-label">House No. <span class="text-danger">*</span></label>
-                  <input type="text" name="perm_house_number" class="form-control" required>
+                  <label class="form-label">House No.</label>
+                  <input type="text" id="perm-house-number" name="perm_house_number" class="form-control">
                 </div>
               </div>
 
@@ -418,43 +409,44 @@
               <div class="row">
                 <div class="col-md-3 mb-3">
                   <label class="form-label">Province <span class="text-danger">*</span></label>
-                  <select id="temp_province" name="temp_province" class="form-select" required>
+                  <select id="temp-province" name="temp_province" class="form-select" required>
                     <option value="">Select Province</option>
                   </select>
                 </div>
                 <div class="col-md-3 mb-3">
                   <label class="form-label">District <span class="text-danger">*</span></label>
-                  <select id="temp_district" name="temp_district" class="form-select" required>
+                  <select id="temp-district" name="temp_district" class="form-select" required>
                     <option value="">Select District</option>
                   </select>
                 </div>
                 <div class="col-md-3 mb-3">
                   <label class="form-label">Municipality <span class="text-danger">*</span></label>
-                  <select id="temp_muni" name="temp_municipality" class="form-select" required>
+                  <select id="temp-muni" name="temp_municipality" class="form-select" required>
                     <option value="">Select Municipality</option>
                   </select>
                 </div>
                 <div class="col-md-3 mb-3">
                   <label class="form-label">Ward <span class="text-danger">*</span></label>
-                  <input type="number" name="temp_ward" class="form-control" required>
+                  <input id="temp-ward" type="number" name="temp_ward" class="form-control" required>
                 </div>
               </div>
               <div class="row">
                 <div class="col-md-3 mb-3">
                   <label class="form-label">Address <span class="text-danger">*</span></label>
-                  <input type="text" name="temp_address" class="form-control" required>
+                  <input id="temp-address" type="text" name="temp_address" class="form-control" required>
                 </div>
                 <div class="col-md-3 mb-3">
-                  <label class="form-label">House No. <span class="text-danger">*</span></label>
-                  <input type="text" name="temp_house_number" class="form-control" required>
+                  <label class="form-label">House No.</label>
+                  <input type="text" id="temp-house-number" name="temp_house_number" class="form-control">
                 </div>
               </div>
             </div>
 
-            <!-- Step 3: Bank Details -->
-            <div class="form-step" data-step="3">
-              <h4 class="form-step-title">Bank Details</h4>
-
+            <!-- Step 3: Financial Details -->
+            <div class="form-step" data-step="1">
+              <h4 class="form-step-title">Financial Details</h4>
+              
+              <h6 class="section-subtitle mt-4">Bank Details</h6>
               <div class="row">
                 <div class="col-md-6 mb-3">
                   <label class="form-label">Bank Name <span class="text-danger">*</span></label>
