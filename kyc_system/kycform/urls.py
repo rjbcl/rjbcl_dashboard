@@ -1,34 +1,47 @@
 from django.urls import path
 from . import views
 
-app_name = "kyc"   # Namespacing recommended for all enterprise modules
+app_name = "kyc"
 
 urlpatterns = [
 
     # -------------------------------
     # AUTHENTICATION (LOGIN)
     # -------------------------------
-    path("", views.policyholder_login, name="login"),  
+    path("", views.policyholder_login, name="login"),
     path("auth/policy/", views.policyholder_login, name="policy_login"),
     path("auth/agent/", views.agent_login, name="agent_login"),
+
+    # CUSTOM RJBC ADMIN LOGIN (NOT Django admin)
+    path("rjbcl-admin/login/", views.admin_login, name="admin_login"),
+    path("rjbcl-admin/logout/", views.admin_logout, name="admin_logout"),
 
     # -------------------------------
     # REGISTRATION
     # -------------------------------
     path("register/", views.policyholder_register_view, name="policy_register"),
-
     path("register/agent/", views.agent_register_view, name="agent_register"),
 
     # -------------------------------
-    # POLICYHOLDER APPLICATION FLOWS
+    # POLICY HOLDER WORKFLOW
     # -------------------------------
     path("kyc-form/", views.kyc_form_view, name="kyc_form"),
     path("kyc-submit/", views.kyc_form_submit, name="kyc_submit"),
     path("dashboard/", views.dashboard_view, name="dashboard"),
 
     # -------------------------------
-    # AGENT APPLICATION FLOWS
+    # AGENT WORKFLOW
     # -------------------------------
     path("agent-dashboard/", views.agent_dashboard_view, name="agent_dashboard"),
 
+    # -------------------------------
+    # ADMIN DASHBOARD
+    # -------------------------------
+    path("rjbcl-admin/dashboard/", views.admin_dashboard, name="admin_dashboard"),
+
+    # -------------------------------
+    # PASSWORD FLOW
+    # -------------------------------
+    path("forgot-password/", views.forgot_password, name="forgot_password"),
+    path("reset-password/", views.reset_password, name="reset_password"),
 ]

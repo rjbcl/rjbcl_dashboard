@@ -94,3 +94,19 @@ class KycAgentInfo(models.Model):
         db_table = "kyc_agent_info"
         managed = False
 
+class KycAdmin(models.Model):
+    """
+    Custom Admin login for KYC system (NOT Django superuser).
+    Only used for verifying customer KYC submissions.
+    """
+
+    username = models.CharField(max_length=50, unique=True)
+    password = models.CharField(max_length=128)   # store plain or hashed later
+    full_name = models.CharField(max_length=100)
+    email = models.EmailField(unique=True)
+    is_active = models.BooleanField(default=True)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return self.username
