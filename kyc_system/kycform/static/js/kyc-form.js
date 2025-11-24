@@ -314,6 +314,9 @@ $(function () {
 
   });
 
+  $('#spouse_name').on('input change blur', function () {
+    $(this).removeClass('is-invalid');
+  });
 
 
 
@@ -523,9 +526,13 @@ $(function () {
           $(field.input)
             .prop('required', false)
             .prop('readonly', true)
-            .prop('disabled', true)
+
             .removeClass('is-invalid') // Remove validation error class
             .val(''); // Optional: clear the value
+          console.log(field.input)
+          if (field.input === '#income-mode') {
+            $(field.input).prop('disabled', true);
+          }
 
           // Remove the asterisk from label
           $(field.input).closest('.mb-3').find('label .text-danger').hide();
