@@ -186,58 +186,73 @@ body {
         {% endif %}
 
         <!-- POLICY LOGIN -->
-        <form id="policyForm" method="POST" action="{% url 'kyc:policy_login' %}">
+        <form id="policyForm" method="POST" action="{% url 'kyc:policy_login' %}" autocomplete="off">
+        
             {% csrf_token %}
+        
+            <!-- Fake hidden fields to disable Chrome autofill -->
+            <input type="text" style="display:none" autocomplete="off">
+            <input type="password" style="display:none" autocomplete="new-password">
+        
             <div class="login-title text-center">Policy Holder Login</div>
-
-            <input class="form-control mb-3" name="policy_no" placeholder="Policy Number" required>
-            <input class="form-control mb-4" name="password" type="password" placeholder="Password" required>
-
+        
+            <input class="form-control mb-3" name="policy_no" placeholder="Policy Number" autocomplete="off" required>
+        
+            <input class="form-control mb-4" name="password" type="password" placeholder="Password" autocomplete="new-password"
+                required>
+        
             <button class="btn-green">Login</button>
-
+        
             <div class="small-link mt-2">
                 <a href="/forgot-password/?type=policy" style="color:#0a58ca;">Forgot Password?</a>
             </div>
-
+        
             <div class="small-link">
                 New User? <a href="{% url 'kyc:policy_register' %}">Register your Policy No.</a>
             </div>
-
+        
             <!-- ADMIN LOGIN LINK -->
-        <div class="small-link mt-3">
-            <a href="{% url 'kyc:admin_login' %}" style="font-weight:700;color:#0a1d56;">
-                Admin Login
-            </a>
-        </div>
-
+            <div class="small-link mt-3">
+                <a href="{% url 'kyc:admin_login' %}" style="font-weight:700;color:#0a1d56;">
+                    Admin Login
+                </a>
+            </div>
         </form>
-
+        
+        
         <!-- AGENT LOGIN -->
-        <form id="agentForm" method="POST" action="{% url 'kyc:agent_login' %}" style="display:none;">
+        <form id="agentForm" method="POST" action="{% url 'kyc:agent_login' %}" style="display:none;" autocomplete="off">
+        
             {% csrf_token %}
+        
+            <!-- Fake hidden fields to disable Chrome autofill -->
+            <input type="text" style="display:none" autocomplete="off">
+            <input type="password" style="display:none" autocomplete="new-password">
+        
             <div class="login-title text-center">Agent Login</div>
-
-            <input class="form-control mb-3" name="agent_code" placeholder="Agent Code" required>
-            <input class="form-control mb-4" name="password" type="password" placeholder="Password" required>
-
+        
+            <input class="form-control mb-3" name="agent_code" placeholder="Agent Code" autocomplete="off" required>
+        
+            <input class="form-control mb-4" name="password" type="password" placeholder="Password" autocomplete="new-password"
+                required>
+        
             <button class="btn-green">Login</button>
-
+        
             <div class="small-link mt-2">
                 <a href="/forgot-password/?type=agent" style="color:#0a58ca;">Forgot Password?</a>
             </div>
-
+        
             <div class="small-link">
                 New Agent? <a href="{% url 'kyc:agent_register' %}">Register your Agent Code</a>
             </div>
-
-        <div class="small-link mt-3">
-            <a href="{% url 'kyc:admin_login' %}" style="font-weight:700;color:#0a1d56;">
-                Admin Login
-            </a>
-        </div>
-
-
+        
+            <div class="small-link mt-3">
+                <a href="{% url 'kyc:admin_login' %}" style="font-weight:700;color:#0a1d56;">
+                    Admin Login
+                </a>
+            </div>
         </form>
+
 
     </div>
 </div>

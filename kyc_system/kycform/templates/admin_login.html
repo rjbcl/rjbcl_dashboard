@@ -141,13 +141,29 @@ body {
         {% endfor %}
     {% endif %}
 
-    <form method="POST" action="{% url 'kyc:admin_login' %}">
-        {% csrf_token %}
+    <form method="POST" action="{% url 'kyc:admin_login' %}" autocomplete="off">
+    {% csrf_token %}
 
-        <input name="username" class="form-control mb-3" placeholder="Username" required>
-        <input name="password" type="password" class="form-control mb-4" placeholder="Password" required>
+    <!-- Autofill traps (Chrome autofills first visible field) -->
+    <input type="text" style="display:none" autocomplete="off">
+    <input type="password" style="display:none" autocomplete="new-password">
 
-        <button class="btn-green">Login</button>
+    <input name="username"
+           class="form-control mb-3"
+           placeholder="Username"
+           autocomplete="off"
+           required>
+
+    <input name="password"
+           type="password"
+           class="form-control mb-4"
+           placeholder="Password"
+           autocomplete="new-password"
+           required>
+
+    <button class="btn-green">Login</button>
+</form>
+
     </form>
 
     <div class="footer-link">

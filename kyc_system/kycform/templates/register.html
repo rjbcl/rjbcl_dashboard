@@ -97,26 +97,42 @@
         {% endfor %}
       {% endif %}
 
-<form method="POST" action="{% url 'kyc:policy_register' %}">
-          {% csrf_token %}
+<form method="POST" action="{% url 'kyc:policy_register' %}" autocomplete="off">
 
-          <div class="row mb-3">
-              <div class="col">
-                  <input type="text" name="first_name" placeholder="First Name" class="form-control" required>
-              </div>
-              <div class="col">
-                  <input type="text" name="last_name" placeholder="Last Name" class="form-control" required>
-              </div>
-          </div>
+  {% csrf_token %}
 
-          <input type="email" name="email" placeholder="Email Address" class="form-control mb-3" required>
-          <input type="text" name="mobile" placeholder="Mobile Number" class="form-control mb-3" required>
-          <input type="text" name="policy_number" placeholder="Policy Number" class="form-control mb-4" required>
+  <!-- Fake hidden fields to disable Chrome autofill -->
+  <input type="text" style="display:none" autocomplete="off">
+  <input type="password" style="display:none" autocomplete="new-password">
 
-          <button class="btn-green">Register</button>
+  <div class="row mb-3">
+    <div class="col">
+      <input type="text" name="first_name" placeholder="First Name" class="form-control" autocomplete="off" required>
+    </div>
 
-          <p class="text-center mt-3">Already have an account? <a href="/auth/policy/?tab=policy" style="color:#00a35a;font-weight:600;">Login</a></p>
-      </form>
+    <div class="col">
+      <input type="text" name="last_name" placeholder="Last Name" class="form-control" autocomplete="off" required>
+    </div>
+  </div>
+
+  <input type="email" name="email" placeholder="Email Address" class="form-control mb-3" autocomplete="new-password"
+    required>
+
+  <input type="text" name="mobile" placeholder="Mobile Number" class="form-control mb-3" autocomplete="off" required>
+
+  <input type="text" name="policy_number" placeholder="Policy Number" class="form-control mb-4" autocomplete="off"
+    required>
+
+  <button class="btn-green">Register</button>
+
+  <p class="text-center mt-3">
+    Already have an account?
+    <a href="/auth/policy/?tab=policy" style="color:#00a35a;font-weight:600;">
+      Login
+    </a>
+  </p>
+</form>
+
   </div>
 
 </div>

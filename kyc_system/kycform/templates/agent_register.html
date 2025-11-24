@@ -141,23 +141,62 @@
       {% endfor %}
     {% endif %}
 
-<form method="POST" action="{% url 'kyc:agent_register' %}">
-      {% csrf_token %}
+<form method="POST"
+      action="{% url 'kyc:agent_register' %}"
+      autocomplete="off">
 
-      <div class="mb-3">
-          <input name="agent_code" class="form-control" placeholder="Agent Code" required>
-      </div>
+    {% csrf_token %}
 
-      <div class="row g-2 mb-3">
-        <div class="col-md-6"><input name="first_name" class="form-control" placeholder="First Name" required></div>
-        <div class="col-md-6"><input name="last_name" class="form-control" placeholder="Last Name" required></div>
-      </div>
+    <!-- Autofill blockers (Chrome trick) -->
+    <input type="text" style="display:none" autocomplete="off">
+    <input type="password" style="display:none" autocomplete="new-password">
 
-      <div class="mb-3"><input name="phone_number" class="form-control" placeholder="Phone Number" required></div>
-      <div class="mb-3"><input name="email" type="email" class="form-control" placeholder="Email Address" required></div>
+    <div class="mb-3">
+        <input name="agent_code"
+               class="form-control"
+               placeholder="Agent Code"
+               autocomplete="off"
+               required>
+    </div>
 
-      <button class="btn-register">Register</button>
-    </form>
+    <div class="row g-2 mb-3">
+        <div class="col-md-6">
+            <input name="first_name"
+                   class="form-control"
+                   placeholder="First Name"
+                   autocomplete="off"
+                   required>
+        </div>
+
+        <div class="col-md-6">
+            <input name="last_name"
+                   class="form-control"
+                   placeholder="Last Name"
+                   autocomplete="off"
+                   required>
+        </div>
+    </div>
+
+    <div class="mb-3">
+        <input name="phone_number"
+               class="form-control"
+               placeholder="Phone Number"
+               autocomplete="off"
+               required>
+    </div>
+
+    <div class="mb-3">
+        <input name="email"
+               type="email"
+               class="form-control"
+               placeholder="Email Address"
+               autocomplete="new-password"
+               required>
+    </div>
+
+    <button class="btn-register">Register</button>
+</form>
+
 
     <p class="mt-3 text-center">
         Already have an account?
