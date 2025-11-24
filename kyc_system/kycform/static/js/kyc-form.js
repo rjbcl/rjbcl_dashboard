@@ -177,23 +177,23 @@ $(function () {
   // =============================
   // 2. Photo Upload Preview
   // =============================
-$('#photoUpload').on('change', function (e) {
+  $('#photoUpload').on('change', function (e) {
     const file = e.target.files[0];
     if (file && file.type.startsWith('image/')) {
-        const reader = new FileReader();
-        reader.onload = function (e) {
-            $('#photoPreview').attr('src', e.target.result);
-            // Remove is-invalid class from photo-preview div
-            $('.photo-preview').removeClass('is-invalid');
-        };
-        reader.readAsDataURL(file);
+      const reader = new FileReader();
+      reader.onload = function (e) {
+        $('#photoPreview').attr('src', e.target.result);
+        // Remove is-invalid class from photo-preview div
+        $('.photo-preview').removeClass('is-invalid');
+      };
+      reader.readAsDataURL(file);
     }
-});
+  });
 
-$('#removePhoto').on('click', function () {
+  $('#removePhoto').on('click', function () {
     $('#photoUpload').val('');
     $('#photoPreview').attr('src', '/static/images/default-avatar.png');
-});
+  });
 
   // =============================
   // 3. Document Upload 
@@ -271,7 +271,10 @@ $('#removePhoto').on('click', function () {
   });
 
 
-
+  nepalify.interceptElementById('nep-first-name', {
+    layout: 'traditional',  // Options: 'romanized' or 'traditional'
+    enable: true
+  });
   // ============================
   // 4. Spouse Name Manupulation
   // =============================
@@ -282,6 +285,8 @@ $('#removePhoto').on('click', function () {
       const $spouseNameInput = $('#spouse_name');
       const $spouseLabel = $spouseNameInput.closest('.mb-3').find('label');
       const $requiredStar = $spouseLabel.find('.text-danger');
+      console.log($requiredStar)
+      debugger
 
       if ($(this).val() === 'Married') {
         // Married: Make field required and editable
@@ -396,10 +401,10 @@ $('#removePhoto').on('click', function () {
       const permHouse = $('#perm-house-number').val();
 
       $('#temp-province').val(permProvince).trigger('change');
-      debugger
+
       setTimeout(() => {
         $('#temp-district').val(permDistrict).trigger('change');
-  
+
         setTimeout(() => {
           $('#temp-muni').val(permMuni);
           $('#temp-ward').val(permWard);
@@ -416,6 +421,173 @@ $('#removePhoto').on('click', function () {
       $('#temp-province, #temp-district, #temp-muni, #temp-ward, #temp-address, #temp-house-number').prop('disabled', false);
     }
   });
+  // =============================
+  // 6. Bank Json Reader
+  // =============================
+
+  async function loadBanks() {
+    try {
+      const response = await fetch('/static/nepal_banks.json');
+      const banks = await response.json();
+
+      // Get the select element
+      const selectElement = document.getElementById('bankSelect');
+
+      // Sort banks alphabetically by name
+      banks.sort((a, b) => a.name.localeCompare(b.name));
+
+      // Populate the dropdown
+      banks.forEach(bank => {
+        const option = document.createElement('option');
+        option.value = bank.name;
+        option.textContent = bank.name;
+        selectElement.appendChild(option);
+      });
+
+    } catch (error) {
+      console.error('Error loading banks:', error);
+      alert('Failed to load bank list. Please try again.');
+    }
+  }
+
+  // Load banks when the page loads
+  $('#bankSelect').on('click', loadBanks);
+
+  // Optional: Listen for selection changes
+  document.getElementById('bankSelect').addEventListener('change', function (e) {
+    const selectedOption = e.target.selectedOptions[0];
+    const snNo = selectedOption.getAttribute('data-sn-no');
+    console.log('Selected Bank:', e.target.value);
+    console.log('SN No:', snNo);
+  });
+
+  // =============================
+  // 6. Profession Json Reader
+  // =============================
+
+  async function loadoccupations() {
+    try {
+      const response = await fetch('/static/occupations.json');
+      const data = await response.json();
+
+      // Access the array
+      const occupations = data.occupations;
+      const selectElement = document.getElementById('occupation');
+
+      // Sort alphabetically
+      occupations.sort((a, b) => a.name.localeCompare(b.name));
+
+      // Populate dropdown
+      occupations.forEach(occupation => {
+        const option = document.createElement('option');
+        option.value = occupation.id;        // better to use ID as value
+        option.textContent = occupation.name;
+        selectElement.appendChild(option);
+      });
+
+    } catch (error) {
+      console.error('Error loading Profession:', error);
+      alert('Failed to load profession list. Please try again.');
+    }
+  }
+
+  // Load profession when the element is clicked
+  $('#occupation').on('click', loadoccupations);
+
+  // Optional: Listen for selection changes
+  document.getElementById('occupation').addEventListener('change', function (e) {
+    const selectedOption = e.target.selectedOptions[0];
+    console.log('Selected occupation:', e.target.value);
+  });
+
+
+  // =============================
+  // 6. Financial Details 
+  // =============================
+  $(document).ready(function () {
+    // Fields that should be affected
+    const dependentFields = [
+      { input: '#annual-income' },
+      { input: '#income-mode' },
+      { input: '#income-source' },
+      { input: '#pan-number' },
+    ];
+
+    function updateFieldRequirements() {
+      const selectedValue = $('#occupation').val();
+
+      // Check if House Wife or Student is selected
+      if (selectedValue === "244" || selectedValue === "245") {
+        // Remove required attribute and make readonly
+        dependentFields.forEach(field => {
+          $(field.input)
+            .prop('required', false)
+            .prop('readonly', true)
+            .prop('disabled', true)
+            .removeClass('is-invalid') // Remove validation error class
+            .val(''); // Optional: clear the value
+
+          // Remove the asterisk from label
+          $(field.input).closest('.mb-3').find('label .text-danger').hide();
+        });
+      } else if (selectedValue !== '') {
+        // Restore required attribute and make editable
+        dependentFields.forEach(field => {
+          $(field.input)
+            .prop('required', true)
+            .prop('readonly', false)
+            .prop('disabled', false)
+            .removeClass('is-invalid'); // Remove any existing validation error
+          // Show the asterisk in label
+          $(field.input).closest('.mb-3').find('.text-danger').show();
+        });
+      }
+    }
+
+    // Run on occupation change
+    $('#occupation').on('change', updateFieldRequirements);
+
+    // Prevent validation on readonly fields
+    dependentFields.forEach(field => {
+      $(field.input).on('blur input change', function () {
+        if ($(this).prop('readonly')) {
+          $(this).removeClass('is-invalid');
+        }
+      });
+    });
+
+  });
+
+
+  // ****************Further Occupation Description when Other*****************
+  const occupationDescDiv = $('#occupation-description').closest('.mb-3');
+  const occupationDescInput = $('#occupation-description');
+
+  $('#occupation').on('change', function () {
+    debugger
+    const selectedValue = $(this).val();
+
+    if (selectedValue === "194") {
+      // Show the div and make it required
+      occupationDescDiv.show();
+      occupationDescInput.prop('required', true);
+      occupationDescDiv.find('.text-danger').show();
+    } else {
+      // Hide the div and remove required
+      occupationDescDiv.hide();
+      occupationDescInput
+        .prop('required', false)
+        .removeClass('is-invalid')
+        .val(''); // Optional: clear the value when hidden
+      occupationDescDiv.find('.text-danger').hide();
+    }
+  });
+  // Prevent validation on hidden fields
+  occupationDescInput.on('blur input change', function () {
+    if (occupationDescDiv.is(':hidden')) {
+      $(this).removeClass('is-invalid');
+    }
+  });
 
   // =============================
   // 7. Form Submission
@@ -426,7 +598,7 @@ $('#removePhoto').on('click', function () {
     if (!validateStep(totalSteps)) {
       return false;
     }
-    debugger
+
     // Show confirmation dialog
     swalQuestion(
       'Submit KYC Form?',
