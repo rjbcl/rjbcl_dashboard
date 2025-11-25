@@ -49,7 +49,7 @@ $(function () {
     }
 
     // Scroll to top
-    $('.main-content').scrollTop(0);
+ $('html, body').scrollTop(0);
   }
 
   function validateStep(step) {
