@@ -15,12 +15,13 @@ WHERE table_schema = 'public';
 -- Create ENUM type only if it doesn't exist
 DO $$
 BEGIN
-    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'kyc_status_enum') THEN
-        CREATE TYPE kyc_status_enum AS ENUM (
-            'verified',
-            'not verified',
-            'pending verification',
-            'not approved'
+    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'kyc_statuses') THEN
+        CREATE TYPE kyc_statuses AS ENUM (
+            'Not Initiated',
+            'Incomplete',
+            'Pending',
+            'Verified',
+            'Rejected'
         );
     END IF;
 END$$;
@@ -35,18 +36,21 @@ CREATE TABLE IF NOT EXISTS kyc_user_info (
     Citizenship_number VARCHAR,
     Phone_number VARCHAR,
     Address VARCHAR,
-    KYC_status kyc_status_enum,
+    KYC_status kyc_statuses,
     password VARCHAR
 );
 
 -- Create kyc_agent_info table if not exists
 CREATE TABLE IF NOT EXISTS kyc_agent_info (
-    agent_code VARCHAR,
+    agent_code VARCHAR UNIQUE PRIMARY KEY,
+    first_name VARCHAR,
+    last_name VARCHAR,
     DOB DATE,
     phone_number VARCHAR,
-    name VARCHAR,
+    email VARCHAR,
     password VARCHAR
 );
+
 
 -- Insert dummy users only if table is empty
 DO $$
@@ -90,7 +94,7 @@ CREATE TABLE kyc_status_table (
     kyc_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     policy_number kyc_user_info(policy_number),
     User_ID VARCHAR REFERENCES kyc_user_info(User_ID),
-    KYC_status kyc_status_enum
+    KYC_status kyc_statuses
 );
 
 DROP TABLE IF EXISTS kyc_agent_info;
