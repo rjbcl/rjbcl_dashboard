@@ -28,7 +28,7 @@ function swalFire(errorTitle, errorMessage)
 
 function swalQuestion(title, html, confirmButtonText)
   {
-      Swalfire({
+      Swal.fire({
       title: title,
       html: html,
       icon: 'question',

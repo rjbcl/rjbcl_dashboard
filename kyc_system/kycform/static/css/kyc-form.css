@@ -261,6 +261,10 @@ input[type=number]::-webkit-inner-spin-button {
   background-color: #f8f9fa;
   transition: all 0.3s ease;
 }
+.document-upload.has-preview {
+  border-color: #28a745;
+  border-style: solid;
+}
 
 .document-upload:hover {
   border-color: #28a745;
@@ -426,6 +430,157 @@ div.is-invalid {
 .btn-outline-secondary:hover {
   background-color: #218838;
   border-color:#218838;
+  color: #fff;
+}
+
+.btn-outline-primary {
+  border-color: #28a745;
+  color: #28a745;
+}
+
+.btn-outline-primary:hover {
+  background-color: #28a745;
+  border-color: #28a745;
+  color: #fff;
+}
+
+/* Footer */
+.form-footer {
+  text-align: center;
+  padding: 20px;
+  color: #6c757d;
+  font-size: 13px;
+}
+
+.form-footer p {
+  margin: 0;
+}
+
+* Additional Documents Section */
+.additional-documents-section {
+  margin-top: 30px;
+  padding: 20px;
+  background-color: #f8f9fa;
+  border-radius: 8px;
+}
+
+.additional-doc-item {
+  padding: 15px;
+  background-color: #fff;
+  border-radius: 6px;
+  margin-bottom: 15px;
+  border: 1px solid #e0e0e0;
+  position: relative;
+  transition: all 0.3s ease;
+}
+
+.additional-doc-item:hover {
+  border-color: #28a745;
+  box-shadow: 0 2px 6px rgba(40, 167, 69, 0.1);
+}
+
+.additional-doc-item .remove-doc-btn {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  color: #dc3545;
+  background: none;
+  border: none;
+  font-size: 20px;
+  cursor: pointer;
+  padding: 0;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: all 0.2s ease;
+}
+
+.additional-doc-item .remove-doc-btn:hover {
+  background-color: #dc3545;
+  color: #fff;
+}
+
+.document-upload-inline {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.document-upload-inline .btn {
+  white-space: nowrap;
+}
+
+.file-name-inline {
+  font-size: 13px;
+  color: #6c757d;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.file-name-inline.has-file {
+  color: #28a745;
+  font-weight: 500;
+}
+
+#addMoreDocBtn {
+  margin-top: 10px;
+}
+
+#docCounter {
+  font-size: 12px;
+  vertical-align: middle;
+}
+
+/* Navigation Buttons */
+.form-navigation {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 40px;
+  padding-top: 25px;
+  border-top: 1px solid #e0e0e0;
+}
+
+.btn {
+  padding: 12px 32px;
+  font-size: 15px;
+  font-weight: 500;
+  border-radius: 8px;
+  transition: all 0.3s ease;
+}
+
+.btn-primary {
+  background-color: #28a745;
+  border-color: #28a745;
+}
+
+.btn-primary:hover {
+  background-color: #218838;
+  border-color: #1e7e34;
+}
+
+.btn-success {
+  background-color: #28a745;
+  border-color: #28a745;
+}
+
+.btn-success:hover {
+  background-color: #218838;
+  border-color: #218838;
+}
+
+.btn-outline-secondary {
+  border-color: #6c757d;
+  color: #6c757d;
+}
+
+.btn-outline-secondary:hover {
+  background-color: #6c757d;
+  border-color: #6c757d;
   color: #fff;
 }
 

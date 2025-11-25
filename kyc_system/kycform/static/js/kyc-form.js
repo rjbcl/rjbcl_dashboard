@@ -270,7 +270,7 @@ $(function () {
     });
   });
 
-
+//Nepali typing
   nepalify.interceptElementById('nep-first-name', {
     layout: 'traditional',  // Options: 'romanized' or 'traditional'
     enable: true
@@ -285,8 +285,6 @@ $(function () {
       const $spouseNameInput = $('#spouse_name');
       const $spouseLabel = $spouseNameInput.closest('.mb-3').find('label');
       const $requiredStar = $spouseLabel.find('.text-danger');
-      console.log($requiredStar)
-      debugger
 
       if ($(this).val() === 'Married') {
         // Married: Make field required and editable
@@ -460,8 +458,6 @@ $(function () {
   document.getElementById('bankSelect').addEventListener('change', function (e) {
     const selectedOption = e.target.selectedOptions[0];
     const snNo = selectedOption.getAttribute('data-sn-no');
-    console.log('Selected Bank:', e.target.value);
-    console.log('SN No:', snNo);
   });
 
   // =============================
@@ -526,17 +522,21 @@ $(function () {
           $(field.input)
             .prop('required', false)
             .prop('readonly', true)
-
             .removeClass('is-invalid') // Remove validation error class
             .val(''); // Optional: clear the value
           console.log(field.input)
           if (field.input === '#income-mode') {
             $(field.input).prop('disabled', true);
           }
-
           // Remove the asterisk from label
           $(field.input).closest('.mb-3').find('label .text-danger').hide();
         });
+      } else if (selectedValue === "194") {
+        $('#pan-number')
+          .prop('required', false)
+          .removeClass('is-invalid')
+          .val('');
+        $("#pan-number").closest('.mb-3').find('.text-danger').hide();
       } else if (selectedValue !== '') {
         // Restore required attribute and make editable
         dependentFields.forEach(field => {
@@ -550,6 +550,7 @@ $(function () {
         });
       }
     }
+
 
     // Run on occupation change
     $('#occupation').on('change', updateFieldRequirements);
@@ -571,7 +572,6 @@ $(function () {
   const occupationDescInput = $('#occupation-description');
 
   $('#occupation').on('change', function () {
-    debugger
     const selectedValue = $(this).val();
 
     if (selectedValue === "194") {
@@ -579,6 +579,10 @@ $(function () {
       occupationDescDiv.show();
       occupationDescInput.prop('required', true);
       occupationDescDiv.find('.text-danger').show();
+      $('#pan-number')
+        .prop('required', false)
+        .removeClass('is-invalid');
+      $('#pan-number').closest('.mb-3').find('label .text-danger').hide();
     } else {
       // Hide the div and remove required
       occupationDescDiv.hide();
@@ -599,42 +603,50 @@ $(function () {
   // =============================
   // 7. Form Submission
   // =============================
-  $('#kycForm').on('submit', function (e) {
-    e.preventDefault();
+$('#submitBtn').on('click', function (e) {
+  e.preventDefault();
 
-    if (!validateStep(totalSteps)) {
-      return false;
-    }
-
-    // Show confirmation dialog
-    swalQuestion(
-      'Submit KYC Form?',
-      '<p>के तपाईं यो फारम पेश गर्न चाहनुहुन्छ?</p><small>Do you want to submit this form?</small>',
-      'Yes, Submit'
-    ).then((result) => {
-      if (result.isConfirmed) {
-        // Re-enable disabled fields before submission
-        $('#temp-province, #temp-district, #temp-muni, #temp-ward, #temp-address, #temp-house-number').prop('disabled', false);
-
-        // Show loading
-        Swal.fire({
-          title: 'Submitting...',
-          html: 'कृपया पर्खनुहोस्...<br><small>Please wait...</small>',
-          allowOutsideClick: false,
-          allowEscapeKey: false,
-          showConfirmButton: false,
-          didOpen: () => {
-            Swal.showLoading();
-          }
-        });
-
-        // Submit the form
-        this.submit();
-      }
-    });
-
+  if (!validateStep(totalSteps)) {
     return false;
+  }
+
+  // Show confirmation dialog
+  Swal.fire({
+    title: 'Submit KYC Form?',
+    html: '<p>के तपाईं यो फारम पेश गर्न चाहनुहुन्छ?</p><small>Do you want to submit this form?</small>',
+    icon: 'question',
+    showCancelButton: true,
+    confirmButtonColor: '#28a745',
+    cancelButtonColor: '#6c757d',
+    confirmButtonText: 'Yes, Submit',
+    cancelButtonText: 'Cancel',
+    customClass: {
+      popup: 'swal-nepali'
+    }
+  }).then((result) => {
+    if (result.isConfirmed) {
+      // Re-enable disabled fields before submission
+      $('#temp-province, #temp-district, #temp-muni, #temp-ward, #temp-address, #temp-house-number').prop('disabled', false);
+
+      // Show loading
+      Swal.fire({
+        title: 'Submitting...',
+        html: 'कृपया पर्खनुहोस्...<br><small>Please wait...</small>',
+        allowOutsideClick: false,
+        allowEscapeKey: false,
+        showConfirmButton: false,
+        didOpen: () => {
+          Swal.showLoading();
+        }
+      });
+
+      // Submit the form
+      $('#kycForm').submit();
+    }
   });
+
+  return false;
+});
 
   // =============================
   // 8. Real-time Validation Feedback
@@ -647,7 +659,10 @@ $(function () {
     }
 
     if (!$field.val() || $field.val().trim() === '') {
-      $field.addClass('is-invalid');
+      // Don't add invalid class if field is pan-number AND occupation is 194
+      if (!($field.attr('id') == 'pan-number' && $('#occupation').val() == '194')) {
+        $field.addClass('is-invalid');
+      }
     } else {
       $field.removeClass('is-invalid');
     }
@@ -791,5 +806,10 @@ $(document).ready(function () {
     }
   });
 });
+
+
+
+
+
 
 
