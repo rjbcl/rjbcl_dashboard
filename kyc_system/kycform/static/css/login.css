@@ -1,0 +1,141 @@
+:root {
+    --green:#00c06f;
+    --blue:#0a1d56;
+}
+
+body {
+    background:linear-gradient(180deg,#06b36a 0,#00a45a 100%);
+    height:100vh;
+    margin:0;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    font-family:'Segoe UI', sans-serif;
+}
+
+/* MAIN LOGIN CARD */
+.login-card {
+    width:100%;
+    max-width:920px;
+    background:#fff;
+    border-radius:16px;
+    display:flex;
+    overflow:hidden;
+    box-shadow:0 15px 40px rgba(0,0,0,0.18);
+    height:500px;
+}
+
+/* LEFT PANEL */
+.left-tabs {
+    width:260px;
+    padding:30px 18px;
+    background:#f9fafb;
+    border-right:1px solid #e2e2e2;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    gap:30px;
+}
+
+/* LOGO */
+.left-tabs img {
+    width:220px;
+    height:auto;
+    object-fit:contain;
+    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.15));
+    margin-top:10px;
+    margin-bottom:20px;
+}
+
+/* TABS */
+.tab-btn {
+    display:flex;
+    align-items:center;
+    gap:12px;
+    padding:12px 14px;
+    width:100%;
+    border-radius:10px;
+    cursor:pointer;
+    font-weight:600;
+    color:#333;
+    transition:0.25s;
+}
+
+.tab-btn.active {
+    background:var(--green);
+    color:#fff;
+}
+
+.tab-btn i { font-size:20px; }
+
+/* RIGHT FORM AREA */
+.right-form {
+    flex:1;
+    padding:40px 55px;
+}
+
+.login-title {
+    font-size:24px;
+    font-weight:700;
+    color:var(--blue);
+    margin-bottom:22px;
+}
+
+/* HEADER LOGO */
+.header-logo {
+    display:flex;
+    justify-content:center;
+    margin-top:-10px;
+    margin-bottom:10px;
+}
+
+.header-logo img {
+    width:360px;
+    max-width:95%;
+    height:auto;
+    object-fit:contain;
+    filter: drop-shadow(0 1px 3px rgba(0,0,0,0.20));
+}
+
+/* FORM */
+.form-control {
+    border-radius:10px;
+    padding:0.85rem;
+    font-size:15px;
+}
+
+.btn-green {
+    background:var(--green);
+    color:#fff;
+    width:100%;
+    border:none;
+    border-radius:10px;
+    padding:12px;
+    font-weight:700;
+}
+
+.small-link {
+    text-align:center;
+    margin-top:10px;
+    font-size:0.92rem;
+}
+
+/* POPUP */
+.popup-overlay {
+    position:fixed;
+    inset:0;
+    display:none;
+    align-items:center;
+    justify-content:center;
+    background:rgba(0,0,0,0.45);
+    z-index:2000;
+}
+
+.popup-box {
+    width:360px;
+    background:#fff;
+    border-radius:14px;
+    padding:26px;
+    text-align:center;
+    box-shadow:0 14px 38px rgba(0,0,0,0.28);
+}
