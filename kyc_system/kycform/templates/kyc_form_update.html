@@ -5,7 +5,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>राष्ट्रिय जीवन बीमा कम्पनी लिमिटेड | KYC Form</title>
+  <title>KYC Form | राष्ट्रिय जीवन बीमा कम्पनी लिमिटेड</title>
+  <link rel="icon" href="{% static 'images/favicon-logo.png' %}" type="image/png">
 
   <!-- Bootstrap (Local) -->
   <link href="{% static 'bootstrap/css/bootstrap.min.css' %}" rel="stylesheet">
@@ -90,30 +91,7 @@
 
               <!-- Name Fields -->
               <div class="row">
-                <div class="col-md-4 mb-3">
-                  <label class="form-label">First Name <span class="text-danger">*</span></label>
-                  <input type="text" name="first-name" class="form-control  alpha-text" required autocomplete="off" >
-                </div>
-                <div class="col-md-4 mb-3">
-                  <label class="form-label">Middle Name</label>
-                  <input type="text" name="middle-name" class="form-control  alpha-text" autocomplete="off">
-                </div>
-                <div class="col-md-4 mb-3 ">
-                  <label class="form-label">Last Name <span class="text-danger">*</span></label>
-                  <input type="text" name="last-name" class="form-control  alpha-text" required autocomplete="off">
-                </div>
-              </div>
-              <!-- Name Fields -->
-              <div class="row">
-                <div class="col-md-8 mb-3">
-                  <label class="form-label">पूरा नाम (देवनागरीमा) <span class="text-danger">*</span></label>
-                  <input type="text" id="nep-first-name" name="nep-first-name" class="form-control" required autocomplete="off">
-                  <!-- <small class="form-text text-muted">Type in English to get Nepali (e.g., "ram" → "राम")</small> -->
-                </div>
-              </div>
-              <!-- Personal Information Fields 1 -->
-              <div class="row">
-                <div class="col-md-4 mb-3">
+                <div class="col-md-2 mb-3">
                   <label class="form-label">Salutation</label>
                   <select name="salutation" class="form-select">
                     <option value="">Select</option>
@@ -122,6 +100,27 @@
                     <option value="Ms">Ms</option>
                     <option value="Dr">Dr</option>
                   </select>
+                </div>
+                <div class="col-md-3 mb-3">
+                  <label class="form-label">First Name <span class="text-danger">*</span></label>
+                  <input type="text" name="first-name" class="form-control  alpha-text" required autocomplete="off">
+                </div>
+                <div class="col-md-3 mb-3">
+                  <label class="form-label">Middle Name</label>
+                  <input type="text" name="middle-name" class="form-control  alpha-text" autocomplete="off">
+                </div>
+                <div class="col-md-3 mb-3 ">
+                  <label class="form-label">Last Name <span class="text-danger">*</span></label>
+                  <input type="text" name="last-name" class="form-control  alpha-text" required autocomplete="off">
+                </div>
+              </div>
+              <!-- Personal Information Fields 1 -->
+              <div class="row">
+                <div class="col-md-4 mb-3">
+                  <label class="form-label">पूरा नाम (देवनागरीमा) <span class="text-danger">*</span></label>
+                  <input type="text" id="nep-first-name" name="nep-first-name" class="form-control" required
+                    autocomplete="off">
+                  <!-- <small class="form-text text-muted">Type in English to get Nepali (e.g., "ram" → "राम")</small> -->
                 </div>
                 <div class="col-md-4 mb-3">
                   <label class="form-label">Nationality <span class="text-danger">*</span></label>
@@ -156,21 +155,22 @@
               <div class="row">
                 <div class="col-md-4 mb-3">
                   <label class="form-label">Date of Birth (BS) <span class="text-danger">*</span></label>
-                  <input type="date" id="dob_bs" name="dob_bs" class="form-control" placeholder="YYYY/MM/DD" required autocomplete="off"
-                    readonly>
+                  <input type="date" id="dob_bs" name="dob_bs" class="form-control" placeholder="YYYY/MM/DD" required
+                    autocomplete="off" readonly>
                 </div>
                 <div class="col-md-4 mb-3" onclick="document.getElementById('dob_ad').showPicker()">
                   <!-- <div class="col-md-4 mb-3" onclick="$('#dob_ad')[0].showPicker()"> -->
 
                   <label class="form-label">Date of Birth (AD) <span class="text-danger">*</span></label>
-                  <input type="date" id="dob_ad" name="dob_ad" class="form-control" placeholder="YYYY/MM/DD" required autocomplete="off">
+                  <input type="date" id="dob_ad" name="dob_ad" class="form-control" placeholder="YYYY/MM/DD" required
+                    autocomplete="off">
                 </div>
                 <div class="col-md-4 mb-3">
                   <label class="form-label">Marital Status <span class="text-danger">*</span></label>
                   <div class="marital-options">
                     <div class="form-check form-check-inline">
                       <input class="form-check-input" id="Married" type="radio" name="marital_status" value="Married"
-                        required >
+                        required>
                       <label class="form-check-label" for="Married">Married</label>
                     </div>
                     <div class="form-check form-check-inline">
@@ -219,7 +219,8 @@
               <div class="row mb-4">
                 <div class="col-md-4 mb-3">
                   <label class="form-label">Document Issued Place <span class="text-danger">*</span></label>
-                  <input type="text" name="citizenship_place" class="form-control alpha-text" required autocomplete="off">
+                  <input type="text" name="citizenship_place" class="form-control alpha-text" required
+                    autocomplete="off">
                 </div>
                 <div class="col-md-4 mb-3">
                   <label class="form-label">Passport No.</label>
@@ -239,15 +240,15 @@
                     <div class="transparent-dark-div">
                       <div class="upload-icon">📄</div>
                       <label class="form-label text-white">Citizenship Front <span class="text-danger">*</span></label>
-                      <p class="form-text text-white-50">Supports jpg, jpeg and png. 500KB max.</p>
+                      <p class="form-text text-white-50">Supports jpg, jpeg and png. 1MB max.</p>
                       <input type="file" data-filename="citizenshipFrontFileName" id="citizenshipFrontUpload"
                         name="citizenship-front" accept="image/*,application/pdf" data-preview="citizenship_front"
-                        style="display:none;" required >
-                      <button type="button" class="btn btn-outline-secondary btn-sm"
+                        style="display:none;" required>
+                      <button type="button" class="btn document-btn btn-outline-secondary btn-success btn-sm"
                         onclick="document.getElementById('citizenshipFrontUpload').click()">
                         <span class="upload-icon-btn">⬇</span>
                       </button>
-                      <button type="button" class="btn btn-outline-danger btn-sm remove-btn" style="display:none;">
+                      <button type="button" class="btn btn-outline-danger btn-danger btn-sm remove-btn" style="display:none;">
                         <span class="fw-bolder">✕</span>
                       </button>
                       <span class="file-name" id="citizenshipFrontFileName">Citizenship Front</span>
@@ -260,18 +261,18 @@
                     <div class="transparent-dark-div">
                       <div class="upload-icon">📄</div>
                       <label class="form-label text-white">Citizenship Back <span class="text-danger">*</span></label>
-                      <p class="form-text text-white-50">Supports jpg, jpeg and png. 500KB max.</p>
+                      <p class="form-text text-white-50">Supports jpg, jpeg and png. 1MB max.</p>
                       <input type="file" data-filename="citizenshipBackFileName" id="citizenshipBackUpload"
                         name="citizenship-back" accept="image/*,application/pdf" data-preview="citizenship_back"
                         style="display:none;" required>
-                      <button type="button" class="btn btn-outline-secondary btn-sm"
+                      <button type="button" class="btn document-btn  btn-outline-secondary btn-success btn-sm"
                         onclick="document.getElementById('citizenshipBackUpload').click()">
                         <span class="upload-icon-btn">⬇</span>
                       </button>
-                      <button type="button" class="btn btn-outline-danger btn-sm remove-btn" style="display:none;">
+                      <button type="button" class="btn btn-outline-danger btn-danger btn-sm remove-btn" style="display:none;">
                         <span class="fw-bolder">✕</span>
                       </button>
-                      <span class="file-name" id="citizenshipBackFileName">Citizenship Back</span>
+                      <span class="file-name text-white" id="citizenshipBackFileName">Citizenship Back</span>
                     </div>
                   </div>
                 </div>
@@ -283,14 +284,14 @@
                     <div class="transparent-dark-div">
                       <div class="upload-icon">📄</div>
                       <label class="form-label text-white">National Identity Card (optional)</label>
-                      <p class="form-text text-white-50">Supports jpg, jpeg and png. 500KB max.</p>
+                      <p class="form-text text-white-50">Supports jpg, jpeg and png. 1MB max.</p>
                       <input type="file" data-filename="nidFileName" id="NidUpload" name="nid"
                         accept="image/*,application/pdf" data-preview="Nid_doc" style="display:none;">
-                      <button type="button" class="btn btn-outline-secondary btn-sm"
+                      <button type="button" class="btn document-btn btn-outline-secondary btn-success btn-sm"
                         onclick="document.getElementById('NidUpload').click()">
                         <span class="upload-icon-btn">⬇</span>
                       </button>
-                      <button type="button" class="btn btn-outline-danger btn-sm remove-btn" style="display:none;">
+                      <button type="button" class="btn btn-outline-danger btn-sm btn-danger remove-btn" style="display:none;">
                         <span class="fw-bolder">✕</span>
                       </button>
                       <span class="file-name" id="nidFileName">Rastriya Parichaya Patra</span>
@@ -303,14 +304,14 @@
                     <div class="transparent-dark-div">
                       <div class="upload-icon">📄</div>
                       <label class="form-label text-white">Signature <span class="text-danger">*</span></label>
-                      <p class="form-text text-white-50">Supports jpg, jpeg and png. 500KB max.</p>
+                      <p class="form-text text-white-50">Supports jpg, jpeg and png. 1MB max.</p>
                       <input type="file" data-filename="signatureFileName" id="signatureUpload" name="signature"
                         accept="image/*,application/pdf" data-preview="signature" style="display:none;" required>
-                      <button type="button" class="btn btn-outline-secondary btn-sm"
+                      <button type="button" class="btn document-btn btn-outline-secondary btn-success btn-sm"
                         onclick="document.getElementById('signatureUpload').click()">
                         <span class="upload-icon-btn">⬇</span>
                       </button>
-                      <button type="button" class="btn btn-outline-danger btn-sm remove-btn" style="display:none;">
+                      <button type="button" class="btn btn-outline-danger btn-sm btn-danger remove-btn" style="display:none;">
                         <span class="fw-bolder">✕</span>
                       </button>
                       <span class="file-name" id="signatureFileName">Your Signature</span>
@@ -324,11 +325,13 @@
               <div class="row">
                 <div class="col-md-4 mb-3">
                   <label class="form-label">Spouse Name <span class="text-danger">*</span></label>
-                  <input type="text" id="spouse_name" name="spouse_name" class="form-control alpha-text" autocomplete="off">
+                  <input type="text" id="spouse_name" name="spouse_name" class="form-control alpha-text"
+                    autocomplete="off">
                 </div>
                 <div class="col-md-4 mb-3">
                   <label class="form-label">Grand Father's Name <span class="text-danger">*</span></label>
-                  <input type="text" name="grand_father_name" class="form-control alpha-text" required autocomplete="off">
+                  <input type="text" name="grand_father_name" class="form-control alpha-text" required
+                    autocomplete="off">
                 </div>
                 <div class="col-md-4 mb-3">
                   <label class="form-label">Proposer's Name <span style="font-size: 12px; color: grey;">(In case of a
@@ -401,11 +404,13 @@
               <div class="row">
                 <div class="col-md-3 mb-3">
                   <label class="form-label">Address <span class="text-danger">*</span></label>
-                  <input type="text" id="perm-address" name="perm_address" class="form-control" required autocomplete="off">
+                  <input type="text" id="perm-address" name="perm_address" class="form-control" required
+                    autocomplete="off">
                 </div>
                 <div class="col-md-3 mb-3">
                   <label class="form-label">House No.</label>
-                  <input type="text" id="perm-house-number" name="perm_house_number" class="form-control" autocomplete="off">
+                  <input type="text" id="perm-house-number" name="perm_house_number" class="form-control"
+                    autocomplete="off">
                 </div>
               </div>
 
@@ -443,11 +448,13 @@
               <div class="row">
                 <div class="col-md-3 mb-3">
                   <label class="form-label">Address <span class="text-danger">*</span></label>
-                  <input id="temp-address" type="text" name="temp_address" class="form-control" required autocomplete="off">
+                  <input id="temp-address" type="text" name="temp_address" class="form-control" required
+                    autocomplete="off">
                 </div>
                 <div class="col-md-3 mb-3">
                   <label class="form-label">House No.</label>
-                  <input type="text" id="temp-house-number" name="temp_house_number" class="form-control" autocomplete="off">
+                  <input type="text" id="temp-house-number" name="temp_house_number" class="form-control"
+                    autocomplete="off">
                 </div>
               </div>
             </div>
@@ -512,15 +519,18 @@
               <div class="row">
                 <div class="col-md-4 mb-3">
                   <label class="form-label">Annual Income (Rs.) <span class="text-danger">*</span></label>
-                  <input type="number" id="annual-income" name="annual-income" class="form-control" required autocomplete="off">
+                  <input type="number" id="annual-income" name="annual-income" class="form-control" required
+                    autocomplete="off">
                 </div>
                 <div class="col-md-4 mb-3">
                   <label class="form-label">Source of Income <span class="text-danger">*</span></label>
-                  <input type="text" id="income-source" name="income-source" class="form-control" required autocomplete="off">
+                  <input type="text" id="income-source" name="income-source" class="form-control" required
+                    autocomplete="off">
                 </div>
                 <div class="col-md-4 mb-3">
                   <label class="form-label">PAN number <span class="text-danger">*</span></label>
-                  <input type="number" id="pan-number" name="pan-number" class="form-control" required autocomplete="off">
+                  <input type="number" id="pan-number" name="pan-number" class="form-control" required
+                    autocomplete="off">
                 </div>
 
               </div>
@@ -582,16 +592,17 @@
                 <div class="col-md-3 mb-3">
                   <label class="form-label">Nominee Date of Birth (BS) <span class="text-danger">*</span></label>
                   <input type="date" id="nominee_dob_bs" name="nominee_dob" class="form-control"
-                    placeholder="YYYY/MM/DD" required  readonly>
+                    placeholder="YYYY/MM/DD" required readonly>
                 </div>
                 <div class="col-md-3 mb-3" onclick="document.getElementById('nominee_dob_ad').showPicker()">
                   <label class="form-label">Nominee Date of Birth (AD) <span class="text-danger">*</span></label>
                   <input type="date" id="nominee_dob_ad" name="nominee_dob" class="form-control"
-                    placeholder="YYYY/MM/DD" required >
+                    placeholder="YYYY/MM/DD" required>
                 </div>
                 <div class="col-md-6 mb-3">
                   <label class="form-label">Nominee Contact Number <span class="text-danger">*</span></label>
-                  <input type="tel" name="nominee_contact" class="form-control" required autocomplete="off">
+                  <input type="tel" id="nominee_mobile" name="nominee_contact" class="form-control" required
+                    autocomplete="off">
                 </div>
               </div>
 
@@ -627,7 +638,7 @@
                   </p>
                   <div class="declaration-options">
                     <div class="form-check form-check-inline">
-                      <input class="form-check-input" type="radio" name="is_pep" id="pep_yes" value="yes" required >
+                      <input class="form-check-input" type="radio" name="is_pep" id="pep_yes" value="yes" required>
                       <label class="form-check-label" for="pep_yes">
                         <span class="option-text">Yes / हो</span>
                       </label>
@@ -703,7 +714,7 @@
                 <button type="button" class="btn btn-outline-success btn-sm" id="addMoreDocBtn">
                   <span>➕</span> Add Another Document
                 </button>
-                <span class="text-muted small ms-2" id="docCounter">(1/5 documents)</span>
+                <span class="text-muted small ms-2" id="docCounter">1/5 document(s)</span>
               </div>
 
 
@@ -711,7 +722,8 @@
               <h6 class="section-subtitle">घोषणा / Declaration</h6>
               <div class="declaration-box">
                 <div class="form-check">
-                  <input class="form-check-input" type="checkbox" id="declaration" name="declaration" required autocomplete="off">
+                  <input class="form-check-input" type="checkbox" id="declaration" name="declaration" required
+                    autocomplete="off">
                   <label class="form-check-label" for="declaration">
                     <strong>के तपाईंले दिएको विवरण सत्य र ठ्याक्कै हो?</strong><br>
                     I hereby declare that all the information provided above is true and accurate to the best of my

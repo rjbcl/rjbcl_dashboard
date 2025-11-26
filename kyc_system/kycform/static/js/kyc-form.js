@@ -49,7 +49,7 @@ $(function () {
     }
 
     // Scroll to top
- $('html, body').scrollTop(0);
+    $('html, body').scrollTop(0);
   }
 
   function validateStep(step) {
@@ -179,9 +179,32 @@ $(function () {
   // =============================
   $('#photoUpload').on('change', function (e) {
     const file = e.target.files[0];
+    if (file) {
+      // Check file size (1MB = 1048576 bytes)
+      if (file.size >300000) {
+        swalError(
+          'File Too Large',
+          'Image size must be less than 1 MB. Please upload a smaller image.'
+        );
+        $('#photoUpload').val('');
+        $('#photoPreview').attr('src', '/static/images/default-avatar.png');
+        return;
+      }
+    };
+    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png'];
+    if (!allowedTypes.includes(file.type)) {
+      swalError(
+        'Invalid File Type',
+        'Please upload a valid image file (JPG, JPEG, or PNG only).'
+      );
+      $('#photoUpload').val('');
+      $('#photoPreview').attr('src', '/static/images/default-avatar.png');
+      return;
+    };
     if (file && file.type.startsWith('image/')) {
       const reader = new FileReader();
       reader.onload = function (e) {
+        debugger
         $('#photoPreview').attr('src', e.target.result);
         // Remove is-invalid class from photo-preview div
         $('.photo-preview').removeClass('is-invalid');
@@ -222,28 +245,57 @@ $(function () {
       const $input = $(this);
       const $container = $input.closest('.transparent-dark-div');
       const $removeBtn = $container.find('.remove-btn');
+      if (file) {
+        // Check file size (1MB = 1048576 bytes)
+        if (file.size > 1048576) {
+          swalError(
+            'File Too Large',
+            'Image size must be less than 1 MB. Please upload a smaller image.'
+          );
+          const filenameId = $input.data('filename');
+          $('#' + filenameId).text('Upload Valid Document');
+          $input.val(''); // Clear the input
+          return;
+        }
 
-      if (file && file.type.startsWith('image/')) {
-        const reader = new FileReader();
+        // Check file type (only jpg, jpeg, png allowed)
+        const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png'];
+        if (!allowedTypes.includes(file.type)) {
+          swalError(
+            'Invalid File Type',
+            'Please upload a valid image file (JPG, JPEG, or PNG only).'
+          );
 
-        reader.onload = function (e) {
-          // Get the preview target using a data-preview attribute
-          const targetId = $input.data('preview');
-          const $previewDiv = $('#' + targetId);
-          $previewDiv.css({
-            'background-image': `url('${e.target.result}')`,
-            'background-size': 'cover',
-            'background-position': 'center',
-            'background-repeat': 'no-repeat'
-          });
+          // Get the filename span using data-filename attribute
+          const filenameId = $input.data('filename');
+          $('#' + filenameId).text('Upload Valid Document');
 
-          // Show remove button
-          $removeBtn.show();
-        };
+          $input.val(''); // Clear the input
+          return;
+        }
 
-        $container.find('button').removeClass('is-invalid');
-        // $container.find('button').addClass('is-valid');
-        reader.readAsDataURL(file);
+        if (file.type.startsWith('image/')) {
+          const reader = new FileReader();
+
+          reader.onload = function (e) {
+            // Get the preview target using a data-preview attribute
+            const targetId = $input.data('preview');
+            const $previewDiv = $('#' + targetId);
+            $previewDiv.css({
+              'background-image': `url('${e.target.result}')`,
+              'background-size': 'cover',
+              'background-position': 'center',
+              'background-repeat': 'no-repeat'
+            });
+
+            // Show remove button
+            $removeBtn.show();
+          };
+
+          $container.find('button').removeClass('is-invalid');
+          // $container.find('button').addClass('is-valid');
+          reader.readAsDataURL(file);
+        }
       }
     });
 
@@ -270,7 +322,7 @@ $(function () {
     });
   });
 
-//Nepali typing
+  //Nepali typing
   nepalify.interceptElementById('nep-first-name', {
     layout: 'traditional',  // Options: 'romanized' or 'traditional'
     enable: true
@@ -521,7 +573,7 @@ $(function () {
         dependentFields.forEach(field => {
           $(field.input)
             .prop('required', false)
-            .prop('readonly', true)
+            .prop('readonly', false)
             .removeClass('is-invalid') // Remove validation error class
             .val(''); // Optional: clear the value
           console.log(field.input)
@@ -603,50 +655,50 @@ $(function () {
   // =============================
   // 7. Form Submission
   // =============================
-$('#submitBtn').on('click', function (e) {
-  e.preventDefault();
+  $('#submitBtn').on('click', function (e) {
+    e.preventDefault();
 
-  if (!validateStep(totalSteps)) {
+    if (!validateStep(totalSteps)) {
+      return false;
+    }
+
+    // Show confirmation dialog
+    Swal.fire({
+      title: 'Submit KYC Form?',
+      html: '<p>के तपाईं यो फारम पेश गर्न चाहनुहुन्छ?</p><small>Do you want to submit this form?</small>',
+      icon: 'question',
+      showCancelButton: true,
+      confirmButtonColor: '#28a745',
+      cancelButtonColor: '#6c757d',
+      confirmButtonText: 'Yes, Submit',
+      cancelButtonText: 'Cancel',
+      customClass: {
+        popup: 'swal-nepali'
+      }
+    }).then((result) => {
+      if (result.isConfirmed) {
+        // Re-enable disabled fields before submission
+        $('#temp-province, #temp-district, #temp-muni, #temp-ward, #temp-address, #temp-house-number').prop('disabled', false);
+
+        // Show loading
+        Swal.fire({
+          title: 'Submitting...',
+          html: 'कृपया पर्खनुहोस्...<br><small>Please wait...</small>',
+          allowOutsideClick: false,
+          allowEscapeKey: false,
+          showConfirmButton: false,
+          didOpen: () => {
+            Swal.showLoading();
+          }
+        });
+
+        // Submit the form
+        $('#kycForm').submit();
+      }
+    });
+
     return false;
-  }
-
-  // Show confirmation dialog
-  Swal.fire({
-    title: 'Submit KYC Form?',
-    html: '<p>के तपाईं यो फारम पेश गर्न चाहनुहुन्छ?</p><small>Do you want to submit this form?</small>',
-    icon: 'question',
-    showCancelButton: true,
-    confirmButtonColor: '#28a745',
-    cancelButtonColor: '#6c757d',
-    confirmButtonText: 'Yes, Submit',
-    cancelButtonText: 'Cancel',
-    customClass: {
-      popup: 'swal-nepali'
-    }
-  }).then((result) => {
-    if (result.isConfirmed) {
-      // Re-enable disabled fields before submission
-      $('#temp-province, #temp-district, #temp-muni, #temp-ward, #temp-address, #temp-house-number').prop('disabled', false);
-
-      // Show loading
-      Swal.fire({
-        title: 'Submitting...',
-        html: 'कृपया पर्खनुहोस्...<br><small>Please wait...</small>',
-        allowOutsideClick: false,
-        allowEscapeKey: false,
-        showConfirmButton: false,
-        didOpen: () => {
-          Swal.showLoading();
-        }
-      });
-
-      // Submit the form
-      $('#kycForm').submit();
-    }
   });
-
-  return false;
-});
 
   // =============================
   // 8. Real-time Validation Feedback
@@ -778,7 +830,7 @@ $(document).ready(function () {
   }
 
   // Apply to all mobile fields
-  const $mobileFields = $('#mobile, #contact_mobile');
+  const $mobileFields = $('#mobile, #contact_mobile, #nominee_mobile');
   $mobileFields.each(function () {
     setupMobileValidation($(this));
   });
