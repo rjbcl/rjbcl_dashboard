@@ -1,19 +1,22 @@
 :root {
-  --primary-green: #6EC207;
-  --dark-green: #117554;
-  --light-green: #98b574;
+/* GREEN PALETTE - Based on RBS PRIMARY COLOR GREEN #007A43 */
+--primary-green: #007A43;
+--dark-green: #005730;
+--light-green: #00A85C;
+
+/* BLUE PALETTE - Based on RBS PRIMARY COLOR BLUE #00146d */
+--primary-blue: #00146D;
+--dark-blue: #000D4A;
+--light-blue: #0123a9;
   
-  --primary-blue: #4379F2;
-  --dark-blue: #1E3A8A;
-  --light-blue: #A7C7FF;
-  
-  --primary-yellow: #ffeb00;
-  --dark-yellow: #B8860B;
-  --light-yellow: #FFF9B0;
+  --primary-yellow: #ffc107;
+  --primary-orange: #fd7e14;
+
 
   --gradient-start: #1a043b;
   --gradient-middle: #062a79;
-  --gradient-end: #024631;
+  --gradient-end: #007A43;
+  /* --gradient-end: #024631; */
 }
 
 * {
@@ -29,7 +32,7 @@ body {
   align-items: center;
   justify-content: center;
   padding: 20px;
-  background: linear-gradient(135deg, var(--gradient-start) 0%, var(--gradient-middle) 50%, var(--gradient-end) 100%);
+  background: linear-gradient(135deg, var(--gradient-start) 0%, var(--gradient-middle) 30%, var(--gradient-end) 100%);
   position: relative;
   overflow: hidden;
 }
@@ -65,7 +68,8 @@ body::before {
    =========================== */
 .hero-section {
   flex: 1;
-  background: linear-gradient(135deg, #5b21b6 0%, #1e40af 50%, #047857 100%);
+  background: linear-gradient(135deg,#020f48 0%, #00146d 50%, #047857 100%);
+  /* background: linear-gradient(135deg, #5b21b6 0%, #1e40af 50%, #047857 100%); */
   position: relative;
   display: flex;
   align-items: center;
@@ -322,19 +326,20 @@ body::before {
 .btn-signin {
   width: 100%;
   padding: 10px;
-  background: var(--primary-blue);
+  background: linear-gradient(90deg, var(--primary-blue),var(--light-blue));
+  /* background: var(--light-blue);  */
   color: white;
   border: none;
   border-radius: 7px;
   font-size: 0.875rem;
   font-weight: 600;
   cursor: pointer;
-  transition: all 0.3s ease;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
   box-shadow: 0 4px 12px rgba(67, 121, 242, 0.3);
 }
 
 .btn-signin:hover {
-  background: var(--dark-blue);
+  background: var(--primary-blue);
   transform: translateY(-2px);
   box-shadow: 0 6px 16px rgba(67, 121, 242, 0.4);
 }
