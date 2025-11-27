@@ -1,4 +1,40 @@
 $(function () {
+
+//   // =========================================
+// // 0. KYC Date Conversion (BS → AD Sync)
+// // =========================================
+
+// function bsToAd(bs) {
+//     const adObj = NepaliFunctions.BS2AD(bs);
+//     return (
+//         adObj.year + "-" +
+//         String(adObj.month).padStart(2, "0") + "-" +
+//         String(adObj.day).padStart(2, "0")
+//     );
+// }
+
+// // DOB BS → AD
+// $("#dob_bs").nepaliDatePicker({
+//     onSelect: function (bsObj) {
+//         $("#dob_ad").val(bsToAd(bsObj.value));
+//     }
+// });
+
+// // Citizenship Issue Date BS → AD
+// $("#citizen_bs").nepaliDatePicker({
+//     onSelect: function (bsObj) {
+//         $("#citizen_ad").val(bsToAd(bsObj.value));
+//     }
+// });
+
+// // Nominee DOB BS → AD
+// $("#nominee_dob_bs").nepaliDatePicker({
+//     onSelect: function (bsObj) {
+//         $("#nominee_dob_ad").val(bsToAd(bsObj.value));
+//     }
+// });
+
+
   // =============================
   // 1. Multi-Step Form Logic
   // =============================
@@ -171,6 +207,7 @@ $(function () {
     }
   });
 
+
   // Initialize first step
   showStep(1);
 
@@ -271,7 +308,7 @@ $(function () {
   });
 
 //Nepali typing
-  nepalify.interceptElementById('nep-first-name', {
+  nepalify.interceptElementById('full_name_nep', {
     layout: 'traditional',  // Options: 'romanized' or 'traditional'
     enable: true
   });
@@ -351,25 +388,24 @@ $(function () {
     }
 
     // Permanent Address
-    populateProvince($('#perm-province'));
+    populateProvince($('#perm_province'));
 
-    $('#perm-province').on('change', function () {
-      populateDistricts($(this).val(), $('#perm-district'), $('#perm-muni'));
+    $('#perm_province').on('change', function () {
+      populateDistricts($(this).val(), $('#perm_district'), $('#perm_muni'));
     });
 
-    $('#perm-district').on('change', function () {
-      populateMunicipalities($('#perm-province').val(), $(this).val(), $('#perm-muni'));
+    $('#perm_district').on('change', function () {
+      populateMunicipalities($('#perm_province').val(), $(this).val(), $('#perm_muni'));
     });
 
     // Temporary Address
-    populateProvince($('#temp-province'));
-
-    $('#temp-province').on('change', function () {
-      populateDistricts($(this).val(), $('#temp-district'), $('#temp-muni'));
+    populateProvince($('#temp_province'));
+    $('#temp_province').on('change', function () {
+      populateDistricts($(this).val(), $('#temp_district'), $('#temp_muni'));
     });
 
-    $('#temp-district').on('change', function () {
-      populateMunicipalities($('#temp-province').val(), $(this).val(), $('#temp-muni'));
+    $('#temp_district').on('change', function () {
+      populateMunicipalities($('#temp_province').val(), $(this).val(), $('#temp_muni'));
     });
   }
 
@@ -394,32 +430,32 @@ $(function () {
   // =============================
   $('#sameAddress').on('change', function () {
     if ($(this).is(':checked')) {
-      const permProvince = $('#perm-province').val();
-      const permDistrict = $('#perm-district').val();
-      const permMuni = $('#perm-muni').val();
-      const permWard = $('#perm-ward').val();
-      const permAddress = $('#perm-address').val();
-      const permHouse = $('#perm-house-number').val();
+      const permProvince = $('#perm_province').val();
+      const permDistrict = $('#perm_district').val();
+      const permMuni = $('#perm_muni').val();
+      const permWard = $('#perm_ward').val();
+      const permAddress = $('#perm_address').val();
+      const permHouse = $('#perm_house_number').val();
 
-      $('#temp-province').val(permProvince).trigger('change');
+      $('#temp_province').val(permProvince).trigger('change');
 
       setTimeout(() => {
-        $('#temp-district').val(permDistrict).trigger('change');
+        $('#temp_district').val(permDistrict).trigger('change');
 
         setTimeout(() => {
-          $('#temp-muni').val(permMuni);
-          $('#temp-ward').val(permWard);
-          $('#temp-address').val(permAddress);
-          $('#temp-house-number').val(permHouse);
+          $('#temp_muni').val(permMuni);
+          $('#temp_ward').val(permWard);
+          $('#temp_address').val(permAddress);
+          $('#temp_house_number').val(permHouse);
 
         }, 100);
       }, 100);
 
       // Disable temporary address fields
-      $('#temp-province, #temp-district, #temp-muni, #temp-ward, #temp-address, #temp-house-number').prop('disabled', true);
+      $('#temp_province, #temp_district, #temp_muni, #temp_ward, #temp_address, #temp_house_number').prop('disabled', true);
     } else {
       // Enable temporary address fields
-      $('#temp-province, #temp-district, #temp-muni, #temp-ward, #temp-address, #temp-house-number').prop('disabled', false);
+      $('#temp_province, #temp_district, #temp_muni, #temp_ward, #temp_address, #temp_house_number').prop('disabled', false);
     }
   });
   // =============================
@@ -503,8 +539,11 @@ $(function () {
   // =============================
   // 6. Financial Details 
   // =============================
-  $(document).ready(function () {
-    // Fields that should be affected
+ // =============================
+// 6. Financial Details (Corrected)
+// =============================
+$(document).ready(function () {
+
     const dependentFields = [
       { input: '#annual-income' },
       { input: '#income-mode' },
@@ -515,56 +554,72 @@ $(function () {
     function updateFieldRequirements() {
       const selectedValue = $('#occupation').val();
 
-      // Check if House Wife or Student is selected
-      if (selectedValue === "244" || selectedValue === "245") {
-        // Remove required attribute and make readonly
-        dependentFields.forEach(field => {
-          $(field.input)
-            .prop('required', false)
-            .prop('readonly', true)
-            .removeClass('is-invalid') // Remove validation error class
-            .val(''); // Optional: clear the value
-          console.log(field.input)
-          if (field.input === '#income-mode') {
-            $(field.input).prop('disabled', true);
-          }
-          // Remove the asterisk from label
-          $(field.input).closest('.mb-3').find('label .text-danger').hide();
-        });
-      } else if (selectedValue === "194") {
+      // Housewife (244) or Student (245)
+      const isNoIncome = (selectedValue === "244" || selectedValue === "245");
+
+      // Other (194)
+      const isOther = (selectedValue === "194");
+
+      if (isNoIncome) {
+        // Assign default safe values (DO NOT disable fields)
+        $('#annual-income')
+          .prop('required', false)
+          .prop('readonly', true)
+          .val("0");
+
+        $('#income-mode')
+          .prop('required', false)
+          .prop('readonly', true)
+          .val("Monthly");
+
+        $('#income-source')
+          .prop('required', false)
+          .prop('readonly', true)
+          .val("None");
+
         $('#pan-number')
           .prop('required', false)
-          .removeClass('is-invalid')
-          .val('');
-        $("#pan-number").closest('.mb-3').find('.text-danger').hide();
-      } else if (selectedValue !== '') {
-        // Restore required attribute and make editable
+          .prop('readonly', true)
+          .val("");
+
+        dependentFields.forEach(field => {
+          $(field.input).closest('.mb-3').find('label .text-danger').hide();
+        });
+
+      } else if (isOther) {
+        // Other occupation → Occupation Description required
+        $('#occupation-description')
+          .prop('required', true)
+          .closest('.mb-3')
+          .find('.text-danger').show();
+
+        $('#pan-number')
+          .prop('required', false)
+          .prop('readonly', false)
+          .val("");
+        $('#pan-number').closest('.mb-3').find('label .text-danger').hide();
+
+        $('#annual-income, #income-mode, #income-source')
+          .prop('readonly', false)
+          .prop('required', true);
+
+      } else {
+        // All fields required & active
         dependentFields.forEach(field => {
           $(field.input)
             .prop('required', true)
             .prop('readonly', false)
-            .prop('disabled', false)
-            .removeClass('is-invalid'); // Remove any existing validation error
-          // Show the asterisk in label
+            .removeClass('is-invalid');
+
           $(field.input).closest('.mb-3').find('.text-danger').show();
         });
+
+        $('#income-mode').prop('disabled', false);
       }
     }
 
-
-    // Run on occupation change
     $('#occupation').on('change', updateFieldRequirements);
-
-    // Prevent validation on readonly fields
-    dependentFields.forEach(field => {
-      $(field.input).on('blur input change', function () {
-        if ($(this).prop('readonly')) {
-          $(this).removeClass('is-invalid');
-        }
-      });
-    });
-
-  });
+});
 
 
   // ****************Further Occupation Description when Other*****************
@@ -625,8 +680,18 @@ $('#submitBtn').on('click', function (e) {
     }
   }).then((result) => {
     if (result.isConfirmed) {
+
+      // ----------------------------------------------------
+// FIX: Re-enable all AD fields before form submission
+// ----------------------------------------------------
+document.getElementById("dob_ad").disabled = false;
+document.getElementById("citizen_ad").disabled = false;
+document.getElementById("nominee_dob_ad").disabled = false;
+
       // Re-enable disabled fields before submission
-      $('#temp-province, #temp-district, #temp-muni, #temp-ward, #temp-address, #temp-house-number').prop('disabled', false);
+// FIX: Correct IDs (underscore, not dash)
+$('#temp_province, #temp_district, #temp_muni, #temp_ward, #temp_address, #temp_house_number')
+    .prop('disabled', false);
 
       // Show loading
       Swal.fire({
@@ -640,8 +705,24 @@ $('#submitBtn').on('click', function (e) {
         }
       });
 
+      // =====================================
+// NEPALI DATEPICKER FIX (v5.0.6)
+// =====================================
+
+// Universal converter for AD formatted yyyy-mm-dd
+function formatJSDate(dateObj) {
+    const y = dateObj.getFullYear();
+    const m = String(dateObj.getMonth() + 1).padStart(2, "0");
+    const d = String(dateObj.getDate()).padStart(2, "0");
+    return `${y}-${m}-${d}`;
+}
+
+// Convert and set DOB// Final safeguard: enable everything before submit
+$('#kycForm').find(':disabled').prop('disabled', false);
+
       // Submit the form
       $('#kycForm').submit();
+
     }
   });
 

@@ -57,8 +57,6 @@
             <span class="step-name">Additional Details</span>
           </a>
         </nav>
-
-
       </div>
 
       <!-- Main Content -->
@@ -92,26 +90,27 @@
               <div class="row">
                 <div class="col-md-4 mb-3">
                   <label class="form-label">First Name <span class="text-danger">*</span></label>
-                  <input type="text" name="first-name" class="form-control  alpha-text" required autocomplete="off" >
+                  <input type="text" name="first_name" class="form-control alpha-text" required autocomplete="off">
                 </div>
                 <div class="col-md-4 mb-3">
                   <label class="form-label">Middle Name</label>
-                  <input type="text" name="middle-name" class="form-control  alpha-text" autocomplete="off">
+                  <input type="text" name="middle_name" class="form-control alpha-text" autocomplete="off">
                 </div>
-                <div class="col-md-4 mb-3 ">
+                <div class="col-md-4 mb-3">
                   <label class="form-label">Last Name <span class="text-danger">*</span></label>
-                  <input type="text" name="last-name" class="form-control  alpha-text" required autocomplete="off">
+                  <input type="text" name="last_name" class="form-control alpha-text" required autocomplete="off">
                 </div>
               </div>
-              <!-- Name Fields -->
+
               <div class="row">
                 <div class="col-md-8 mb-3">
                   <label class="form-label">पूरा नाम (देवनागरीमा) <span class="text-danger">*</span></label>
-                  <input type="text" id="nep-first-name" name="nep-first-name" class="form-control" required autocomplete="off">
-                  <!-- <small class="form-text text-muted">Type in English to get Nepali (e.g., "ram" → "राम")</small> -->
+                  <input type="text" id="full_name_nep" name="full_name_nep" class="form-control" required
+                    autocomplete="off">
                 </div>
               </div>
-              <!-- Personal Information Fields 1 -->
+
+              <!-- Personal Information -->
               <div class="row">
                 <div class="col-md-4 mb-3">
                   <label class="form-label">Salutation</label>
@@ -123,16 +122,17 @@
                     <option value="Dr">Dr</option>
                   </select>
                 </div>
+
                 <div class="col-md-4 mb-3">
                   <label class="form-label">Nationality <span class="text-danger">*</span></label>
                   <select name="nationality" class="form-select" required>
-                    <!-- <option value="">Select</option> -->
-                    <option selected value="Nepalese">Nepalese</option>
+                    <option value="Nepalese" selected>Nepalese</option>
                     <option value="Indian">Indian</option>
                     <option value="Chinese">Chinese</option>
                     <option value="Others">Other</option>
                   </select>
                 </div>
+
                 <div class="col-md-4 mb-3">
                   <label class="form-label">Gender <span class="text-danger">*</span></label>
                   <div class="gender-options">
@@ -150,27 +150,27 @@
                     </div>
                   </div>
                 </div>
-
               </div>
-              <!-- Personal Information Fields 2-->
+
+              <!-- DOB -->
               <div class="row">
                 <div class="col-md-4 mb-3">
                   <label class="form-label">Date of Birth (BS) <span class="text-danger">*</span></label>
-                  <input type="date" id="dob_bs" name="dob_bs" class="form-control" placeholder="YYYY/MM/DD" required autocomplete="off"
-                    readonly>
+                  <input type="text" id="dob_bs" name="dob_bs" class="form-control" placeholder="YYYY/MM/DD" required
+                    autocomplete="off">
                 </div>
                 <div class="col-md-4 mb-3" onclick="document.getElementById('dob_ad').showPicker()">
-                  <!-- <div class="col-md-4 mb-3" onclick="$('#dob_ad')[0].showPicker()"> -->
-
                   <label class="form-label">Date of Birth (AD) <span class="text-danger">*</span></label>
-                  <input type="date" id="dob_ad" name="dob_ad" class="form-control" placeholder="YYYY/MM/DD" required autocomplete="off">
+                  <input type="date" id="dob_ad" name="dob_ad" class="form-control" placeholder="YYYY-MM-DD" required
+                    autocomplete="off">
                 </div>
+
                 <div class="col-md-4 mb-3">
                   <label class="form-label">Marital Status <span class="text-danger">*</span></label>
                   <div class="marital-options">
                     <div class="form-check form-check-inline">
                       <input class="form-check-input" id="Married" type="radio" name="marital_status" value="Married"
-                        required >
+                        required>
                       <label class="form-check-label" for="Married">Married</label>
                     </div>
                     <div class="form-check form-check-inline">
@@ -181,7 +181,8 @@
                   </div>
                 </div>
               </div>
-              <!-- Personal Information Fields 3-->
+
+              <!-- Contact -->
               <div class="row mb-4">
                 <div class="col-md-4 mb-3">
                   <label class="form-label">Email Address <span class="text-danger">*</span></label>
@@ -193,44 +194,47 @@
                 </div>
                 <div class="col-md-4 mb-3">
                   <label class="form-label">Telephone No. </label>
-                  <input type="text" name="telephone" class="form-control">
+                  <input type="text" name="telephone" class="form-control" autocomplete="off">
                 </div>
               </div>
 
               <h4 class="form-step-title">Documents</h4>
-              <!-- Documents-->
+
+              <!-- Citizenship number & Issued Dates -->
               <div class="row">
                 <div class="col-md-4 mb-3">
                   <label class="form-label">Citizenship No.<span class="text-danger">*</span></label>
                   <input type="text" name="citizenship_no" class="form-control" required autocomplete="off">
                 </div>
+
                 <div class="col-md-4 mb-3">
-                  <label class="form-label">Document Issued Date(BS) <span class="text-danger">*</span></label>
-                  <input type="date" id="citizen_bs" name="citizenship_date" class="form-control"
-                    placeholder="YYYY/MM/DD" required autocomplete="off" readonly>
-                </div>
-                <div class="col-md-4 mb-3" onclick="document.getElementById('citizen_ad').showPicker()">
-                  <label class="form-label">Document Issued Date(AD) <span class="text-danger">*</span></label>
-                  <input type="date" id="citizen_ad" name="citizenship_date" class="form-control"
+                  <label class="form-label">Document Issued Date (BS) <span class="text-danger">*</span></label>
+                  <input type="text" id="citizen_bs" name="citizen_bs" class="form-control"
                     placeholder="YYYY/MM/DD" required autocomplete="off">
                 </div>
-              </div>
-              <!-- Documents 2-->
-              <div class="row mb-4">
-                <div class="col-md-4 mb-3">
-                  <label class="form-label">Document Issued Place <span class="text-danger">*</span></label>
-                  <input type="text" name="citizenship_place" class="form-control alpha-text" required autocomplete="off">
-                </div>
-                <div class="col-md-4 mb-3">
-                  <label class="form-label">Passport No.</label>
-                  <input type="text" name="passport_no" class="form-control">
-                </div>
-                <div class="col-md-4 mb-3">
-                  <label class="form-label">National Identity Card No.</label>
-                  <input type="text" name="passport_no" class="form-control">
+
+                <div class="col-md-4 mb-3" onclick="document.getElementById('citizen_ad').showPicker()">
+                  <label class="form-label">Document Issued Date (AD) <span class="text-danger">*</span></label>
+                  <input type="date" id="citizen_ad" name="citizen_ad" class="form-control"
+                    placeholder="YYYY-MM-DD" required autocomplete="off">
                 </div>
               </div>
 
+              <div class="row mb-4">
+                <div class="col-md-4 mb-3">
+                  <label class="form-label">Document Issued Place <span class="text-danger">*</span></label>
+                  <input type="text" name="citizenship_place" class="form-control alpha-text" required
+                    autocomplete="off">
+                </div>
+                <div class="col-md-4 mb-3">
+                  <label class="form-label">Passport No.</label>
+                  <input type="text" name="passport_no" class="form-control" autocomplete="off">
+                </div>
+                <div class="col-md-4 mb-3">
+                  <label class="form-label">National Identity Card No.</label>
+                  <input type="text" name="nid_no" class="form-control" autocomplete="off">
+                </div>
+              </div>
 
               <!-- Document Uploads Citizenship -->
               <div class="row mb-4">
@@ -242,7 +246,7 @@
                       <p class="form-text text-white-50">Supports jpg, jpeg and png. 500KB max.</p>
                       <input type="file" data-filename="citizenshipFrontFileName" id="citizenshipFrontUpload"
                         name="citizenship-front" accept="image/*,application/pdf" data-preview="citizenship_front"
-                        style="display:none;" required >
+                        style="display:none;" required>
                       <button type="button" class="btn btn-outline-secondary btn-sm"
                         onclick="document.getElementById('citizenshipFrontUpload').click()">
                         <span class="upload-icon-btn">⬇</span>
@@ -276,6 +280,7 @@
                   </div>
                 </div>
               </div>
+
               <!-- Document Uploads NID & Signature-->
               <div class="row mb-4">
                 <div class="col-md-6">
@@ -324,11 +329,13 @@
               <div class="row">
                 <div class="col-md-4 mb-3">
                   <label class="form-label">Spouse Name <span class="text-danger">*</span></label>
-                  <input type="text" id="spouse_name" name="spouse_name" class="form-control alpha-text" autocomplete="off">
+                  <input type="text" id="spouse_name" name="spouse_name" class="form-control alpha-text"
+                    autocomplete="off">
                 </div>
                 <div class="col-md-4 mb-3">
                   <label class="form-label">Grand Father's Name <span class="text-danger">*</span></label>
-                  <input type="text" name="grand_father_name" class="form-control alpha-text" required autocomplete="off">
+                  <input type="text" name="grand_father_name" class="form-control alpha-text" required
+                    autocomplete="off">
                 </div>
                 <div class="col-md-4 mb-3">
                   <label class="form-label">Proposer's Name <span style="font-size: 12px; color: grey;">(In case of a
@@ -352,6 +359,7 @@
                   <input type="text" name="father_in_law_name" class="form-control alpha-text" autocomplete="off">
                 </div>
               </div>
+
               <!-- Close Family 2 -->
               <div class="row">
                 <div class="col-md-4 mb-3">
@@ -377,35 +385,38 @@
               <div class="row">
                 <div class="col-md-3 mb-3">
                   <label class="form-label">Province <span class="text-danger">*</span></label>
-                  <select id="perm-province" name="perm_province" class="form-select" required>
+                  <select id="perm_province" name="perm_province" class="form-select" required>
                     <option value="">Select Province</option>
                   </select>
                 </div>
                 <div class="col-md-3 mb-3">
                   <label class="form-label">District <span class="text-danger">*</span></label>
-                  <select id="perm-district" name="perm_district" class="form-select" required>
+                  <select id="perm_district" name="perm_district" class="form-select" required>
                     <option value="">Select District</option>
                   </select>
                 </div>
                 <div class="col-md-3 mb-3">
                   <label class="form-label">Municipality <span class="text-danger">*</span></label>
-                  <select id="perm-muni" name="perm_municipality" class="form-select" required>
+                  <select id="perm_muni" name="perm_municipality" class="form-select" required>
                     <option value="">Select Municipality</option>
                   </select>
                 </div>
                 <div class="col-md-3 mb-3">
                   <label class="form-label">Ward <span class="text-danger">*</span></label>
-                  <input type="number" id="perm-ward" name="perm_ward" class="form-control" required autocomplete="off">
+                  <input type="number" id="perm_ward" name="perm_ward" class="form-control" required autocomplete="off">
                 </div>
               </div>
+
               <div class="row">
                 <div class="col-md-3 mb-3">
                   <label class="form-label">Address <span class="text-danger">*</span></label>
-                  <input type="text" id="perm-address" name="perm_address" class="form-control" required autocomplete="off">
+                  <input type="text" id="perm_address" name="perm_address" class="form-control" required
+                    autocomplete="off">
                 </div>
                 <div class="col-md-3 mb-3">
                   <label class="form-label">House No.</label>
-                  <input type="text" id="perm-house-number" name="perm_house_number" class="form-control" autocomplete="off">
+                  <input type="text" id="perm_house_number" name="perm_house_number" class="form-control"
+                    autocomplete="off">
                 </div>
               </div>
 
@@ -419,35 +430,37 @@
               <div class="row">
                 <div class="col-md-3 mb-3">
                   <label class="form-label">Province <span class="text-danger">*</span></label>
-                  <select id="temp-province" name="temp_province" class="form-select" required>
+                  <select id="temp_province" name="temp_province" class="form-select" required>
                     <option value="">Select Province</option>
                   </select>
                 </div>
                 <div class="col-md-3 mb-3">
                   <label class="form-label">District <span class="text-danger">*</span></label>
-                  <select id="temp-district" name="temp_district" class="form-select" required>
+                  <select id="temp_district" name="temp_district" class="form-select" required>
                     <option value="">Select District</option>
                   </select>
                 </div>
                 <div class="col-md-3 mb-3">
                   <label class="form-label">Municipality <span class="text-danger">*</span></label>
-                  <select id="temp-muni" name="temp_municipality" class="form-select" required>
+                  <select id="temp_muni" name="temp_municipality" class="form-select" required>
                     <option value="">Select Municipality</option>
                   </select>
                 </div>
                 <div class="col-md-3 mb-3">
                   <label class="form-label">Ward <span class="text-danger">*</span></label>
-                  <input id="temp-ward" type="number" name="temp_ward" class="form-control" required autocomplete="off">
+                  <input id="temp_ward" type="number" name="temp_ward" class="form-control" required autocomplete="off">
                 </div>
               </div>
               <div class="row">
                 <div class="col-md-3 mb-3">
                   <label class="form-label">Address <span class="text-danger">*</span></label>
-                  <input id="temp-address" type="text" name="temp_address" class="form-control" required autocomplete="off">
+                  <input id="temp_address" type="text" name="temp_address" class="form-control" required
+                    autocomplete="off">
                 </div>
                 <div class="col-md-3 mb-3">
                   <label class="form-label">House No.</label>
-                  <input type="text" id="temp-house-number" name="temp_house_number" class="form-control" autocomplete="off">
+                  <input type="text" id="temp_house_number" name="temp_house_number" class="form-control"
+                    autocomplete="off">
                 </div>
               </div>
             </div>
@@ -488,7 +501,6 @@
 
               <h6 class="section-subtitle mt-4">Professional Details</h6>
               <div class="row">
-                <!-- Occuoations -->
                 <div class="col-md-4 mb-3">
                   <label class="form-label">Occupation <span class="text-danger">*</span></label>
                   <select name="occupation" id="occupation" class="form-select" required>
@@ -498,34 +510,38 @@
                 </div>
                 <div class="col-md-4 mb-3">
                   <label class="form-label">Occupation Description <span class="text-danger">*</span></label>
-                  <input type="text" id="occupation-description" name="occupation-descripton" class="form-control">
+                  <input type="text" id="occupation_description" name="occupation_description"
+                    class="form-control">
                 </div>
                 <div class=" col-md-4 mb-3">
                   <label class="form-label">Income Mode <span class="text-danger">*</span></label>
-                  <select name="income-mode" id="income-mode" class="form-select" required>
+                  <select name="income_mode" id="income_mode" class="form-select" required>
                     <option value="">Select Mode</option>
                     <option value="Yearly">Yearly</option>
-                    <option value="Monthly">Monthy</option>
+                    <option value="Monthly">Monthly</option>
                   </select>
                 </div>
               </div>
+
               <div class="row">
                 <div class="col-md-4 mb-3">
                   <label class="form-label">Annual Income (Rs.) <span class="text-danger">*</span></label>
-                  <input type="number" id="annual-income" name="annual-income" class="form-control" required autocomplete="off">
+                  <input type="number" id="annual_income" name="annual_income" class="form-control" required
+                    autocomplete="off">
                 </div>
                 <div class="col-md-4 mb-3">
                   <label class="form-label">Source of Income <span class="text-danger">*</span></label>
-                  <input type="text" id="income-source" name="income-source" class="form-control" required autocomplete="off">
+                  <input type="text" id="income_source" name="income_source" class="form-control" required
+                    autocomplete="off">
                 </div>
                 <div class="col-md-4 mb-3">
                   <label class="form-label">PAN number <span class="text-danger">*</span></label>
-                  <input type="number" id="pan-number" name="pan-number" class="form-control" required autocomplete="off">
+                  <input type="text" id="pan_number" name="pan_number" class="form-control" required
+                    autocomplete="off">
                 </div>
-
               </div>
+
               <div class="row">
-                <!-- Qualificaion -->
                 <div class="col-md-4 mb-3">
                   <label class="form-label">Qualification<span class="text-danger">*</span></label>
                   <select name="qualification" id="qualification" class="form-select" required>
@@ -543,15 +559,14 @@
                 </div>
                 <div class="col-md-4 mb-3">
                   <label class="form-label">Employer Name </label>
-                  <input type="text" name="employer-name" class="form-control">
+                  <input type="text" name="employer_name" class="form-control" autocomplete="off">
                 </div>
                 <div class="col-md-4 mb-3">
                   <label class="form-label">Office Address</label>
-                  <input type="text" name="ofice-address" class="form-control">
+                  <input type="text" name="office_address" class="form-control" autocomplete="off">
                 </div>
               </div>
             </div>
-
 
             <!-- Step 4: Nominee Details -->
             <div class="form-step" data-step="4">
@@ -581,13 +596,13 @@
               <div class="row">
                 <div class="col-md-3 mb-3">
                   <label class="form-label">Nominee Date of Birth (BS) <span class="text-danger">*</span></label>
-                  <input type="date" id="nominee_dob_bs" name="nominee_dob" class="form-control"
-                    placeholder="YYYY/MM/DD" required  readonly>
+                  <input type="text" id="nominee_dob_bs" name="nominee_dob_bs" class="form-control"
+                    placeholder="YYYY/MM/DD" required >
                 </div>
                 <div class="col-md-3 mb-3" onclick="document.getElementById('nominee_dob_ad').showPicker()">
                   <label class="form-label">Nominee Date of Birth (AD) <span class="text-danger">*</span></label>
-                  <input type="date" id="nominee_dob_ad" name="nominee_dob" class="form-control"
-                    placeholder="YYYY/MM/DD" required >
+                  <input type="date" id="nominee_dob_ad" name="nominee_dob_ad" class="form-control"
+                    placeholder="YYYY-MM-DD" required>
                 </div>
                 <div class="col-md-6 mb-3">
                   <label class="form-label">Nominee Contact Number <span class="text-danger">*</span></label>
@@ -627,7 +642,7 @@
                   </p>
                   <div class="declaration-options">
                     <div class="form-check form-check-inline">
-                      <input class="form-check-input" type="radio" name="is_pep" id="pep_yes" value="yes" required >
+                      <input class="form-check-input" type="radio" name="is_pep" id="pep_yes" value="yes" required>
                       <label class="form-check-label" for="pep_yes">
                         <span class="option-text">Yes / हो</span>
                       </label>
@@ -665,7 +680,6 @@
                   </div>
                 </div>
               </div>
-
 
               <!-- Additional Documents Section -->
               <div class="additional-documents-section">
@@ -706,12 +720,12 @@
                 <span class="text-muted small ms-2" id="docCounter">(1/5 documents)</span>
               </div>
 
-
               <!-- Declaration -->
               <h6 class="section-subtitle">घोषणा / Declaration</h6>
               <div class="declaration-box">
                 <div class="form-check">
-                  <input class="form-check-input" type="checkbox" id="declaration" name="declaration" required autocomplete="off">
+                  <input class="form-check-input" type="checkbox" id="declaration" name="declaration" required
+                    autocomplete="off">
                   <label class="form-check-label" for="declaration">
                     <strong>के तपाईंले दिएको विवरण सत्य र ठ्याक्कै हो?</strong><br>
                     I hereby declare that all the information provided above is true and accurate to the best of my
@@ -720,15 +734,15 @@
                 </div>
               </div>
             </div>
+
+            <!-- Navigation Buttons -->
+            <div class="form-navigation">
+              <button type="button" class="btn btn-outline-secondary" id="prevBtn" style="display:none;">Previous</button>
+              <button type="button" class="btn btn-primary" id="nextBtn">Continue</button>
+              <button type="submit" class="btn btn-success" id="submitBtn" style="display:none;">पेश गर्नुहोस् / Submit</button>
+            </div>
+          </form>
         </div>
-        <!-- Navigation Buttons -->
-        <div class="form-navigation">
-          <button type="button" class="btn btn-outline-secondary" id="prevBtn" style="display:none;">Previous</button>
-          <button type="button" class="btn btn-primary" id="nextBtn">Continue</button>
-          <button type="submit" class="btn btn-success" id="submitBtn" style="display:none;">पेश गर्नुहोस् /
-            Submit</button>
-        </div>
-        </form>
       </div>
 
       <footer class="form-footer">
@@ -736,36 +750,26 @@
       </footer>
     </div>
   </div>
-  </div>
 
-  <!-- jQuery (Local) -->
-  <script src="{% static 'js/jquery-3.6.0.min.js' %}"></script>
-  <script src="{% static 'js/nepali.datepicker.v5.0.6.min.js' %}"></script>
-  <script src="{% static 'js/nepalify.production.min.js' %}"></script>
+ <script src="{% static 'js/jquery-3.6.0.min.js' %}"></script>
+<script src="{% static 'js/nepali.datepicker.v5.0.6.min.js' %}"></script>
+<script src="{% static 'js/nepalify.production.min.js' %}"></script>
+<script src="{% static 'bootstrap/js/bootstrap.bundle.min.js' %}"></script>
+<script src="{% static 'js/sweetalert2.all.min.js' %}"></script>
+<script src="{% static 'js/sweetalert-messages.js' %}"></script>
 
+<!-- Nepali core converter (must load BEFORE date-conversion.js) -->
+<script src="{% static 'js/nepaliFunctions.js' %}"></script>
 
+<!-- Document upload -->
+<script src="{% static 'js/docs-upload.js' %}"></script>
 
-  <!-- Bootstrap JS (Local) -->
-  <script src="{% static 'bootstrap/js/bootstrap.bundle.min.js' %}"></script>
+<!-- Main UI logic -->
+<script src="{% static 'js/kyc-form.js' %}"></script>
 
-  <!-- Nepali Datepicker -->
-  <!-- <script src="https://nepalidatepicker.sajanmaharjan.com.np/v5/nepali.datepicker/js/nepali.datepicker.v5.0.6.min.js"></script> -->
-  <!-- <script src="% static 'js/nepali.datepicker.v5.0.6.min.js' %"></script> -->
-
-  <!-- SweetAlert2 -->
-  <script src="{% static 'js/sweetalert2.all.min.js' %}"></script>
-  <script src="{% static 'js/sweetalert-messages.js' %}"></script>
-
-  <!-- Nepali Functions -->
-  <script src="{% static 'js/nepaliFunctions.js' %}"></script>
-  <script src="{% static 'js/date-conversion.js' %}"></script>
-
-  <!-- DOCUMENT UPLOAD -->
-  <script src="{% static 'js/docs-upload.js' %}"></script>
-
-  <!-- MAIN JS -->
-  <script src="{% static 'js/kyc-form.js' %}"></script>
-
+<!-- IMPORTANT: load LAST so it overrides everything -->
+<script src="{% static 'js/date-conversion.js' %}"></script>
+<!-- <script src="{% static 'js/date-conversion.js' %}?v=777"></script> -->
 
   <script>
     // Get policy number from URL
@@ -774,6 +778,33 @@
     if (policy) {
       document.getElementById("policyField").value = policy;
     }
+
+    // "Same as Permanent" checkbox copy
+    document.getElementById('sameAddress')?.addEventListener('change', function(e) {
+      if (this.checked) {
+        document.getElementById('temp_province').value = document.getElementById('perm_province').value;
+        document.getElementById('temp_district').value = document.getElementById('perm_district').value;
+        document.getElementById('temp_muni').value = document.getElementById('perm_muni').value;
+        document.getElementById('temp_ward').value = document.getElementById('perm_ward').value;
+        document.getElementById('temp_address').value = document.getElementById('perm_address').value;
+        document.getElementById('temp_house_number').value = document.getElementById('perm_house_number').value;
+      }
+    });
+
+    // small helper to show file names when user picks a file (optional)
+    function bindFileName(inputId, nameSpanId) {
+      const inp = document.getElementById(inputId);
+      const span = document.getElementById(nameSpanId);
+      if (!inp || !span) return;
+      inp.addEventListener('change', () => {
+        span.textContent = inp.files && inp.files.length ? inp.files[0].name : 'No file chosen';
+      });
+    }
+    bindFileName('additionalDoc1Upload', 'additionalDoc1FileName');
+    bindFileName('citizenshipFrontUpload', 'citizenshipFrontFileName');
+    bindFileName('citizenshipBackUpload', 'citizenshipBackFileName');
+    bindFileName('NidUpload', 'nidFileName');
+    bindFileName('signatureUpload', 'signatureFileName');
   </script>
 </body>
 

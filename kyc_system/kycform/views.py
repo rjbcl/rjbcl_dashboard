@@ -3,34 +3,36 @@
 from django.shortcuts import render, redirect
 from django.contrib import messages
 from django.urls import reverse
-from .models import KycUserInfo, KycAgentInfo, KycPolicy, KycAdmin
+import traceback
 
-# ============================================================================
+from .models import KycUserInfo, KycAgentInfo, KycPolicy, KycAdmin
+from kycform.services.kyc_submit_service import process_kyc_submission
+
+
+# ============================================================
 # UTILITIES
-# ============================================================================
+# ============================================================
 
 def normalize_status(value):
-    """Normalize KYC status into consistent format."""
+    """Normalize KYC status."""
     if not value:
         return ""
     return str(value).strip().upper().replace(" ", "_")
 
 
 def redirect_login_tab(user_type):
-    """Send user to correct login tab."""
-    if user_type == "agent":
-        return redirect("/auth/agent/?tab=agent")
-    return redirect("/auth/policy/?tab=policy")
+    """Return to login tab."""
+    return redirect(f"/auth/{user_type}/?tab={user_type}")
 
 
 def missing_fields(*fields):
-    """Check if any required field is missing."""
+    """Check if required fields are missing."""
     return not all(fields)
 
 
-# ============================================================================
-# LOGIN VIEWS (POLICY & AGENT)
-# ============================================================================
+# ============================================================
+# AUTHENTICATION (POLICYHOLDER)
+# ============================================================
 
 def policyholder_login(request):
     if request.method == "GET":
@@ -40,22 +42,23 @@ def policyholder_login(request):
     password = request.POST.get("password")
 
     if missing_fields(policy_no, password):
-        messages.error(request, "Policy number and password are required.", extra_tags="error")
+        messages.error(request, "Policy number and password are required.")
         return redirect_login_tab("policy")
 
     try:
         policy = KycPolicy.objects.get(policy_number__iexact=policy_no)
         user = KycUserInfo.objects.get(user_id=policy.user_id)
-    except (KycPolicy.DoesNotExist, KycUserInfo.DoesNotExist):
-        messages.error(request, "Invalid policy number or user not found.", extra_tags="error")
+    except:
+        messages.error(request, "Invalid policy number or user not found.")
         return redirect_login_tab("policy")
 
     if password != (user.password or ""):
-        messages.error(request, "Incorrect password!", extra_tags="error")
+        messages.error(request, "Incorrect password!")
         return redirect_login_tab("policy")
 
     kyc_status = normalize_status(user.kyc_status)
 
+    # Decide where to go
     if kyc_status in ["NOT_INITIATED", "INCOMPLETE", "REJECTED", ""]:
         return redirect(f"/kyc-form/?policy_no={policy_no}")
 
@@ -65,6 +68,10 @@ def policyholder_login(request):
     return redirect(f"/kyc-form/?policy_no={policy_no}")
 
 
+# ============================================================
+# AUTHENTICATION (AGENT)
+# ============================================================
+
 def agent_login(request):
     if request.method == "GET":
         return render(request, "kyc_auth.html", {"active_tab": "agent"})
@@ -73,20 +80,71 @@ def agent_login(request):
     password = request.POST.get("password")
 
     if missing_fields(agent_code, password):
-        messages.error(request, "Agent code and password are required.", extra_tags="error")
+        messages.error(request, "Agent code and password are required.")
         return redirect_login_tab("agent")
 
     try:
         agent = KycAgentInfo.objects.get(agent_code__iexact=agent_code)
-    except KycAgentInfo.DoesNotExist:
-        messages.error(request, "Agent code not found!", extra_tags="error")
+    except:
+        messages.error(request, "Agent code not found!")
         return redirect_login_tab("agent")
 
     if password != (agent.password or ""):
-        messages.error(request, "Incorrect password!", extra_tags="error")
+        messages.error(request, "Incorrect password!")
         return redirect_login_tab("agent")
 
     return redirect(f"/agent-dashboard/?agent_code={agent_code}")
+
+
+# ============================================================
+# KYC FORMS
+# ============================================================
+
+def kyc_form_view(request):
+    return render(request, "kyc_form_update.html", {
+        "policy_no": request.GET.get("policy_no")
+    })
+
+
+def dashboard_view(request):
+    return render(request, "dashboard.html", {
+        "policy_no": request.GET.get("policy_no")
+    })
+
+
+def agent_dashboard_view(request):
+    return render(request, "dashboard.html", {
+        "agent_code": request.GET.get("agent_code")
+    })
+
+
+# ============================================================
+# KYC FORM SUBMISSION
+# ============================================================
+
+def kyc_form_submit(request):
+    if request.method != "POST":
+        messages.error(request, "Invalid request!")
+        return redirect("/")
+
+    policy_no = request.POST.get("policy_no")
+
+    try:
+        # PROCESS FULL KYC
+        user = process_kyc_submission(request)
+
+        messages.success(request, "Your KYC form has been successfully submitted.")
+        return redirect(f"/dashboard/?policy_no={policy_no}")
+
+    except Exception as e:
+        print("\n============== KYC SUBMISSION ERROR ===============")
+        print("Error:", e)
+        traceback.print_exc()
+        print("===================================================\n")
+
+        messages.error(request, f"KYC submission failed: {e}")
+        return redirect(f"/kyc-form/?policy_no={policy_no}")
+
 
 
 # ============================================================================
@@ -372,3 +430,41 @@ def admin_logout(request):
     request.session.flush()   # Clears all session data
     messages.success(request, "You have been logged out.", extra_tags="success")
     return redirect("/rjbcl-admin/login/")
+
+# ------------------------------------------------------------------
+# POLICYHOLDER LOGOUT
+# ------------------------------------------------------------------
+def policy_logout(request):
+    request.session.flush()   # Clear all session data (safe)
+    messages.success(request, "You have been logged out.", extra_tags="success")
+
+    # Redirect to the active policy login tab
+    return redirect("/auth/policy/?tab=policy")
+
+
+# ------------------------------------------------------------------
+# KYC FORM SUBMISSION HANDLER
+# ------------------------------------------------------------------
+
+import traceback
+
+def kyc_form_submit(request):
+    if request.method != "POST":
+        messages.error(request, "Invalid request!", extra_tags="error")
+        return redirect("/")
+
+    try:
+        user = process_kyc_submission(request)
+        policy_no = request.POST.get("policy_no")
+
+        messages.success(request, "Your KYC form has been successfully submitted.", extra_tags="success")
+        return redirect(f"/dashboard/?policy_no={policy_no}")
+
+    except Exception as e:
+        print("\n============== KYC SUBMISSION ERROR ===============")
+        print("Error:", e)
+        traceback.print_exc()
+        print("===================================================\n")
+
+        messages.error(request, f"KYC submission failed: {e}", extra_tags="error")
+        return redirect(f"/kyc-form/?policy_no={request.POST.get('policy_no')}")

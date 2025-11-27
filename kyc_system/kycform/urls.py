@@ -12,6 +12,9 @@ urlpatterns = [
     path("auth/policy/", views.policyholder_login, name="policy_login"),
     path("auth/agent/", views.agent_login, name="agent_login"),
 
+    # POLICY LOGOUT (NEW)
+    path("logout/", views.policy_logout, name="policy_logout"),
+
     # CUSTOM RJBC ADMIN LOGIN (NOT Django admin)
     path("rjbcl-admin/login/", views.admin_login, name="admin_login"),
     path("rjbcl-admin/logout/", views.admin_logout, name="admin_logout"),
