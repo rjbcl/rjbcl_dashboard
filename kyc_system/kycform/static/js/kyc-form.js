@@ -181,7 +181,7 @@ $(function () {
     const file = e.target.files[0];
     if (file) {
       // Check file size (1MB = 1048576 bytes)
-      if (file.size >300000) {
+      if (file.size > 300000) {
         swalError(
           'File Too Large',
           'Image size must be less than 1 MB. Please upload a smaller image.'
@@ -224,7 +224,7 @@ $(function () {
 
   //  Name displayer
   $(document).ready(function () {
-    $('input[type="file"]').on('change', function () {
+    $('#citizenshipFrontUpload,#citizenshipBackUpload,#NidUpload,#signatureUpload').on('change', function () {
       const file = this.files[0];
       const $input = $(this);
       const fileNameTarget = $input.data('filename');
@@ -234,13 +234,10 @@ $(function () {
       }
     });
   });
-
-
-
   // DISPLAY THE IMAGE
   $(document).ready(function () {
 
-    $('input[type="file"]').on('change', function () {
+    $('#citizenshipFrontUpload,#citizenshipBackUpload,#NidUpload,#signatureUpload').on('change', function () {
       const file = this.files[0];
       const $input = $(this);
       const $container = $input.closest('.transparent-dark-div');
@@ -731,6 +728,29 @@ $(function () {
   console.log('✅ KYC Form initialized successfully');
 });
 
+
+
+// =============================
+// 9. Additional Document Fil Size checker
+// =============================
+
+$('input.addDoc').on('change', function () {
+  const file = this.files[0];
+  const $input = $(this);
+  if (file) {
+    // Check file size (1MB = 1048576 bytes)
+    if (file.size > 1048576) {
+      swalError(
+        'File Too Large',
+        'Image size must be less than 1 MB. Please upload a smaller image.'
+      );
+      const filenameId = $input.data('filename');
+      $('#' + filenameId).text('Upload Valid Document');
+      $input.val(''); // Clear the input
+      return;
+    }
+  }
+});
 
 
 // =============================
