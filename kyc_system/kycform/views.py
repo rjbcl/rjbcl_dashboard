@@ -1,11 +1,14 @@
 # kycform/views.py
-
+import json
+from django.http import JsonResponse
+from django.forms.models import model_to_dict
 from django.shortcuts import render, redirect
 from django.contrib import messages
 from django.urls import reverse
+from django.core.exceptions import ValidationError
 import traceback
 
-from .models import KycUserInfo, KycAgentInfo, KycPolicy, KycAdmin
+from .models import KycUserInfo, KycAgentInfo, KycPolicy, KycAdmin, KycSubmission, KycDocument
 from kycform.services.kyc_submit_service import process_kyc_submission
 
 
@@ -329,8 +332,169 @@ def reset_password(request):
 # ============================================================================
 
 def kyc_form_view(request):
+    policy_no = request.GET.get("policy_no")
+
+    if not policy_no:
+        messages.error(request, "Missing policy number.")
+        return redirect("/")
+
+    # 1. POLICY
+    try:
+        policy = KycPolicy.objects.get(policy_number=policy_no)
+    except KycPolicy.DoesNotExist:
+        messages.error(request, "Invalid policy number.")
+        return redirect("/")
+
+    # 2. USER
+    try:
+        user = KycUserInfo.objects.get(user_id=policy.user_id)
+    except KycUserInfo.DoesNotExist:
+        messages.error(request, "User not found.")
+        return redirect("/")
+
+    # 3. BLOCK ALREADY DONE
+    if user.kyc_status in ["PENDING", "VERIFIED"]:
+        return redirect(f"/dashboard/?policy_no={policy_no}")
+
+    # 4. BASIC USER INFO
+    user_info = model_to_dict(user, exclude=["password"])
+
+    # 5. SUBMISSION (if exists)
+    try:
+        submission = KycSubmission.objects.get(user=user)
+        submission_data = model_to_dict(
+            submission,
+            exclude=["id", "submitted_at", "user"]
+        )
+    except KycSubmission.DoesNotExist:
+        submission_data = {}
+
+    # 6. MERGE
+    merged = {**user_info, **submission_data}
+
+    # ==================================================================
+    # 7. FULL FIELD-NAME MAPPING (HTML ← MODEL EXACT MATCH)
+    # ==================================================================
+
+    fixed = {}
+
+    # --------------------------
+    # PERSONAL DETAILS
+    # --------------------------
+    fixed["first_name"] = merged.get("first_name")
+    fixed["middle_name"] = merged.get("middle_name")
+    fixed["last_name"] = merged.get("last_name")
+    fixed["full_name_nep"] = merged.get("full_name_nep")
+    fixed["email"] = merged.get("email")
+
+    # Phone number
+    fixed["mobile"] = merged.get("phone_number")
+
+    # Gender / Marital / Salutation
+    fixed["gender"] = merged.get("gender")
+    fixed["marital_status"] = merged.get("marital_status")
+    fixed["salutation"] = merged.get("salutation")
+    fixed["nationality"] = merged.get("nationality")
+
+    # DOB AD → HTML field name
+    if merged.get("dob"):
+        fixed["dob_ad"] = merged["dob"].isoformat()
+        fixed["dob_bs_auto"] = fixed["dob_ad"]  # JS converts to BS
+
+    # --------------------------
+    # FAMILY DETAILS
+    # --------------------------
+    fixed["spouse_name"] = merged.get("spouse_name")
+    fixed["father_name"] = merged.get("father_name")
+    fixed["mother_name"] = merged.get("mother_name")
+    fixed["grand_father_name"] = merged.get("grand_father_name")
+    fixed["father_in_law_name"] = merged.get("father_in_law_name")
+    fixed["son_name"] = merged.get("son_name")
+    fixed["daughter_name"] = merged.get("daughter_name")
+    fixed["daughter_in_law_name"] = merged.get("daughter_in_law_name")
+
+    # --------------------------
+    # CITIZENSHIP / DOCUMENTS
+    # --------------------------
+    fixed["citizenship_no"] = merged.get("citizenship_no")
+    fixed["citizen_bs"] = merged.get("citizen_bs")
+
+    if merged.get("citizen_ad"):
+        fixed["citizen_ad"] = merged["citizen_ad"].isoformat()
+
+    fixed["citizenship_place"] = merged.get("citizenship_issued_place")
+    fixed["passport_no"] = merged.get("passport_no")
+    fixed["nid_no"] = merged.get("nid_no")
+
+    # --------------------------
+    # PERMANENT ADDRESS
+    # --------------------------
+    fixed["perm_province"] = merged.get("perm_province")
+    fixed["perm_district"] = merged.get("perm_district")
+    fixed["perm_municipality"] = merged.get("perm_municipality")
+    fixed["perm_ward"] = merged.get("perm_ward")
+    fixed["perm_address"] = merged.get("perm_address")
+    fixed["perm_house_number"] = merged.get("perm_house_number")
+
+    # --------------------------
+    # TEMPORARY ADDRESS
+    # --------------------------
+    fixed["temp_province"] = merged.get("temp_province")
+    fixed["temp_district"] = merged.get("temp_district")
+    fixed["temp_municipality"] = merged.get("temp_municipality")
+    fixed["temp_ward"] = merged.get("temp_ward")
+    fixed["temp_address"] = merged.get("temp_address")
+    fixed["temp_house_number"] = merged.get("temp_house_number")
+
+    # --------------------------
+    # BANK DETAILS
+    # --------------------------
+    fixed["bank_name"] = merged.get("bank_name")
+    fixed["branch_name"] = merged.get("bank_branch")
+    fixed["account_number"] = merged.get("bank_account_number")
+    fixed["account_type"] = merged.get("bank_account_type")
+
+    # --------------------------
+    # OCCUPATION
+    # --------------------------
+    fixed["occupation"] = merged.get("occupation")
+    fixed["occupation_description"] = merged.get("occupation_description")
+    fixed["income_mode"] = merged.get("income_mode")
+    fixed["annual_income"] = merged.get("annual_income")
+    fixed["income_source"] = merged.get("income_source")
+    fixed["pan_number"] = merged.get("pan_number")
+    fixed["qualification"] = merged.get("qualification")
+    fixed["employer_name"] = merged.get("employer_name")
+    fixed["office_address"] = merged.get("office_address")
+
+    # --------------------------
+    # NOMINEE
+    # --------------------------
+    fixed["nominee_name"] = merged.get("nominee_name")
+    fixed["nominee_relation"] = merged.get("nominee_relation")
+
+    if merged.get("nominee_dob_ad"):
+        fixed["nominee_dob_ad"] = merged["nominee_dob_ad"].isoformat()
+        fixed["nominee_dob_bs_auto"] = fixed["nominee_dob_ad"]
+
+    fixed["nominee_contact"] = merged.get("nominee_contact")
+    fixed["guardian_name"] = merged.get("guardian_name")
+    fixed["guardian_relation"] = merged.get("guardian_relation")
+
+    # --------------------------
+    # PEP / AML
+    # --------------------------
+    fixed["is_pep"] = merged.get("is_pep")
+    fixed["is_aml"] = merged.get("is_aml")
+
+    # ==================================================================
+    # 8. JSON OUTPUT
+    # ==================================================================
+    prefill_json = json.dumps(fixed, ensure_ascii=False)
+
     return render(request, "kyc_form_update.html", {
-        "policy_no": request.GET.get("policy_no")
+        "policy_no": policy_no,
+        "prefill_json": prefill_json
     })
 
 

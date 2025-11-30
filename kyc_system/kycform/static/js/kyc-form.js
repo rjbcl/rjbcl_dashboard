@@ -1,38 +1,82 @@
 $(function () {
 
-//   // =========================================
-// // 0. KYC Date Conversion (BS → AD Sync)
-// // =========================================
+// =========================================
+// 0. FIXED BS ↔ AD DATE CONVERSION + EVENT
+// =========================================
+(function () {
 
-// function bsToAd(bs) {
-//     const adObj = NepaliFunctions.BS2AD(bs);
-//     return (
-//         adObj.year + "-" +
-//         String(adObj.month).padStart(2, "0") + "-" +
-//         String(adObj.day).padStart(2, "0")
-//     );
-// }
+    const bsFields = "#dob_bs, #citizen_bs, #nominee_dob_bs";
 
-// // DOB BS → AD
-// $("#dob_bs").nepaliDatePicker({
-//     onSelect: function (bsObj) {
-//         $("#dob_ad").val(bsToAd(bsObj.value));
-//     }
-// });
+    // BS → AD
+    function bsToAdString(bsVal) {
+        try {
+            const [y, m, d] = bsVal.split("-").map(Number);
+            const ad = NepaliFunctions.BS2AD({ year: y, month: m, day: d });
+            return `${ad.year}-${String(ad.month).padStart(2, "0")}-${String(ad.day).padStart(2, "0")}`;
+        } catch {
+            return "";
+        }
+    }
 
-// // Citizenship Issue Date BS → AD
-// $("#citizen_bs").nepaliDatePicker({
-//     onSelect: function (bsObj) {
-//         $("#citizen_ad").val(bsToAd(bsObj.value));
-//     }
-// });
+    // AD → BS
+    function adToBsString(adVal) {
+        try {
+            const [y, m, d] = adVal.split("-").map(Number);
+            const bs = NepaliFunctions.AD2BS({ year: y, month: m, day: d });
+            return `${bs.year}-${String(bs.month).padStart(2, "0")}-${String(bs.day).padStart(2, "0")}`;
+        } catch {
+            return "";
+        }
+    }
 
-// // Nominee DOB BS → AD
-// $("#nominee_dob_bs").nepaliDatePicker({
-//     onSelect: function (bsObj) {
-//         $("#nominee_dob_ad").val(bsToAd(bsObj.value));
-//     }
-// });
+    // INIT DATEPICKER
+    $(bsFields).each(function () {
+        const input = this;
+
+        $(input).nepaliDatePicker({
+            ndpYear: true,
+            ndpMonth: true,
+            ndpYearCount: 120,
+
+            onSelect: function (bsObj) {
+                const id = input.id;
+                const ad = bsToAdString(bsObj.value);
+
+                if (id === "dob_bs") $("#dob_ad").val(ad);
+                if (id === "citizen_bs") $("#citizen_ad").val(ad);
+                if (id === "nominee_dob_bs") $("#nominee_dob_ad").val(ad);
+            },
+
+            onChange: function () {
+                const id = input.id;
+                const ad = bsToAdString(input.value);
+
+                if (id === "dob_bs") $("#dob_ad").val(ad);
+                if (id === "citizen_bs") $("#citizen_ad").val(ad);
+                if (id === "nominee_dob_bs") $("#nominee_dob_ad").val(ad);
+            }
+        });
+        // IMPORTANT: Tell system datepicker is ready
+        setTimeout(() => {
+          document.dispatchEvent(new Event("NepaliDatepickerReady"));
+        }, 50);
+    });
+
+    // AD → BS sync
+    $("#dob_ad, #citizen_ad, #nominee_dob_ad").on("change", function () {
+        const id = this.id;
+        const bs = adToBsString($(this).val());
+
+        if (id === "dob_ad") $("#dob_bs").val(bs);
+        if (id === "citizen_ad") $("#citizen_bs").val(bs);
+        if (id === "nominee_dob_ad") $("#nominee_dob_bs").val(bs);
+    });
+
+    // IMPORTANT: Tell PREFILL the datepickers are ready
+    $(document).trigger("NepaliDatepickerReady");
+
+})();
+
 
 
   // =============================
@@ -414,7 +458,10 @@ $(function () {
     .done(function (data) {
       console.log('✅ Loaded Nepal location data');
       initAddressCascade(data);
+      document.dispatchEvent(new Event("locationDataReady"));
+
     })
+    
     .fail(function () {
       console.error('⚠️ Could not load nepal_locations.json');
       // Calling Sweetalert for error message
@@ -481,6 +528,8 @@ $(function () {
         selectElement.appendChild(option);
       });
 
+      document.dispatchEvent(new Event("bankDataReady"));
+
     } catch (error) {
       console.error('Error loading banks:', error);
       alert('Failed to load bank list. Please try again.');
@@ -488,7 +537,7 @@ $(function () {
   }
 
   // Load banks when the page loads
-  $('#bankSelect').on('click', loadBanks);
+  loadBanks();  // call immediately
 
   // Optional: Listen for selection changes
   document.getElementById('bankSelect').addEventListener('change', function (e) {
@@ -520,6 +569,9 @@ $(function () {
         selectElement.appendChild(option);
       });
 
+      // SIGNAL READY
+      document.dispatchEvent(new Event("occupationDataReady"));
+
     } catch (error) {
       console.error('Error loading Profession:', error);
       alert('Failed to load profession list. Please try again.');
@@ -527,7 +579,8 @@ $(function () {
   }
 
   // Load profession when the element is clicked
-  $('#occupation').on('click', loadoccupations);
+  loadoccupations();
+
 
   // Optional: Listen for selection changes
   document.getElementById('occupation').addEventListener('change', function (e) {
@@ -888,9 +941,131 @@ $(document).ready(function () {
   });
 });
 
+// =======================================================
+// FINAL KYC PREFILL FUNCTION
+// =======================================================
+function runKycPrefill() {
+
+    if (!window.prefill_data) {
+        console.warn("No prefill data");
+        return;
+    }
+
+    const data = window.prefill_data;
+
+    console.log("=== PREFILL START ===");
+
+    // ----------------------------------------------
+    // 0. FIX WRONG KEYS COMING FROM BACKEND
+    // ----------------------------------------------
+    if (data.dob_bs_auto && !data.dob_bs) 
+        data.dob_bs = data.dob_bs_auto;
+
+    if (data.nominee_dob_bs_auto && !data.nominee_dob_bs) 
+        data.nominee_dob_bs = data.nominee_dob_bs_auto;
 
 
+    // ----------------------------------------------
+    // 1. TEXT/RADIO/CHECKBOX PREFILL
+    // ----------------------------------------------
+    document.querySelectorAll("input, select, textarea").forEach(el => {
+        const name = el.name;
+        if (!name || !(name in data)) return;
+
+        const value = data[name];
+        if (value === null || value === undefined) return;
+
+        if (el.type === "file") return;
+
+        if (el.type === "radio") {
+            if (String(el.value) === String(value)) el.checked = true;
+            return;
+        }
+
+        if (el.type === "checkbox") {
+            el.checked = (value === true || value === "true" || value === "1");
+            return;
+        }
+
+        el.value = value;
+    });
 
 
+    // ----------------------------------------------
+    // 2. DATE FIELDS (AD -> BS)
+    // ----------------------------------------------
+    function fillBS() {
+        if (typeof AD2BS !== "function") return;
+
+        if (data.dob_ad)
+            $("#dob_bs").val(AD2BS(data.dob_ad));
+
+        if (data.citizen_ad)
+            $("#citizen_bs").val(AD2BS(data.citizen_ad));
+
+        if (data.nominee_dob_ad)
+            $("#nominee_dob_bs").val(AD2BS(data.nominee_dob_ad));
+    }
+
+    fillBS();
+    setTimeout(fillBS, 400);
+    setTimeout(fillBS, 1200);
 
 
+    // ----------------------------------------------
+    // 3. DYNAMIC SELECTS
+    // ----------------------------------------------
+    const selectMap = [
+        { key: "salutation", selector: "select[name='salutation']" },
+        { key: "nationality", selector: "select[name='nationality']" },
+
+        { key: "perm_province", selector: "#perm_province" },
+        { key: "perm_district", selector: "#perm_district" },
+        { key: "perm_municipality", selector: "#perm_muni" },
+
+        { key: "temp_province", selector: "#temp_province" },
+        { key: "temp_district", selector: "#temp_district" },
+        { key: "temp_municipality", selector: "#temp_muni" },
+
+        { key: "bank_name", selector: "#bankSelect" },
+        { key: "account_type", selector: "select[name='account_type']" },
+        { key: "occupation", selector: "#occupation" },
+        { key: "qualification", selector: "#qualification" },
+        { key: "nominee_relation", selector: "select[name='nominee_relation']" }
+    ];
+
+    selectMap.forEach(pair => {
+        let expected = data[pair.key];
+        if (!expected) return;
+
+        let el = document.querySelector(pair.selector);
+        if (!el) return;
+
+        let tries = 0;
+        let timer = setInterval(() => {
+            tries++;
+
+            if (el.options.length > 0) {
+                for (let o of el.options) {
+                    if (String(o.value).trim() === String(expected).trim() ||
+                        String(o.textContent).trim() === String(expected).trim()) {
+                        el.value = o.value;
+                        $(el).trigger("change");
+                        clearInterval(timer);
+                        return;
+                    }
+                }
+            }
+
+            if (tries > 30) clearInterval(timer);
+        }, 150);
+    });
+
+    console.log("=== PREFILL DONE ===");
+}
+
+
+document.addEventListener("locationDataReady", runKycPrefill);
+document.addEventListener("bankDataReady", runKycPrefill);
+document.addEventListener("occupationDataReady", runKycPrefill);
+document.addEventListener("NepaliDatepickerReady", runKycPrefill);

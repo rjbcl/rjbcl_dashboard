@@ -806,6 +806,12 @@
     bindFileName('NidUpload', 'nidFileName');
     bindFileName('signatureUpload', 'signatureFileName');
   </script>
+
+  <script>
+    window.prefill_data = JSON.parse(`{{ prefill_json|escapejs }}`);
+</script>
+
+
 </body>
 
 </html>
