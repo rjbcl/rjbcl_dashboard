@@ -228,3 +228,22 @@ function showSuccess(message) {
 }
 
 
+//  activate the data-tab="agent" tab by using JavaScript.
+
+$('.register-link').on('click', function () {
+  $('[data-tab="agent"]').trigger('click');
+});
+
+// SWITCH TAB BASED ON URL PARAMETER
+        window.activeTab = "{{ active_tab }}";
+        (function () {
+            try {
+                const params = new URLSearchParams(window.location.search);
+                const tab = params.get('tab');
+                if (tab && (tab === 'agent' || tab === 'policy')) {
+                    window.activeTab = tab;
+                }
+            } catch (e) {
+                // ignore if URLSearchParams not supported (very old browsers)
+            }
+        })();

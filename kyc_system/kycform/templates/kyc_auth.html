@@ -75,7 +75,7 @@
                             <div class="form-group">
                                 <label class="form-label">Policy Number</label>
                                 <input class="form-control" name="policy_no" id="policy-number"
-                                    placeholder="POL123" autocomplete="off" required>
+                                    placeholder="Policy number" autocomplete="off" required>
                             </div>
 
                             <div class="form-group">
@@ -99,7 +99,7 @@
                             </div>
 
                             <button type="submit" class="btn-signin">
-                                Sign in
+                                Log in
                             </button>
 
                             <div class="divider">
@@ -159,7 +159,7 @@
 
                             <div class="form-links">
                                 <p class="register-link">
-                                    New Agent : <a href="{% url 'kyc:agent_register' %}">Register</a>
+                                    New Agent :<a href="{% url 'kyc:policy_register' %}?tab=agent"> Register</a>
                                 </p>
                             </div>
                         </form>
