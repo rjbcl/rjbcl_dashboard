@@ -1,10 +1,15 @@
 $(document).ready(function () {
 
-  // ===========================
+  // ===========
+  $(".error-message").hide();
+  // ================
   // TAB SWITCHING
   // ===========================
   $('.tab-btn').on('click', function () {
     const targetTab = $(this).data('tab');
+
+    // Clear error message when switching tabs
+    hideErrorMessage();
 
     // Update active tab button
     $('.tab-btn').removeClass('active');
@@ -30,6 +35,7 @@ $(document).ready(function () {
   // ===========================
   // PASSWORD VISIBILITY TOGGLE
   // ===========================
+
   $('.toggle-password').on('click', function () {
     const targetId = $(this).data('target');
     const passwordInput = $(`#${targetId}`);
@@ -45,34 +51,21 @@ $(document).ready(function () {
   });
 
   // ===========================
-  // DJANGO MESSAGES (SweetAlert2)
+  // DJANGO MESSAGES
   // ===========================
   $('.js-msg').each(function () {
     const msgTags = $(this).data('tags');
     const msgText = $(this).data('text');
 
-    let icon = 'info';
-    let title = 'Notice';
-
     if (msgTags.includes('success')) {
-      icon = 'success';
-      title = 'Success!';
+      showSuccessMessage(msgText);
     } else if (msgTags.includes('error') || msgTags.includes('danger')) {
-      icon = 'error';
-      title = 'Error';
+      showErrorMessage('Invalid Credentials');
     } else if (msgTags.includes('warning')) {
-      icon = 'warning';
-      title = 'Warning';
+      showErrorMessage(msgText);
+    } else {
+      showErrorMessage(msgText);
     }
-
-    Swal.fire({
-      icon: icon,
-      title: title,
-      text: msgText,
-      confirmButtonColor: '#4379F2',
-      timer: 5000,
-      timerProgressBar: true
-    });
   });
 
   // ===========================
@@ -81,6 +74,9 @@ $(document).ready(function () {
   $('form').on('submit', function (e) {
     const form = $(this);
     const submitBtn = form.find('button[type="submit"]');
+
+    // Clear previous errors
+    hideErrorMessage();
 
     // Check if all required fields are filled
     let isValid = true;
@@ -95,12 +91,7 @@ $(document).ready(function () {
 
     if (!isValid) {
       e.preventDefault();
-      Swal.fire({
-        icon: 'warning',
-        title: 'Required Fields',
-        text: 'Please fill in all required fields.',
-        confirmButtonColor: '#4379F2'
-      });
+      showErrorMessage('Please fill in all required fields.');
       return false;
     }
 
@@ -112,6 +103,7 @@ $(document).ready(function () {
   // Remove invalid class on input
   $('input').on('input', function () {
     $(this).removeClass('is-invalid');
+    hideErrorMessage();
   });
 
   // ===========================
@@ -157,6 +149,19 @@ $(document).ready(function () {
     $(this).attr('aria-label', `Switch to ${tabName} login`);
   });
 
+  // ===========================
+  // VALIDATION REAL TIME
+  // ===========================
+  $('#policy-number, #agent-code').on('blur', function () {
+    const $field = $(this);
+    if (!$field.val() || $field.val().trim() === '') {
+      // Don't add invalid class if field is pan-number AND occupation is 194
+      $field.addClass('is-invalid');
+    } else {
+      $field.removeClass('is-invalid');
+    }
+  });
+
 });
 
 // ===========================
@@ -169,37 +174,57 @@ function isValidEmail(email) {
   return emailRegex.test(email);
 }
 
-// Show custom error message
-function showError(message) {
-  Swal.fire({
-    icon: 'error',
-    title: 'Oops...',
-    text: message,
-    confirmButtonColor: '#4379F2'
-  });
+// Show error message in error-message element
+function showErrorMessage(message) {
+  const errorEl = $('.error-message');
+  errorEl.text(message);
+  errorEl.fadeIn(300);
+  
+  // Auto-hide after 5 seconds
+  setTimeout(function() {
+    errorEl.fadeOut(300);
+  }, 5000);
+}
+
+// Hide error message
+function hideErrorMessage() {
+  $('.error-message').fadeOut(300);
 }
 
 // Show success message
+function showSuccessMessage(message) {
+  // If you have a success-message element, use it
+  const successEl = $('.success-message');
+  if (successEl.length) {
+    successEl.text(message);
+    successEl.fadeIn(300);
+    
+    setTimeout(function() {
+      successEl.fadeOut(300);
+    }, 5000);
+  } else {
+    // Fallback: use error-message element but you could add different styling
+    const errorEl = $('.error-message');
+    errorEl.text(message);
+    errorEl.removeClass('text-danger').addClass('text-success');
+    errorEl.fadeIn(300);
+    
+    setTimeout(function() {
+      errorEl.fadeOut(300, function() {
+        errorEl.removeClass('text-success').addClass('text-danger');
+      });
+    }, 5000);
+  }
+}
+
+// Show custom error message (legacy function name maintained for compatibility)
+function showError(message) {
+  showErrorMessage(message);
+}
+
+// Show success (legacy function name maintained for compatibility)
 function showSuccess(message) {
-  Swal.fire({
-    icon: 'success',
-    title: 'Success!',
-    text: message,
-    confirmButtonColor: '#4379F2',
-    timer: 3000,
-    timerProgressBar: true
-  });
+  showSuccessMessage(message);
 }
 
 
-// VALIDATION REAL TIME
-$('#policy-number, #agent-code').on('blur', function () {
-  const $field = $(this);
-  if (!$field.val() || $field.val().trim() === '') {
-    // Don't add invalid class if field is pan-number AND occupation is 194
-    $field.addClass('is-invalid');
-
-  } else {
-    $field.removeClass('is-invalid');
-  }
-});
