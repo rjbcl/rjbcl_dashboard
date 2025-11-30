@@ -49,23 +49,30 @@ class KycUserInfo(models.Model):
     ]
 
     user_id = models.CharField(max_length=50, primary_key=True)
-    dob = models.DateField()
-    first_name = models.CharField(max_length=100)
-    last_name = models.CharField(max_length=100)
-    user_email = models.CharField(max_length=200, null=True, blank=True)
-    citizenship_number = models.CharField(max_length=200, null=True, blank=True)
-    phone_number = models.CharField(max_length=20, null=True, blank=True)
-    address = models.CharField(max_length=255, null=True, blank=True)
+    
+    # Login credentials
     password = models.CharField(max_length=100, null=True, blank=True)
 
+    # Basic identity
+    first_name = models.CharField(max_length=100)
+    middle_name = models.CharField(max_length=100, null=True, blank=True)
+    last_name = models.CharField(max_length=100)
+    full_name_nep = models.CharField(max_length=200, null=True, blank=True)
+
+    dob = models.DateField()
+    email = models.CharField(max_length=200, null=True, blank=True)
+    phone_number = models.CharField(max_length=20, null=True, blank=True)
+
+    # Status
     kyc_status = models.CharField(
-        max_length=20,
-        choices=KYC_STATUS_CHOICES,
-        default="NOT_INITIATED"
+        max_length=20, choices=KYC_STATUS_CHOICES, default="NOT_INITIATED"
     )
 
     class Meta:
-        db_table = "kyc_user_info"     # IMPORTANT FIX
+        db_table = "kyc_user_info"
+
+    def __str__(self):
+        return f"{self.user_id} - {self.first_name} {self.last_name}"
 
 
     
