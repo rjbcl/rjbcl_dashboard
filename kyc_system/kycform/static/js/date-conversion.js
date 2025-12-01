@@ -113,6 +113,7 @@ function bindBsAdSync(bsSelector, adSelector) {
 // bindBsAdSync('#dob_bs', '#dob_ad');
 bindBsAdSync('#citizen_bs', '#citizen_ad');
 bindBsAdSync('#dob_bs', '#dob_ad');
+bindBsAdSync('#user_dob_bs', '#user_dob_ad');
 bindBsAdSync('#nominee_dob_bs', '#nominee_dob_ad');
 
 

@@ -1,42 +1,3 @@
-/* CSS Color Variables */
-:root {
-  /* Primary Colors */
-  --color-primary: #28a745;
-  --color-primary-hover: #218838;
-  --color-primary-dark: #1e7e34;
-  --color-primary-light: rgba(40, 167, 69, 0.15);
-  --color-primary-light-bg: #e8f5e9;
-  --color-primary-light-shadow: rgba(40, 167, 69, 0.1);
-
-  /* Danger/Error Colors */
-  --color-danger: #dc3545;
-
-  /* Text Colors */
-  --color-text-primary: #333;
-  --color-text-secondary: #495057;
-  --color-text-muted: #6c757d;
-  --color-text-light: #666;
-  --color-text-dark: #555;
-
-  /* Background Colors */
-  --color-bg-main: #f5f5f5;
-  --color-bg-white: #fff;
-  --color-bg-light: #f8f9fa;
-  --color-bg-dark-overlay: rgba(0, 0, 0, 0.6);
-
-  /* Border Colors */
-  --color-border-light: #e0e0e0;
-  --color-border-medium: #dee2e6;
-  --color-border-input: #ced4da;
-
-  /* Shadow Colors */
-  --shadow-light: rgba(0, 0, 0, 0.05);
-  --shadow-medium: rgba(0, 0, 0, 0.08);
-
-  /* Neutral Colors */
-  --color-gray-light: #e9ecef;
-}
-
 * {
   margin: 0;
   padding: 0;
@@ -136,7 +97,7 @@ input[type=number]::-webkit-inner-spin-button {
 }
 
 .nav-step.active {
-  background-color: var(--color-primary);
+  background-color: var(--primary-blue);
   color: var(--color-bg-white);
 }
 
@@ -145,7 +106,7 @@ input[type=number]::-webkit-inner-spin-button {
 }
 
 .nav-step.completed .step-number {
-  background-color: var(--color-primary);
+  background-color: var(--primary-blue);
   color: var(--color-bg-white);
 }
 
@@ -166,7 +127,7 @@ input[type=number]::-webkit-inner-spin-button {
 
 .nav-step.active .step-number {
   background-color: var(--color-bg-white);
-  color: var(--color-primary);
+  color: var(--primary-blue);
 }
 
 .step-name {
@@ -228,7 +189,7 @@ input[type=number]::-webkit-inner-spin-button {
   color: var(--color-text-primary);
   margin-bottom: 30px;
   padding-bottom: 15px;
-  border-bottom: 2px solid var(--color-primary);
+  border-bottom: 2px solid var(--primary-blue);
 }
 
 .section-subtitle {
@@ -305,12 +266,12 @@ input[type=number]::-webkit-inner-spin-button {
 }
 
 .document-upload.has-preview {
-  border-color: var(--color-primary);
+  border-color: var(--primary-blue);
   border-style: solid;
 }
 
 .document-upload:hover {
-  border-color: var(--color-primary);
+  border-color: var(--primary-blue);
   background-color: var(--color-primary-light-bg);
 }
 
@@ -375,7 +336,7 @@ input[type=number]::-webkit-inner-spin-button {
 
 .form-control:focus,
 .form-select:focus {
-  border-color: var(--color-primary);
+  border-color: var(--primary-green);
   box-shadow: 0 0 0 0.2rem var(--color-primary-light);
 }
 
@@ -410,8 +371,8 @@ div.is-invalid {
 }
 
 .form-check-input:checked {
-  background-color: var(--color-primary);
-  border-color: var(--color-primary);
+  background-color: var(--primary-green);
+  border-color: var(--primary-green);
 }
 
 .form-check-label {
@@ -450,33 +411,23 @@ div.is-invalid {
   transition: all 0.3s ease;
 }
 
-.btn-primary {
-  background-color: var(--color-primary);
-  border-color: var(--color-primary);
-}
-
-.btn-primary:hover {
-  background-color: var(--color-primary-hover);
-  border-color: var(--color-primary-dark);
-}
-
-
 .btn-outline-danger {
   border-width: 2px;
 }
+
 .btn-outline-danger:hover{
   background-color: transparent;
   color: var(--color-danger);
 }
 
 .btn-outline-primary {
-  border-color: var(--color-primary);
-  color: var(--color-primary);
+  border-color: var(--primary-green);
+  color: var(--primary-green);
 }
 
 .btn-outline-primary:hover {
-  background-color: var(--color-primary);
-  border-color: var(--color-primary);
+  background-color: var(--primary-green);
+  border-color: var(--primary-green);
   color: var(--color-bg-white);
 }
 
@@ -510,7 +461,7 @@ div.is-invalid {
 }
 
 .additional-doc-item:hover {
-  border-color: var(--color-primary);
+  border-color: var(--primary-green);
   box-shadow: 0 2px 6px var(--color-primary-light-shadow);
 }
 
@@ -558,7 +509,7 @@ div.is-invalid {
 }
 
 .file-name-inline.has-file {
-  color: var(--color-primary);
+  color: var(--primary-green);
   font-weight: 500;
 }
 
@@ -589,18 +540,18 @@ div.is-invalid {
 }
 
 .btn-primary {
-  background-color: var(--color-primary);
-  border-color: var(--color-primary);
+  background-color: var(--light-green);
+  border-color: var(--primary-green);
 }
 
 .btn-primary:hover {
-  background-color: var(--color-primary-hover);
-  border-color: var(--color-primary-dark);
+  background-color: var(--dark-green);
+  border-color: var(--dark-green);
 }
 
 .btn-success:hover {
-  background-color: var(--color-primary-hover);
-  border-color: var(--color-primary-hover);
+  background-color: var(--light-green);
+  border-color: var(--light-green);
 }
 .fw-bolder{
   color: var(--color-bg-white);
@@ -608,8 +559,8 @@ div.is-invalid {
 
 .document-btn:hover {
   background-color: transparent!important;
-  border-color: var(--color-primary);
-  color: var(--color-primary);
+  border-color: var(--light-green);
+  color: var(--light-green);
 }
 .btn-outline-secondary{
   border-width: 2px;
@@ -620,13 +571,13 @@ div.is-invalid {
 }
 
 .btn-outline-primary {
-  border-color: var(--color-primary);
-  color: var(--color-primary);
+  border-color: var(--primary-green);
+  color: var(--primary-green);
 }
 
 .btn-outline-primary:hover {
-  background-color: var(--color-primary);
-  border-color: var(--color-primary);
+  background-color: var(--light-green);
+  border-color: var(--light-green);
   color: var(--color-bg-white);
 }
 
@@ -689,7 +640,7 @@ div.is-invalid {
   }
 
   .nav-steps::-webkit-scrollbar-thumb {
-    background: var(--color-primary);
+    background: var(--primary-blue);
     border-radius: 3px;
   }
 
