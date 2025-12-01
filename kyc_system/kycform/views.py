@@ -1,20 +1,44 @@
 # kycform/views.py
+"""
+Full views.py for KYC form handling.
+
+- Prefill pipeline (kyc_form_view) merges KycUserInfo, KycSubmission, KYCTemporary
+  and returns "prefill_json" that the front-end JS expects.
+- save_kyc_progress: multipart endpoint -> saves files to MEDIA and stores URLs
+  in KYCTemporary.data_json; returns saved file URLs.
+- process_kyc_submission: finalizes KYC -> writes KycSubmission, saves files,
+  attaches NID as KycDocument (doc_type="NID"), deletes temp draft.
+"""
+
 import json
-from django.http import JsonResponse
-from django.forms.models import model_to_dict
-from django.shortcuts import render, redirect
-from django.contrib import messages
-from django.urls import reverse
-from django.core.exceptions import ValidationError
+import os
 import traceback
+import urllib.request
+from datetime import datetime, date
 
-from .models import KycUserInfo, KycAgentInfo, KycPolicy, KycAdmin, KycSubmission, KycDocument
-from kycform.services.kyc_submit_service import process_kyc_submission
+from django.conf import settings
+from django.core.exceptions import ValidationError
+from django.core.files.base import ContentFile
+from django.core.files.storage import default_storage
+from django.forms.models import model_to_dict
+from django.http import JsonResponse
+from django.shortcuts import render, redirect
+from django.urls import reverse
+from django.utils.text import get_valid_filename
+from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.http import require_POST
+from django.contrib import messages
 
+from .models import (
+    KycUserInfo, KycAgentInfo, KycPolicy, KycAdmin,
+    KycSubmission, KycDocument, KYCTemporary
+)
 
-# ============================================================
-# UTILITIES
-# ============================================================
+# -----------------------------------------------------------------------------
+# Utilities
+# -----------------------------------------------------------------------------
+MAX_UPLOAD_BYTES = 2 * 1024 * 1024  # 2 MB default per-file check
+
 
 def normalize_status(value):
     """Normalize KYC status."""
@@ -33,10 +57,64 @@ def missing_fields(*fields):
     return not all(fields)
 
 
-# ============================================================
-# AUTHENTICATION (POLICYHOLDER)
-# ============================================================
+def safe_model_dict(obj):
+    """Convert model_to_dict values, casting date/datetime to isoformat strings."""
+    safe = {}
+    for k, v in obj.items():
+        if isinstance(v, (date, datetime)):
+            safe[k] = v.isoformat()
+        else:
+            safe[k] = v
+    return safe
 
+
+def save_uploaded_file_to_storage(file_obj, dest_folder):
+    """
+    Save uploaded file_obj to default_storage under dest_folder and
+    return (saved_path, url). Raises ValidationError if too large.
+    """
+    if not file_obj:
+        return None, None
+
+    if file_obj.size > MAX_UPLOAD_BYTES:
+        raise ValidationError(f"{file_obj.name} too large (>{MAX_UPLOAD_BYTES} bytes).")
+
+    safe_name = get_valid_filename(file_obj.name)
+    # Ensure unique filename (timestamp prefix)
+    timestamp = datetime.utcnow().strftime("%Y%m%d%H%M%S%f")
+    filename = f"{timestamp}_{safe_name}"
+    rel_path = os.path.join(dest_folder, filename)
+    saved_path = default_storage.save(rel_path, file_obj)
+    try:
+        url = default_storage.url(saved_path)
+    except Exception:
+        # Fallback build
+        url = os.path.join(settings.MEDIA_URL.rstrip("/"), saved_path)
+    return saved_path, url
+
+
+def download_url_to_filefield(instance, file_field_name, url):
+    """
+    Download the file at `url` and save into instance.<file_field_name> (FileField).
+    Works with local or remote urls; ignores failures (safe).
+    """
+    if not url:
+        return False
+    try:
+        resp = urllib.request.urlopen(url)
+        data = resp.read()
+        fname = url.split("/")[-1] or f"file_{datetime.utcnow().timestamp()}"
+        content = ContentFile(data)
+        # use save(False) to avoid immediate DB write
+        getattr(instance, file_field_name).save(fname, content, save=False)
+        return True
+    except Exception:
+        return False
+
+
+# -----------------------------------------------------------------------------
+# AUTHENTICATION: Policyholder & Agent
+# -----------------------------------------------------------------------------
 def policyholder_login(request):
     if request.method == "GET":
         return render(request, "kyc_auth.html", {"active_tab": "policy"})
@@ -51,7 +129,7 @@ def policyholder_login(request):
     try:
         policy = KycPolicy.objects.get(policy_number__iexact=policy_no)
         user = KycUserInfo.objects.get(user_id=policy.user_id)
-    except:
+    except Exception:
         messages.error(request, "Invalid policy number or user not found.")
         return redirect_login_tab("policy")
 
@@ -61,7 +139,6 @@ def policyholder_login(request):
 
     kyc_status = normalize_status(user.kyc_status)
 
-    # Decide where to go
     if kyc_status in ["NOT_INITIATED", "INCOMPLETE", "REJECTED", ""]:
         return redirect(f"/kyc-form/?policy_no={policy_no}")
 
@@ -70,10 +147,6 @@ def policyholder_login(request):
 
     return redirect(f"/kyc-form/?policy_no={policy_no}")
 
-
-# ============================================================
-# AUTHENTICATION (AGENT)
-# ============================================================
 
 def agent_login(request):
     if request.method == "GET":
@@ -88,7 +161,7 @@ def agent_login(request):
 
     try:
         agent = KycAgentInfo.objects.get(agent_code__iexact=agent_code)
-    except:
+    except Exception:
         messages.error(request, "Agent code not found!")
         return redirect_login_tab("agent")
 
@@ -99,16 +172,9 @@ def agent_login(request):
     return redirect(f"/agent-dashboard/?agent_code={agent_code}")
 
 
-# ============================================================
-# KYC FORMS
-# ============================================================
-
-def kyc_form_view(request):
-    return render(request, "kyc_form_update.html", {
-        "policy_no": request.GET.get("policy_no")
-    })
-
-
+# -----------------------------------------------------------------------------
+# Simple render views
+# -----------------------------------------------------------------------------
 def dashboard_view(request):
     return render(request, "dashboard.html", {
         "policy_no": request.GET.get("policy_no")
@@ -121,39 +187,9 @@ def agent_dashboard_view(request):
     })
 
 
-# ============================================================
-# KYC FORM SUBMISSION
-# ============================================================
-
-def kyc_form_submit(request):
-    if request.method != "POST":
-        messages.error(request, "Invalid request!")
-        return redirect("/")
-
-    policy_no = request.POST.get("policy_no")
-
-    try:
-        # PROCESS FULL KYC
-        user = process_kyc_submission(request)
-
-        messages.success(request, "Your KYC form has been successfully submitted.")
-        return redirect(f"/dashboard/?policy_no={policy_no}")
-
-    except Exception as e:
-        print("\n============== KYC SUBMISSION ERROR ===============")
-        print("Error:", e)
-        traceback.print_exc()
-        print("===================================================\n")
-
-        messages.error(request, f"KYC submission failed: {e}")
-        return redirect(f"/kyc-form/?policy_no={policy_no}")
-
-
-
-# ============================================================================
-# REGISTRATION (POLICYHOLDER & AGENT)
-# ============================================================================
-
+# -----------------------------------------------------------------------------
+# Registration / Forgot / Reset
+# -----------------------------------------------------------------------------
 def policyholder_register_view(request):
     if request.method == "GET":
         return render(request, "register.html")
@@ -177,9 +213,10 @@ def policyholder_register_view(request):
         messages.error(request, "You are already registered. Please log in.", extra_tags="error")
         return redirect_login_tab("policy")
 
-    if not user.user_email:
-        user.user_email = email
-    elif user.user_email.lower() != email.lower():
+    # Keep the field names consistent with your model
+    if not user.email:
+        user.email = email
+    elif user.email.lower() != email.lower():
         messages.error(request, "Email does not match our records!", extra_tags="error")
         return redirect("kyc:policy_register")
 
@@ -243,10 +280,6 @@ def agent_register_view(request):
     return redirect_login_tab("agent")
 
 
-# ============================================================================
-# FORGOT PASSWORD (Common for Agent + Policyholders)
-# ============================================================================
-
 def forgot_password(request):
     user_type = request.GET.get("type", "policy")
 
@@ -281,10 +314,6 @@ def forgot_password(request):
         messages.error(request, "Record not found!", extra_tags="error")
         return redirect(f"/forgot-password/?type={user_type}")
 
-
-# ============================================================================
-# RESET PASSWORD (Common Handler)
-# ============================================================================
 
 def reset_password(request):
     user_type = request.GET.get("type", "policy")
@@ -327,169 +356,152 @@ def reset_password(request):
         return redirect(f"/reset-password/?type={user_type}&identifier={identifier}")
 
 
-# ============================================================================
-# KYC + DASHBOARD
-# ============================================================================
-
+# -----------------------------------------------------------------------------
+# KYC Form view (prefill) — single endpoint returning the template + prefill JSON
+# -----------------------------------------------------------------------------
+@csrf_exempt
 def kyc_form_view(request):
-    policy_no = request.GET.get("policy_no")
+    """
+    Loads KYC update form with full prefill data.
+    Priority order:
+       1) KYCTemporary (Save & Continue)
+       2) KycSubmission (Final Saved Data)
+       3) KycUserInfo (Base Policyholder Info)
+    Always forces file URLs from model FileFields (submission.*.url)
+    """
 
+    policy_no = request.GET.get("policy_no")
     if not policy_no:
         messages.error(request, "Missing policy number.")
         return redirect("/")
 
-    # 1. POLICY
+    # Policy
     try:
         policy = KycPolicy.objects.get(policy_number=policy_no)
     except KycPolicy.DoesNotExist:
         messages.error(request, "Invalid policy number.")
         return redirect("/")
 
-    # 2. USER
+    # User
     try:
         user = KycUserInfo.objects.get(user_id=policy.user_id)
     except KycUserInfo.DoesNotExist:
         messages.error(request, "User not found.")
         return redirect("/")
 
-    # 3. BLOCK ALREADY DONE
+    # Redirect verified/pending
     if user.kyc_status in ["PENDING", "VERIFIED"]:
         return redirect(f"/dashboard/?policy_no={policy_no}")
 
-    # 4. BASIC USER INFO
-    user_info = model_to_dict(user, exclude=["password"])
+    # 1) User info
+    user_info = safe_model_dict(model_to_dict(user, exclude=["password"]))
 
-    # 5. SUBMISSION (if exists)
+    # 2) Submission data
     try:
         submission = KycSubmission.objects.get(user=user)
-        submission_data = model_to_dict(
-            submission,
-            exclude=["id", "submitted_at", "user"]
+        submission_data = safe_model_dict(
+            model_to_dict(submission, exclude=["id", "user", "submitted_at"])
         )
     except KycSubmission.DoesNotExist:
+        submission = None
         submission_data = {}
 
-    # 6. MERGE
-    merged = {**user_info, **submission_data}
+    # 3) Temp draft
+    try:
+        temp = KYCTemporary.objects.get(policy_no=policy_no)
+        temp_data = safe_model_dict(temp.data_json)
+    except KYCTemporary.DoesNotExist:
+        temp_data = {}
 
-    # ==================================================================
-    # 7. FULL FIELD-NAME MAPPING (HTML ← MODEL EXACT MATCH)
-    # ==================================================================
+    # Merge priority: temp > submission > user
+    merged = {**user_info, **submission_data, **temp_data}
 
+    # Start final prefill output
     fixed = {}
 
-    # --------------------------
-    # PERSONAL DETAILS
-    # --------------------------
-    fixed["first_name"] = merged.get("first_name")
-    fixed["middle_name"] = merged.get("middle_name")
-    fixed["last_name"] = merged.get("last_name")
-    fixed["full_name_nep"] = merged.get("full_name_nep")
-    fixed["email"] = merged.get("email")
+    # Copy simple fields directly
+    simple_fields = [
+        # Personal
+        "salutation", "first_name", "middle_name", "last_name", "full_name_nep",
+        "email", "mobile", "gender", "nationality", "marital_status",
+        "dob_ad", "dob_bs", "dob_bs_auto",
 
-    # Phone number
-    fixed["mobile"] = merged.get("phone_number")
+        # Family
+        "spouse_name", "father_name", "mother_name", "grand_father_name",
+        "father_in_law_name", "son_name", "daughter_name", "daughter_in_law_name",
 
-    # Gender / Marital / Salutation
-    fixed["gender"] = merged.get("gender")
-    fixed["marital_status"] = merged.get("marital_status")
-    fixed["salutation"] = merged.get("salutation")
-    fixed["nationality"] = merged.get("nationality")
+        # Documents (text info)
+        "citizenship_no", "citizen_bs", "citizen_ad", "citizenship_place",
+        "passport_no", "nid_no",
 
-    # DOB AD → HTML field name
-    if merged.get("dob"):
-        fixed["dob_ad"] = merged["dob"].isoformat()
-        fixed["dob_bs_auto"] = fixed["dob_ad"]  # JS converts to BS
+        # Permanent Address
+        "perm_province", "perm_district", "perm_municipality", "perm_ward",
+        "perm_address", "perm_house_number",
 
-    # --------------------------
-    # FAMILY DETAILS
-    # --------------------------
-    fixed["spouse_name"] = merged.get("spouse_name")
-    fixed["father_name"] = merged.get("father_name")
-    fixed["mother_name"] = merged.get("mother_name")
-    fixed["grand_father_name"] = merged.get("grand_father_name")
-    fixed["father_in_law_name"] = merged.get("father_in_law_name")
-    fixed["son_name"] = merged.get("son_name")
-    fixed["daughter_name"] = merged.get("daughter_name")
-    fixed["daughter_in_law_name"] = merged.get("daughter_in_law_name")
+        # Temporary Address
+        "temp_province", "temp_district", "temp_municipality", "temp_ward",
+        "temp_address", "temp_house_number",
 
-    # --------------------------
-    # CITIZENSHIP / DOCUMENTS
-    # --------------------------
-    fixed["citizenship_no"] = merged.get("citizenship_no")
-    fixed["citizen_bs"] = merged.get("citizen_bs")
+        # Bank
+        "bank_name", "bank_branch", "account_number", "account_type", "branch_name",
 
-    if merged.get("citizen_ad"):
-        fixed["citizen_ad"] = merged["citizen_ad"].isoformat()
+        # Occupation
+        "occupation", "occupation_description", "income_mode", "annual_income",
+        "income_source", "pan_number", "qualification", "employer_name", "office_address",
 
-    fixed["citizenship_place"] = merged.get("citizenship_issued_place")
-    fixed["passport_no"] = merged.get("passport_no")
-    fixed["nid_no"] = merged.get("nid_no")
+        # Nominee
+        "nominee_name", "nominee_relation", "nominee_dob_ad", "nominee_dob_bs",
+        "nominee_contact", "guardian_name", "guardian_relation",
 
-    # --------------------------
-    # PERMANENT ADDRESS
-    # --------------------------
-    fixed["perm_province"] = merged.get("perm_province")
-    fixed["perm_district"] = merged.get("perm_district")
-    fixed["perm_municipality"] = merged.get("perm_municipality")
-    fixed["perm_ward"] = merged.get("perm_ward")
-    fixed["perm_address"] = merged.get("perm_address")
-    fixed["perm_house_number"] = merged.get("perm_house_number")
+        # AML / PEP
+        "is_pep", "is_aml",
 
-    # --------------------------
-    # TEMPORARY ADDRESS
-    # --------------------------
-    fixed["temp_province"] = merged.get("temp_province")
-    fixed["temp_district"] = merged.get("temp_district")
-    fixed["temp_municipality"] = merged.get("temp_municipality")
-    fixed["temp_ward"] = merged.get("temp_ward")
-    fixed["temp_address"] = merged.get("temp_address")
-    fixed["temp_house_number"] = merged.get("temp_house_number")
+        "_current_step"
+    ]
 
-    # --------------------------
-    # BANK DETAILS
-    # --------------------------
-    fixed["bank_name"] = merged.get("bank_name")
-    fixed["branch_name"] = merged.get("bank_branch")
-    fixed["account_number"] = merged.get("bank_account_number")
-    fixed["account_type"] = merged.get("bank_account_type")
+    for f in simple_fields:
+        fixed[f] = merged.get(f)
 
-    # --------------------------
-    # OCCUPATION
-    # --------------------------
-    fixed["occupation"] = merged.get("occupation")
-    fixed["occupation_description"] = merged.get("occupation_description")
-    fixed["income_mode"] = merged.get("income_mode")
-    fixed["annual_income"] = merged.get("annual_income")
-    fixed["income_source"] = merged.get("income_source")
-    fixed["pan_number"] = merged.get("pan_number")
-    fixed["qualification"] = merged.get("qualification")
-    fixed["employer_name"] = merged.get("employer_name")
-    fixed["office_address"] = merged.get("office_address")
+    # --------------------------------------------
+    # Normalize marital_status (fix radio prefill)
+    # --------------------------------------------
+    ms = merged.get("marital_status")
 
-    # --------------------------
-    # NOMINEE
-    # --------------------------
-    fixed["nominee_name"] = merged.get("nominee_name")
-    fixed["nominee_relation"] = merged.get("nominee_relation")
+    if ms:
+        # Convert: married → Married, unmarried → Unmarried
+        ms = str(ms).strip().title()
+    else:
+        ms = None
+    fixed["marital_status"] = ms
 
-    if merged.get("nominee_dob_ad"):
-        fixed["nominee_dob_ad"] = merged["nominee_dob_ad"].isoformat()
-        fixed["nominee_dob_bs_auto"] = fixed["nominee_dob_ad"]
+    # ---------------------------------------------------------------
+    # FORCE FILE URLs FROM MODEL (NOT JSON)
+    # ---------------------------------------------------------------
+    if submission:
+        fixed["photo_url"] = submission.photo.url if submission.photo else None
+        fixed["citizenship_front_url"] = submission.citizenship_front.url if submission.citizenship_front else None
+        fixed["citizenship_back_url"] = submission.citizenship_back.url if submission.citizenship_back else None
+        fixed["signature_url"] = submission.signature.url if submission.signature else None
+        fixed["passport_doc_url"] = submission.passport_doc.url if submission.passport_doc else None
 
-    fixed["nominee_contact"] = merged.get("nominee_contact")
-    fixed["guardian_name"] = merged.get("guardian_name")
-    fixed["guardian_relation"] = merged.get("guardian_relation")
+        # Additional docs
+        fixed["additional_docs"] = submission.additional_docs or []
 
-    # --------------------------
-    # PEP / AML
-    # --------------------------
-    fixed["is_pep"] = merged.get("is_pep")
-    fixed["is_aml"] = merged.get("is_aml")
+        # NID (stored separately)
+        fixed["nid_url"] = merged.get("nid_url")
+    else:
+        # No submission yet
+        fixed["photo_url"] = None
+        fixed["citizenship_front_url"] = None
+        fixed["citizenship_back_url"] = None
+        fixed["signature_url"] = None
+        fixed["passport_doc_url"] = None
+        fixed["additional_docs"] = merged.get("additional_docs", [])
+        fixed["nid_url"] = merged.get("nid_url")
 
-    # ==================================================================
-    # 8. JSON OUTPUT
-    # ==================================================================
+    # ---------------------------------------------------------------
+    # Return final prefill
+    # ---------------------------------------------------------------
     prefill_json = json.dumps(fixed, ensure_ascii=False)
 
     return render(request, "kyc_form_update.html", {
@@ -497,31 +509,249 @@ def kyc_form_view(request):
         "prefill_json": prefill_json
     })
 
-
-def dashboard_view(request):
-    return render(request, "dashboard.html", {
-        "policy_no": request.GET.get("policy_no")
-    })
-
-
-def agent_dashboard_view(request):
-    return render(request, "dashboard.html", {
-        "agent_code": request.GET.get("agent_code")
-    })
-
-
+# -----------------------------------------------------------------------------
+# Final submission handler (exposed for form POST)
+# -----------------------------------------------------------------------------
+@csrf_exempt
 def kyc_form_submit(request):
+    """
+    Final KYC submission endpoint used by the regular form POST.
+    It delegates to process_kyc_submission (same logic).
+    """
     if request.method != "POST":
-        messages.error(request, "Invalid request!", extra_tags="error")
+        messages.error(request, "Invalid request!")
         return redirect("/")
 
     policy_no = request.POST.get("policy_no")
-    messages.success(request, "Your KYC form has been submitted.", extra_tags="success")
-    return redirect(f"/dashboard/?policy_no={policy_no}")
+    try:
+        user = process_kyc_submission(request)
+        messages.success(request, "Your KYC form has been successfully submitted.")
+        return redirect(f"/dashboard/?policy_no={policy_no}")
+    except Exception as e:
+        traceback.print_exc()
+        messages.error(request, f"KYC submission failed: {e}")
+        return redirect(f"/kyc-form/?policy_no={policy_no}")
 
-# ------------------------------------------------------------------
-# ADMIN LOGIN
-# ------------------------------------------------------------------
+
+# -----------------------------------------------------------------------------
+# process_kyc_submission  (callable by view + possible service re-use)
+# -----------------------------------------------------------------------------
+@csrf_exempt
+def process_kyc_submission(request):
+    """
+    Final KYC submission handler.
+    - Accepts POST form-data (multipart)
+    - Merges saved draft + new data
+    - Saves all files (photo, citizenship, passport, signature)
+    - Writes BACK file URLs into data_json so frontend can show previews
+    - Marks user KYC status as PENDING
+    - Returns updated user
+    """
+
+    # ---------------------------------------------------------------
+    # Basic validation
+    # ---------------------------------------------------------------
+    raw_json = request.POST.get("kyc_data")
+    policy_no = request.POST.get("policy_no")
+
+    if not policy_no:
+        raise Exception("Missing policy number.")
+
+    try:
+        parsed = json.loads(raw_json) if raw_json else {}
+        
+    except Exception:
+        parsed = {}
+
+    # ---------------------------------------------------------------
+    # Merge draft data saved via save-progress
+    # ---------------------------------------------------------------
+    try:
+        temp = KYCTemporary.objects.get(policy_no=policy_no)
+        temp_data = temp.data_json or {}
+    except KYCTemporary.DoesNotExist:
+        temp, temp_data = None, {}
+
+    merged = {**temp_data, **parsed}
+
+    # ---------------------------------------------------------------
+    # Load User + Policy
+    # ---------------------------------------------------------------
+    try:
+        policy = KycPolicy.objects.get(policy_number=policy_no)
+        user = KycUserInfo.objects.get(user_id=policy.user_id)
+    except Exception:
+        raise Exception("User or policy not found.")
+
+    # ---------------------------------------------------------------
+    # Update user basic fields
+    # ---------------------------------------------------------------
+    user.first_name = merged.get("first_name") or user.first_name
+    user.middle_name = merged.get("middle_name") or user.middle_name
+    user.last_name = merged.get("last_name") or user.last_name
+    user.full_name_nep = merged.get("full_name_nep") or user.full_name_nep
+    user.email = merged.get("email") or user.email
+    user.phone_number = merged.get("mobile") or user.phone_number
+
+    if merged.get("dob_ad"):
+        try:
+            user.dob = datetime.strptime(merged["dob_ad"], "%Y-%m-%d").date()
+        except Exception:
+            pass
+
+    # When user resubmits, set status back to pending
+    user.kyc_status = "PENDING"
+    user.save()
+
+    # ---------------------------------------------------------------
+    # Load or create submission record
+    # ---------------------------------------------------------------
+    try:
+        submission = KycSubmission.objects.get(user=user)
+    except KycSubmission.DoesNotExist:
+        submission = KycSubmission(user=user)
+
+    # ---------------------------------------------------------------
+    # Normalize boolean helper
+    # ---------------------------------------------------------------
+    def _norm_bool(v):
+        if v is None:
+            return False
+        s = str(v).strip().lower()
+        return s in ("1", "true", "yes", "y")
+
+    # ---------------------------------------------------------------
+    # Copy mapped fields
+    # ---------------------------------------------------------------
+    field_map = [
+        # Personal
+        "salutation", "first_name", "middle_name", "last_name", "full_name_nep",
+        "gender","marital_status", "nationality", "dob_ad", "dob_bs", "email", "mobile",
+
+        # Family
+        "spouse_name", "father_name", "mother_name", "grand_father_name",
+        "father_in_law_name", "son_name", "daughter_name", "daughter_in_law_name",
+
+        # Documents
+        "citizenship_no", "citizen_bs", "citizen_ad", "citizenship_place",
+        "passport_no", "nid_no",
+
+        # Permanent
+        "perm_province", "perm_district", "perm_municipality", "perm_ward",
+        "perm_address", "perm_house_number",
+
+        # Temporary
+        "temp_province", "temp_district", "temp_municipality", "temp_ward",
+        "temp_address", "temp_house_number",
+
+        # Bank
+        "bank_name", "account_number", "account_type", "branch_name",
+
+        # Occupation
+        "occupation", "occupation_description",
+        "income_mode", "annual_income", "income_source", "pan_number",
+        "qualification", "employer_name", "office_address",
+
+        # Nominee
+        "nominee_name", "nominee_relation", "nominee_dob_ad", "nominee_dob_bs",
+        "nominee_contact", "guardian_name", "guardian_relation",
+    ]
+
+    for f in field_map:
+        if f in merged:
+            setattr(submission, f, merged[f])
+
+    # Map branch_name to bank_branch
+    if merged.get("branch_name"):
+        submission.bank_branch = merged["branch_name"]
+
+    # Convert AD dates
+    for df in ("dob_ad", "citizen_ad", "nominee_dob_ad"):
+        if merged.get(df):
+            try:
+                setattr(submission, df, datetime.strptime(merged[df], "%Y-%m-%d").date())
+            except Exception:
+                pass
+
+    # AML / PEP
+    submission.is_pep = _norm_bool(merged.get("is_pep"))
+    submission.is_aml = _norm_bool(merged.get("is_aml"))
+
+    # ---------------------------------------------------------------
+    # File Save Helpers
+    # ---------------------------------------------------------------
+    dest_folder = f"kyc/{user.user_id}"
+
+    def _save_file(request_key, model_field):
+        """Save uploaded file and return final URL."""
+        file_obj = request.FILES.get(request_key)
+        if file_obj:
+            saved_path, url = save_uploaded_file_to_storage(file_obj, dest_folder)
+            getattr(submission, model_field).save(get_valid_filename(file_obj.name), file_obj, save=False)
+            return url
+        return None
+
+    # Save each known file field
+    photo_url = _save_file("photo", "photo")
+    cit_front_url = _save_file("citizenship-front", "citizenship_front")
+    cit_back_url = _save_file("citizenship-back", "citizenship_back")
+    signature_url = _save_file("signature", "signature")
+    passport_doc_url = _save_file("passport_doc", "passport_doc")
+
+    # ---------------------------------------------------------------
+    # NID handling (special case)
+    # ---------------------------------------------------------------
+    nid_url = None
+    nid_file = request.FILES.get("nid")
+
+    if nid_file:
+        saved_path, nid_url = save_uploaded_file_to_storage(nid_file, dest_folder)
+        try:
+            KycDocument.objects.create(
+                user=user,
+                doc_type="NID",
+                file_path=saved_path,
+                file_name=get_valid_filename(nid_file.name),
+            )
+        except Exception:
+            pass
+    else:
+        nid_url = merged.get("nid_url") or merged.get("nid")
+
+    # Additional docs
+    submission.additional_docs = merged.get("additional_docs", [])
+
+    # ---------------------------------------------------------------
+    # WRITE BACK ALL FILE URLs INTO JSON FOR PREFILL
+    # ---------------------------------------------------------------
+    merged["photo_url"] = photo_url or (submission.photo.url if submission.photo else None)
+    merged["citizenship_front_url"] = cit_front_url or (submission.citizenship_front.url if submission.citizenship_front else None)
+    merged["citizenship_back_url"] = cit_back_url or (submission.citizenship_back.url if submission.citizenship_back else None)
+    merged["signature_url"] = signature_url or (submission.signature.url if submission.signature else None)
+    merged["passport_doc_url"] = passport_doc_url or (submission.passport_doc.url if submission.passport_doc else None)
+    merged["nid_url"] = nid_url
+
+    # Additional docs returned for frontend
+    merged["additional_docs"] = submission.additional_docs
+
+    # Store full JSON
+    submission.data_json = merged
+    submission.save()
+
+    # Remove draft
+    if temp:
+        try:
+            temp.delete()
+        except Exception:
+            pass
+
+    return user
+
+
+
+# -----------------------------------------------------------------------------
+# Admin views
+# -----------------------------------------------------------------------------
 def admin_login(request):
     if request.method == "GET":
         return render(request, "admin_login.html")
@@ -539,12 +769,10 @@ def admin_login(request):
         messages.error(request, "Admin user not found!", extra_tags="error")
         return redirect("/auth/admin/")
 
-    # Validate password
     if admin.password != password:
         messages.error(request, "Incorrect password!", extra_tags="error")
         return redirect("/auth/admin/")
 
-    # Store login session
     request.session["admin_logged_in"] = True
     request.session["admin_id"] = admin.id
     request.session["admin_username"] = admin.username
@@ -553,23 +781,16 @@ def admin_login(request):
     return redirect("/rjbcl-admin/dashboard/")
 
 
-
-# ------------------------------------------------------------------
-# ADMIN DASHBOARD
-# ------------------------------------------------------------------
 def admin_dashboard(request):
     if not request.session.get("admin_id"):
         messages.error(request, "Please login as admin.", extra_tags="error")
         return redirect("/rjbcl-admin/login/")
 
-    # Stats
     total_kyc = KycUserInfo.objects.count()
     pending_kyc = KycUserInfo.objects.filter(kyc_status="PENDING").count()
     approved_kyc = KycUserInfo.objects.filter(kyc_status="VERIFIED").count()
 
-    # FIXED: order by user_id, not id
     recent = KycUserInfo.objects.order_by("-user_id")[:10]
-
     data = [{
         "policy_no": u.user_id,
         "name": f"{u.first_name} {u.last_name}",
@@ -586,49 +807,152 @@ def admin_dashboard(request):
     })
 
 
-
-# ------------------------------------------------------------------
-# ADMIN LOGOUT
-# ------------------------------------------------------------------
 def admin_logout(request):
-    request.session.flush()   # Clears all session data
+    request.session.flush()
     messages.success(request, "You have been logged out.", extra_tags="success")
     return redirect("/rjbcl-admin/login/")
 
-# ------------------------------------------------------------------
-# POLICYHOLDER LOGOUT
-# ------------------------------------------------------------------
-def policy_logout(request):
-    request.session.flush()   # Clear all session data (safe)
-    messages.success(request, "You have been logged out.", extra_tags="success")
 
-    # Redirect to the active policy login tab
+def policy_logout(request):
+    request.session.flush()
+    messages.success(request, "You have been logged out.", extra_tags="success")
     return redirect("/auth/policy/?tab=policy")
 
 
-# ------------------------------------------------------------------
-# KYC FORM SUBMISSION HANDLER
-# ------------------------------------------------------------------
+# -----------------------------------------------------------------------------
+# Save KYC progress endpoint (AJAX multipart)
+# -----------------------------------------------------------------------------
+@csrf_exempt
+@require_POST
+def save_kyc_progress(request):
+    """
+    Endpoint for Save & Continue (AJAX).
+    Accepts multipart/form-data and returns JSON with saved file URLs and counts.
+    """
+    policy_no = request.POST.get("policy_no")
+    raw_json = request.POST.get("kyc_data")
 
-import traceback
-
-def kyc_form_submit(request):
-    if request.method != "POST":
-        messages.error(request, "Invalid request!", extra_tags="error")
-        return redirect("/")
+    if not policy_no:
+        return JsonResponse({"error": "Missing policy number"}, status=400)
 
     try:
-        user = process_kyc_submission(request)
-        policy_no = request.POST.get("policy_no")
+        parsed = json.loads(raw_json) if raw_json else {}
+    except Exception:
+        return JsonResponse({"error": "Invalid JSON"}, status=400)
+    # Ensure marital_status is preserved from form POST (radio button)
+    if "marital_status" in request.POST:
+        parsed["marital_status"] = request.POST.get("marital_status")
 
-        messages.success(request, "Your KYC form has been successfully submitted.", extra_tags="success")
-        return redirect(f"/dashboard/?policy_no={policy_no}")
+    if not isinstance(parsed, dict):
+        parsed = {}
 
-    except Exception as e:
-        print("\n============== KYC SUBMISSION ERROR ===============")
-        print("Error:", e)
-        traceback.print_exc()
-        print("===================================================\n")
+    # Make folder path for temporary files
+    safe_folder = f"kyc/temp/{policy_no}"
+    saved_files = {}
 
-        messages.error(request, f"KYC submission failed: {e}", extra_tags="error")
-        return redirect(f"/kyc-form/?policy_no={request.POST.get('policy_no')}")
+    # helper to save and return url
+    def _save(field_name, file_obj):
+        if not file_obj:
+            return None
+        saved_path, url = save_uploaded_file_to_storage(file_obj, safe_folder)
+        return saved_path, url
+
+    # mapping known files to keys returned in JSON
+    single_file_map = {
+        "photo": "photo_url",
+        "citizenship-front": "citizenship_front_url",
+        "citizenship-back": "citizenship_back_url",
+        "signature": "signature_url",
+        "passport_doc": "passport_doc_url",
+    }
+
+    for field_name, json_key in single_file_map.items():
+        fobj = request.FILES.get(field_name)
+        if fobj:
+            try:
+                saved_path, url = _save(field_name, fobj)
+                if url:
+                    parsed[json_key] = url
+                    saved_files[json_key] = url
+            except ValidationError as e:
+                return JsonResponse({"error": str(e)}, status=400)
+            except Exception as e:
+                return JsonResponse({"error": f"Failed to save {field_name}: {e}"}, status=500)
+
+    # Handle NID upload (store as KycDocument and include nid_url in parsed)
+    nid_file = request.FILES.get("nid")
+    if nid_file:
+        try:
+            # save to temp folder
+            saved_path, url = _save("nid", nid_file)
+            if url:
+                parsed["nid_url"] = url
+                saved_files["nid_url"] = url
+            # create KycDocument if user exists
+            try:
+                policy = KycPolicy.objects.get(policy_number=policy_no)
+                user = KycUserInfo.objects.get(user_id=policy.user_id)
+                KycDocument.objects.create(
+                    user=user,
+                    doc_type="NID",
+                    file_path=saved_path,
+                    file_name=get_valid_filename(nid_file.name)
+                )
+            except Exception:
+                # don't fail the whole save if doc creation fails
+                pass
+        except ValidationError as e:
+            return JsonResponse({"error": str(e)}, status=400)
+        except Exception as e:
+            return JsonResponse({"error": f"Failed to save nid: {e}"}, status=500)
+
+    # Additional docs dynamic handling (additional_doc_1, additional_doc_2, ...)
+    additional_docs_in_payload = parsed.get("additional_docs", [])
+    collected_additional = []
+
+    MAX_ADD_DOCS = 12
+    for i in range(1, MAX_ADD_DOCS + 1):
+        name_key = f"additional_doc_name_{i}"
+        file_field = f"additional_doc_{i}"
+        name_val = request.POST.get(name_key) or None
+        file_obj = request.FILES.get(file_field)
+
+        if name_val or file_obj:
+            entry = {"index": i, "doc_name": name_val or ""}
+            if file_obj:
+                try:
+                    spath, url = _save(file_field, file_obj)
+                    entry["file_url"] = url
+                except ValidationError as e:
+                    return JsonResponse({"error": str(e)}, status=400)
+                except Exception as e:
+                    return JsonResponse({"error": f"Failed to save {file_field}: {e}"}, status=500)
+            else:
+                # preserve existing file_url from parsed(payload) if present
+                existing = next((x for x in additional_docs_in_payload if x.get("index") == i), None)
+                entry["file_url"] = existing.get("file_url") if existing else ""
+            collected_additional.append(entry)
+
+    if collected_additional:
+        parsed["additional_docs"] = collected_additional
+
+    # Normalize _current_step if present
+    try:
+        if "_current_step" in parsed:
+            parsed["_current_step"] = int(parsed["_current_step"])
+    except Exception:
+        parsed["_current_step"] = parsed.get("_current_step", 1)
+
+    # Persist or update KYCTemporary
+    KYCTemporary.objects.update_or_create(
+        policy_no=policy_no,
+        defaults={"data_json": parsed}
+    )
+
+    return JsonResponse({
+        "status": "saved",
+        "policy": policy_no,
+        "saved_files": saved_files,
+        "additional_docs_count": len(parsed.get("additional_docs", []))
+    })
+

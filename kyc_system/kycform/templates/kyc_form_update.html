@@ -77,13 +77,35 @@
                   <img id="photoPreview" src="{% static 'images/default-avatar.png' %}" alt="Photo">
                 </div>
                 <div class="photo-upload-controls">
-                  <label class="form-label">Passport Size Photo <span class="text-danger">*</span></label>
+              
+                  <label class="form-label">
+                    Passport Size Photo <span class="text-danger">*</span>
+                  </label>
                   <p class="form-text">Supports jpg, jpeg and png. 300KB max.</p>
-                  <input type="file" id="photoUpload" name="photo" accept="image/*" style="display:none;" required>
+              
+                  <!-- FILE INPUT (patched) -->
+                  <input type="file" id="photoUpload" name="photo" accept="image/*" data-preview="photo"
+                    data-existing="{{ prefill_json.photo_url|default:'' }}" style="display:none;" required>
+              
+                  <!-- UPLOAD BUTTON -->
                   <button id="photoBtn" type="button" class="btn btn-outline-primary btn-sm mb-1"
-                    onclick="document.getElementById('photoUpload').click()">Upload</button>
-                  <button type="button" class="btn btn-link btn-sm text-danger" id="removePhoto">Remove</button>
+                    onclick="document.getElementById('photoUpload').click()">
+                    Upload
+                  </button>
+              
+                  <!-- REMOVE BUTTON -->
+                  <button type="button" class="btn btn-link btn-sm text-danger" id="removePhoto">
+                    Remove
+                  </button>
+              
+                  <!-- PREVIEW CONTAINER (patched) -->
+                  <div id="photo_preview" class="mt-2">
+                    {% if prefill_json.photo_url %}
+                    <img src="{{ prefill_json.photo_url }}" class="uploaded-preview-img" style="max-height: 140px;">
+                    {% endif %}
+                  </div>
                 </div>
+              
               </div>
 
               <!-- Name Fields -->
@@ -736,11 +758,28 @@
             </div>
 
             <!-- Navigation Buttons -->
-            <div class="form-navigation">
-              <button type="button" class="btn btn-outline-secondary" id="prevBtn" style="display:none;">Previous</button>
-              <button type="button" class="btn btn-primary" id="nextBtn">Continue</button>
-              <button type="submit" class="btn btn-success" id="submitBtn" style="display:none;">पेश गर्नुहोस् / Submit</button>
+            <div class="form-navigation d-flex gap-2">
+              <button type="button" class="btn btn-outline-secondary" id="prevBtn" style="display:none;">
+                Previous
+              </button>
+            
+              <button type="button" class="btn btn-dark" id="saveBtn">
+                Save
+              </button>
+            
+              <button type="button" class="btn btn-warning" id="saveContinueBtn">
+                Save & Continue
+              </button>
+            
+              <button type="button" class="btn btn-primary" id="nextBtn">
+                Continue
+              </button>
+            
+              <button type="submit" class="btn btn-success" id="submitBtn" style="display:none;">
+                पेश गर्नुहोस् / Submit
+              </button>
             </div>
+
           </form>
         </div>
       </div>
@@ -770,7 +809,7 @@
 <!-- IMPORTANT: load LAST so it overrides everything -->
 <script src="{% static 'js/date-conversion.js' %}"></script>
 <!-- <script src="{% static 'js/date-conversion.js' %}?v=777"></script> -->
-
+<script src="{% static 'kycform/js/occupations.js' %}"></script>
   <script>
     // Get policy number from URL
     const params = new URLSearchParams(window.location.search);

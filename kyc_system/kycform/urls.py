@@ -47,4 +47,10 @@ urlpatterns = [
     # -------------------------------
     path("forgot-password/", views.forgot_password, name="forgot_password"),
     path("reset-password/", views.reset_password, name="reset_password"),
+
+    # -------------------------------
+    # SAVE PROGRESS ENDPOINT
+    # -------------------------------
+    path("save-progress/", views.save_kyc_progress, name="save_kyc_progress"),
+
 ]
