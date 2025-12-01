@@ -122,8 +122,6 @@ $(document).ready(function () {
   // ===========================
   // SECURITY ENHANCEMENTS
   // ===========================
-  // Prevent form autocomplete for sensitive fields
-  // $('input[type="password"]').attr('autocomplete', 'new-password');
 
   // Clear password fields on page load (security measure)
   $('input[type="password"]').val('');
