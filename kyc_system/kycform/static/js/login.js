@@ -59,8 +59,8 @@ $(document).ready(function () {
 
     if (msgTags.includes('success')) {
       showSuccessMessage(msgText);
-    } else if (msgTags.includes('error') || msgTags.includes('danger')) {
-      showErrorMessage('Invalid Credentials');
+    } else if (msgText.includes('Incorrect password!') || msgText.includes('Invalid policy number or user not found.')|| msgText.includes('Agent code not found!')) {
+      showErrorMessage("Invalid Credentials. Please Try Again!");
     } else if (msgTags.includes('warning')) {
       showErrorMessage(msgText);
     } else {
@@ -73,6 +73,7 @@ $(document).ready(function () {
   // ===========================
   $('form').on('submit', function (e) {
     const form = $(this);
+    debugger;
     const submitBtn = form.find('button[type="submit"]');
 
     // Clear previous errors
@@ -97,7 +98,7 @@ $(document).ready(function () {
 
     // Disable submit button to prevent double submission
     submitBtn.prop('disabled', true);
-    submitBtn.html('<span class="spinner-border spinner-border-sm me-2"></span>Signing in...');
+    submitBtn.html('<span class="spinner-border spinner-border-sm me-2"></span>Please Wait...');
   });
 
   // Remove invalid class on input
@@ -161,6 +162,11 @@ $(document).ready(function () {
       $field.removeClass('is-invalid');
     }
   });
+    // USER REGISTRATION DATE PICKER INITIALIZATION
+  $("#user_dob_bs").NepaliDatePicker();
+  $("#user_dob_ad").on("focus", function () {
+    this.showPicker();
+  });
 
 });
 
@@ -179,9 +185,9 @@ function showErrorMessage(message) {
   const errorEl = $('.error-message');
   errorEl.text(message);
   errorEl.fadeIn(300);
-  
+
   // Auto-hide after 5 seconds
-  setTimeout(function() {
+  setTimeout(function () {
     errorEl.fadeOut(300);
   }, 5000);
 }
@@ -198,8 +204,8 @@ function showSuccessMessage(message) {
   if (successEl.length) {
     successEl.text(message);
     successEl.fadeIn(300);
-    
-    setTimeout(function() {
+
+    setTimeout(function () {
       successEl.fadeOut(300);
     }, 5000);
   } else {
@@ -208,9 +214,9 @@ function showSuccessMessage(message) {
     errorEl.text(message);
     errorEl.removeClass('text-danger').addClass('text-success');
     errorEl.fadeIn(300);
-    
-    setTimeout(function() {
-      errorEl.fadeOut(300, function() {
+
+    setTimeout(function () {
+      errorEl.fadeOut(300, function () {
         errorEl.removeClass('text-success').addClass('text-danger');
       });
     }, 5000);
@@ -235,15 +241,17 @@ $('.register-link').on('click', function () {
 });
 
 // SWITCH TAB BASED ON URL PARAMETER
-        window.activeTab = "{{ active_tab }}";
-        (function () {
-            try {
-                const params = new URLSearchParams(window.location.search);
-                const tab = params.get('tab');
-                if (tab && (tab === 'agent' || tab === 'policy')) {
-                    window.activeTab = tab;
-                }
-            } catch (e) {
-                // ignore if URLSearchParams not supported (very old browsers)
-            }
-        })();
+window.activeTab = "{{ active_tab }}";
+(function () {
+  try {
+    const params = new URLSearchParams(window.location.search);
+    const tab = params.get('tab');
+    if (tab && (tab === 'agent' || tab === 'policy')) {
+      window.activeTab = tab;
+    }
+  } catch (e) {
+    // ignore if URLSearchParams not supported (very old browsers)
+  }
+})();
+
+

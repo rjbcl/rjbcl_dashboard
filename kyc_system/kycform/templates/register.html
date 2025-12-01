@@ -16,6 +16,7 @@
 
     <!-- Custom CSS -->
     <link rel="stylesheet" href="{% static 'css/login.css' %}">
+    <link rel="stylesheet" href="{% static 'css/nepali.datepicker.v5.0.6.min.css' %}">
 </head>
 
 <body>
@@ -44,7 +45,7 @@
                     </div>
 
                     <!-- Tab Buttons -->
-                    <div class="tab-buttons">
+                    <div class="tab-buttons" style="display: none;">
                         <button type="button" class="tab-btn active" data-tab="policy">
                             Policy Holder
                         </button>
@@ -64,48 +65,57 @@
                     <div class="form-container active" id="policyFormWrapper">
                         <form id="policyForm" method="POST" action="{% url 'kyc:policy_register' %}" autocomplete="off">
                             {% csrf_token %}
-
-                            <!-- Autofill blockers -->
-                            <input type="text" name="fakeusernameremembered" style="display:none" tabindex="-1">
-                            <input type="password" name="fakepasswordremembered" style="display:none" tabindex="-1">
-
+                            <div class="row g-1 mb-1">
+                                <h5 class="border-bottom pb-2 mb-3 fw-bold">
+                                    User Registration
+                                </h5>
+                            </div>
                             <div class="row g-2">
                                 <div class="col-md-6">
                                     <div class="form-group">
                                         <label class="form-label">First Name</label>
-                                        <input class="form-control" name="first_name" id="first-name"
-                                            placeholder="John" autocomplete="off" required>
+                                        <input class="form-control" name="first_name" id="first-name" placeholder="John"
+                                            autocomplete="off" required>
                                     </div>
                                 </div>
                                 <div class="col-md-6">
                                     <div class="form-group">
                                         <label class="form-label">Last Name</label>
-                                        <input class="form-control" name="last_name" id="last-name"
-                                            placeholder="Doe" autocomplete="off" required>
+                                        <input class="form-control" name="last_name" id="last-name" placeholder="Doe"
+                                            autocomplete="off" required>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="row g-2">
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label class="form-label">DOB (BS)</label>
+                                        <input class="form-control" name="dob_bs" type="text" id="user_dob_bs" placeholder="MM/DD/YYYY" autocomplete="bday" required >
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label class="form-label">DOB (AD)</label>
+                                        <input class="form-control" name="dob_ad" type="date" id="user_dob_ad" required>
                                     </div>
                                 </div>
                             </div>
 
                             <div class="form-group">
-                                <label class="form-label">Email Address</label>
-                                <input class="form-control" name="email" type="email" id="email"
-                                    placeholder="john.doe@example.com" autocomplete="new-password" required>
-                            </div>
-
-                            <div class="form-group">
                                 <label class="form-label">Mobile Number</label>
-                                <input class="form-control" name="mobile" id="mobile"
-                                    placeholder="98XXXXXXXX" autocomplete="off" required>
+                                <input class="form-control" name="mobile" id="mobile" placeholder="98XXXXXXXX"
+                                    autocomplete="off" required>
                             </div>
 
                             <div class="form-group">
                                 <label class="form-label">Policy Number</label>
-                                <input class="form-control" name="policy_number" id="policy-number"
-                                    placeholder="POL123" autocomplete="off" required>
+                                <input class="form-control" name="policy_number" id="policy-number" placeholder="POL123"
+                                    autocomplete="off" required>
                             </div>
 
                             <div class="form-footer mb-2">
-                                <div>    
+                                <div>
                                     <span class="error-message text-danger"><i class="bi"></i> </span>
                                 </div>
                             </div>
@@ -126,15 +136,17 @@
                         </form>
                     </div>
 
-                    <!-- AGENT REGISTRATION FORM -->
+                    <!-- RGISTRATION FORM -->
                     <div class="form-container" id="agentFormWrapper">
                         <form id="agentForm" method="POST" action="{% url 'kyc:agent_register' %}" autocomplete="off">
                             {% csrf_token %}
 
-                            <!-- Autofill blockers -->
-                            <input type="text" name="fakeusernameremembered" style="display:none" tabindex="-1">
-                            <input type="password" name="fakepasswordremembered" style="display:none" tabindex="-1">
 
+                            <div class="row g-1 mb-1">
+                                <h5 class="border-bottom pb-2 mb-3 fw-bold">    
+                                    Agent Registration
+                                </h5>
+                            </div>
                             <div class="row g-2">
                                 <div class="col-md-6">
                                     <div class="form-group">
@@ -159,15 +171,15 @@
                             </div>
 
                             <div class="form-group">
-                                <label class="form-label">Email Address</label>
-                                <input class="form-control" name="email" type="email" id="agent-email"
-                                    placeholder="agent@example.com" autocomplete="new-password" required>
+                                <label class="form-label">License Number</label>
+                                <input class="form-control" name="License_no" type="text" id="License_no"
+                                    placeholder="LIC-XXX" required>
                             </div>
-                            
+
                             <div class="form-group">
                                 <label class="form-label">Agent Code</label>
-                                <input class="form-control" name="agent_code" id="agent-code" 
-                                    placeholder="AGT123" autocomplete="off" required>
+                                <input class="form-control" name="agent_code" id="agent_code" placeholder="AGT123"
+                                    autocomplete="off" required>
                             </div>
 
                             <div class="form-footer mb-2">
@@ -206,6 +218,8 @@
 
     <!-- Custom JS -->
     <script src="{% static 'js/login.js' %}"></script>
+    <script src="{% static 'js/nepali.datepicker.v5.0.6.min.js' %}"></script>
+    <script src="{% static 'js/date-conversion.js' %}"></script>
 
 </body>
 
