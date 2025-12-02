@@ -324,6 +324,9 @@ $(function () {
     layout: 'traditional',  // Options: 'romanized' or 'traditional'
     enable: true
   });
+  $(function() {
+});
+
   // ============================
   // 4. Spouse Name Manupulation
   // =============================
@@ -883,5 +886,10 @@ $(document).ready(function () {
 
 
 
-
+$("#nep-first-name").on("input", function() {
+    let value = $(this).val();
+    // Allow only Devanagari characters (U+0900–U+097F) and spaces
+    value = value.replace(/[^\u0900-\u097F\s]/g, '');
+    $(this).val(value);
+  });
 
