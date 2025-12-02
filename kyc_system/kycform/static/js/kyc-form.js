@@ -403,25 +403,25 @@ $(function () {
     }
 
     // Permanent Address
-    populateProvince($('#perm-province'));
+    populateProvince($('#perm_province'));
 
-    $('#perm-province').on('change', function () {
-      populateDistricts($(this).val(), $('#perm-district'), $('#perm-muni'));
+    $('#perm_province').on('change', function () {
+      populateDistricts($(this).val(), $('#perm_district'), $('#perm_muni'));
     });
 
-    $('#perm-district').on('change', function () {
-      populateMunicipalities($('#perm-province').val(), $(this).val(), $('#perm-muni'));
+    $('#perm_district').on('change', function () {
+      populateMunicipalities($('#perm_province').val(), $(this).val(), $('#perm_muni'));
     });
 
     // Temporary Address
-    populateProvince($('#temp-province'));
+    populateProvince($('#temp_province'));
 
-    $('#temp-province').on('change', function () {
-      populateDistricts($(this).val(), $('#temp-district'), $('#temp-muni'));
+    $('#temp_province').on('change', function () {
+      populateDistricts($(this).val(), $('#temp_district'), $('#temp_muni'));
     });
 
-    $('#temp-district').on('change', function () {
-      populateMunicipalities($('#temp-province').val(), $(this).val(), $('#temp-muni'));
+    $('#temp_district').on('change', function () {
+      populateMunicipalities($('#temp_province').val(), $(this).val(), $('#temp_muni'));
     });
   }
 
@@ -430,6 +430,7 @@ $(function () {
     .done(function (data) {
       console.log('✅ Loaded Nepal location data');
       initAddressCascade(data);
+      console.log(data)
     })
     .fail(function () {
       console.error('⚠️ Could not load nepal_locations.json');
@@ -446,32 +447,32 @@ $(function () {
   // =============================
   $('#sameAddress').on('change', function () {
     if ($(this).is(':checked')) {
-      const permProvince = $('#perm-province').val();
-      const permDistrict = $('#perm-district').val();
-      const permMuni = $('#perm-muni').val();
-      const permWard = $('#perm-ward').val();
-      const permAddress = $('#perm-address').val();
-      const permHouse = $('#perm-house-number').val();
+      const permProvince = $('#perm_province').val();
+      const permDistrict = $('#perm_district').val();
+      const permMuni = $('#perm_muni').val();
+      const permWard = $('#perm_ward').val();
+      const permAddress = $('#perm_address').val();
+      const permHouse = $('#perm_house_number').val();
 
-      $('#temp-province').val(permProvince).trigger('change');
+      $('#temp_province').val(permProvince).trigger('change');
 
       setTimeout(() => {
-        $('#temp-district').val(permDistrict).trigger('change');
+        $('#temp_district').val(permDistrict).trigger('change');
 
         setTimeout(() => {
-          $('#temp-muni').val(permMuni);
-          $('#temp-ward').val(permWard);
-          $('#temp-address').val(permAddress);
-          $('#temp-house-number').val(permHouse);
+          $('#temp_muni').val(permMuni);
+          $('#temp_ward').val(permWard);
+          $('#temp_address').val(permAddress);
+          $('#temp_house_number').val(permHouse);
 
         }, 100);
       }, 100);
 
       // Disable temporary address fields
-      $('#temp-province, #temp-district, #temp-muni, #temp-ward, #temp-address, #temp-house-number').prop('disabled', true);
+      $('#temp_province, #temp_district, #temp_muni, #temp_ward, #temp_address, #temp_house_number').prop('disabled', true);
     } else {
       // Enable temporary address fields
-      $('#temp-province, #temp-district, #temp-muni, #temp-ward, #temp-address, #temp-house-number').prop('disabled', false);
+      $('#temp_province, #temp_district, #temp_muni, #temp_ward, #temp_address, #temp_house_number').prop('disabled', false);
     }
   });
   // =============================
@@ -558,10 +559,10 @@ $(function () {
   $(document).ready(function () {
     // Fields that should be affected
     const dependentFields = [
-      { input: '#annual-income' },
-      { input: '#income-mode' },
-      { input: '#income-source' },
-      { input: '#pan-number' },
+      { input: '#annual_income' },
+      { input: '#income_mode' },
+      { input: '#income_source' },
+      { input: '#pan_number' },
     ];
 
     function updateFieldRequirements() {
@@ -577,7 +578,7 @@ $(function () {
             .removeClass('is-invalid') // Remove validation error class
             .val(''); // Optional: clear the value
           console.log(field.input)
-          if (field.input === '#income-mode') {
+          if (field.input === '#income_mode') {
             $(field.input).prop('disabled', true);
           }
           // Remove the asterisk from label
@@ -620,8 +621,8 @@ $(function () {
 
 
   // ****************Further Occupation Description when Other*****************
-  const occupationDescDiv = $('#occupation-description').closest('.mb-3');
-  const occupationDescInput = $('#occupation-description');
+  const occupationDescDiv = $('#occupation_description').closest('.mb-3');
+  const occupationDescInput = $('#occupation_description');
 
   $('#occupation').on('change', function () {
     const selectedValue = $(this).val();
@@ -678,7 +679,7 @@ $(function () {
     }).then((result) => {
       if (result.isConfirmed) {
         // Re-enable disabled fields before submission
-        $('#temp-province, #temp-district, #temp-muni, #temp-ward, #temp-address, #temp-house-number').prop('disabled', false);
+        $('#temp_province, #temp_district, #temp_muni, #temp_ward, #temp_address, #temp_house_number').prop('disabled', false);
 
         // Show loading
         Swal.fire({
