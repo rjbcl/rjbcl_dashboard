@@ -27,12 +27,14 @@ from django.urls import reverse
 from django.utils.text import get_valid_filename
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
+from django.core.exceptions import PermissionDenied
 from django.contrib import messages
 
 from .models import (
     KycUserInfo, KycAgentInfo, KycPolicy, KycAdmin,
     KycSubmission, KycDocument, KYCTemporary
 )
+
 
 # -----------------------------------------------------------------------------
 # Utilities
@@ -369,7 +371,7 @@ def kyc_form_view(request):
        3) KycUserInfo (Base Policyholder Info)
     Always forces file URLs from model FileFields (submission.*.url)
     """
-
+    
     policy_no = request.GET.get("policy_no")
     if not policy_no:
         messages.error(request, "Missing policy number.")
@@ -414,7 +416,18 @@ def kyc_form_view(request):
         temp_data = {}
 
     # Merge priority: temp > submission > user
-    merged = {**user_info, **submission_data, **temp_data}
+    # Merge priority: temp > submission > user
+    merged = user_info.copy()
+
+    # Apply submission second
+    for k, v in submission_data.items():
+        if v not in [None, "", []]:
+         merged[k] = v
+
+    # Apply temp last (highest priority, even if empty string)
+    for k, v in temp_data.items():
+        if v not in [None, "", []]:
+            merged[k] = v
 
     # Start final prefill output
     fixed = {}
@@ -458,6 +471,7 @@ def kyc_form_view(request):
 
         "_current_step"
     ]
+    
 
     for f in simple_fields:
         fixed[f] = merged.get(f)
@@ -500,6 +514,13 @@ def kyc_form_view(request):
         fixed["nid_url"] = merged.get("nid_url")
 
     # ---------------------------------------------------------------
+    # NOW CHECK LOCK STATUS (Correct Position)
+    # ---------------------------------------------------------------
+    if submission and submission.is_lock:
+        if not request.user.is_superuser:
+            messages.error(request, "This KYC is locked after verification. Only super admin can modify.")
+            return redirect(f"/dashboard/?policy_no={policy_no}")
+    # ---------------------------------------------------------------
     # Return final prefill
     # ---------------------------------------------------------------
     prefill_json = json.dumps(fixed, ensure_ascii=False)
@@ -515,23 +536,52 @@ def kyc_form_view(request):
 @csrf_exempt
 def kyc_form_submit(request):
     """
-    Final KYC submission endpoint used by the regular form POST.
-    It delegates to process_kyc_submission (same logic).
+    Handles final POST submission of the KYC form.
+    Before processing:
+       - Checks if KYCSubmission exists
+       - Checks if it is locked
+       - Allows override only for superusers
     """
+
     if request.method != "POST":
-        messages.error(request, "Invalid request!")
+        messages.error(request, "Invalid request method!")
         return redirect("/")
 
     policy_no = request.POST.get("policy_no")
+    if not policy_no:
+        messages.error(request, "Policy number missing.")
+        return redirect("/")
+
+    # Get policy + user
     try:
-        user = process_kyc_submission(request)
+        policy = KycPolicy.objects.get(policy_number=policy_no)
+        user_info = KycUserInfo.objects.get(user_id=policy.user_id)
+    except Exception:
+        messages.error(request, "Invalid policy/user.")
+        return redirect("/")
+
+    # Check if a submission already exists (locked cases)
+    existing_sub = KycSubmission.objects.filter(user=user_info).first()
+
+    if existing_sub and existing_sub.is_lock:
+        # Allow only superusers to override locked KYC
+        if not request.user.is_superuser:
+            messages.error(
+                request,
+                "This KYC form is locked after verification and cannot be modified."
+            )
+            return redirect(f"/dashboard/?policy_no={policy_no}")
+
+    # Safe submission handling
+    try:
+        process_kyc_submission(request)
         messages.success(request, "Your KYC form has been successfully submitted.")
         return redirect(f"/dashboard/?policy_no={policy_no}")
+
     except Exception as e:
         traceback.print_exc()
         messages.error(request, f"KYC submission failed: {e}")
         return redirect(f"/kyc-form/?policy_no={policy_no}")
-
 
 # -----------------------------------------------------------------------------
 # process_kyc_submission  (callable by view + possible service re-use)

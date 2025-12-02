@@ -461,7 +461,7 @@ $(document).ready(function () {
 
   async function loadOccupations() {
     try {
-      const res = await fetch('/static/occupations.json');
+      const res = await fetch('/static/json/occupations.json');
       const data = await res.json();
       const occupations = data.occupations || [];
       occupations.sort((a, b) => a.name.localeCompare(b.name));
@@ -607,6 +607,27 @@ async function ajaxSaveKycProgress() {
     formArray.forEach(item => {
         jsonData[item.name] = item.value;
     });
+
+    // --------------------------------------
+// FORCE CAPTURE OF PERMANENT ADDRESS
+// --------------------------------------
+jsonData["perm_province"]      = $("#perm_province").val() || null;
+jsonData["perm_district"]      = $("#perm_district").val() || null;
+jsonData["perm_municipality"]  = $("#perm_muni").val() || null;
+jsonData["perm_ward"]          = $("#perm_ward").val() || null;
+jsonData["perm_address"]       = $("#perm_address").val() || null;
+jsonData["perm_house_number"]  = $("#perm_house_number").val() || null;
+
+// --------------------------------------
+// FORCE CAPTURE OF TEMPORARY ADDRESS
+// --------------------------------------
+jsonData["temp_province"]      = $("#temp_province").val() || null;
+jsonData["temp_district"]      = $("#temp_district").val() || null;
+jsonData["temp_municipality"]  = $("#temp_muni").val() || null;
+jsonData["temp_ward"]          = $("#temp_ward").val() || null;
+jsonData["temp_address"]       = $("#temp_address").val() || null;
+jsonData["temp_house_number"]  = $("#temp_house_number").val() || null;
+
 
     // Fix radios manually (ensures marital_status, gender, is_pep, is_aml always saved)
     const radioNames = ["marital_status", "gender", "is_pep", "is_aml"];
@@ -904,8 +925,86 @@ $("#saveContinueBtn").off("click").on("click", async function (e) {
       }, 150);
     });
 
+        // ---------- Extra prefills & fallbacks ----------
+    // 1) Ensure radios (marital_status, gender, is_pep, is_aml) always get set
+    (function ensureRadios() {
+      ['marital_status','gender','is_pep','is_aml'].forEach(name => {
+        if (data[name] !== undefined && data[name] !== null && String(data[name]).trim() !== "") {
+          const val = String(data[name]).trim();
+          const $r = $(`input[name="${name}"][value="${val}"]`);
+          if ($r.length) {
+            $r.prop('checked', true).trigger('change');
+          } else {
+            // some backends send booleans for is_pep/is_aml (true/false) — handle 'true'/'false'
+            const alt = (val === 'true' || val === 'True') ? 'true' : (val === 'false' || val === 'False') ? 'false' : null;
+            if (alt) {
+              $(`input[name="${name}"][value="${alt}"]`).prop('checked', true).trigger('change');
+            }
+          }
+        }
+      });
+    })();
+
+    // 2) Branch name fallback: accept either 'branch_name' or 'bank_branch'
+    (function fillBranch() {
+      const branchVal = data.branch_name || data.bank_branch || data.bank_branch_name || "";
+      if (branchVal && document.querySelector('input[name="branch_name"]')) {
+        document.querySelector('input[name="branch_name"]').value = branchVal;
+      }
+      // also try a common id if you use one
+      if (branchVal && document.getElementById('branch_name')) {
+        document.getElementById('branch_name').value = branchVal;
+      }
+    })();
+
+    // 3) Temporary address retry: if temp fields exist in data with alternate keys, copy them
+    (function fixTempAddressDelayed() {
+      const d = window.prefill_data;
+      if (!d) return;
+
+      // Stage 1: province
+      setTimeout(() => {
+        if (d.temp_province) {
+          $("#temp_province").val(d.temp_province).trigger("change");
+        }
+      }, 300);
+
+      // Stage 2: district (after province loads)
+      setTimeout(() => {
+        if (d.temp_district) {
+          $("#temp_district").val(d.temp_district).trigger("change");
+        }
+      }, 600);
+
+      // Stage 3: municipality (after district loads)
+      setTimeout(() => {
+        if (d.temp_municipality) {
+          $("#temp_muni").val(d.temp_municipality).trigger("change");
+        }
+      }, 900);
+
+      // Ward, address, house number (plain fields)
+      setTimeout(() => {
+        if (d.temp_ward) $("#temp_ward").val(d.temp_ward);
+        if (d.temp_address) $("#temp_address").val(d.temp_address);
+        if (d.temp_house_number) $("#temp_house_number").val(d.temp_house_number);
+      }, 950);
+    })();
+
+
+
     log("=== PREFILL DONE ===");
   }
+
+  // ensure prefill runs after all data sources arrive
+(function waitForAllData() {
+  let have = { loc: false, bank: false, occ: false, date: false };
+  document.addEventListener('locationDataReady', () => { have.loc = true; if (have.bank && have.occ && have.date) runKycPrefill(); });
+  document.addEventListener('bankDataReady',     () => { have.bank = true; if (have.loc && have.occ && have.date) runKycPrefill(); });
+  document.addEventListener('occupationDataReady',() => { have.occ = true; if (have.loc && have.bank && have.date) runKycPrefill(); });
+  document.addEventListener('NepaliDatepickerReady', () => { have.date = true; if (have.loc && have.bank && have.occ) runKycPrefill(); });
+})();
+
 
   // Show saved files if present in data (data === window.prefill_data)
 function showSavedFiles() {

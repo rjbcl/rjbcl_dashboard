@@ -67,10 +67,12 @@ class KycSubmission(models.Model):
         on_delete=models.CASCADE,
         related_name="submission"
     )
-
     # Backup full JSON of all fields
     data_json = models.JSONField(default=dict, blank=True)
 
+    is_lock = models.BooleanField(default=False)   # NEW FIELD
+    locked_at = models.DateTimeField(null=True, blank=True)
+    locked_by = models.CharField(max_length=200, null=True, blank=True)   # NEW
     # -------------------------
     # PERSONAL
     # -------------------------
