@@ -61,6 +61,21 @@
 
       <!-- Main Content -->
       <div class="col-md-9 main-content">
+        {% if rejection_message %}
+        <div style="
+            background:#ffe6e6;
+            padding:14px;
+            border-left:6px solid #cc0000;
+            margin-bottom:20px;
+            border-radius:4px;
+            font-size:15px;
+            color:#7a0000;
+        ">
+          <strong>Your KYC was rejected.</strong><br>
+          {{ rejection_message }}
+        </div>
+        {% endif %}
+
         <div class="form-container">
           <form id="kycForm" method="POST" action="{% url 'kyc:kyc_submit' %}" enctype="multipart/form-data">
             {% csrf_token %}
@@ -716,13 +731,13 @@
                     <div class="row align-items-end mb-3">
                       <div class="col-md-6">
                         <label class="form-label">Document Name</label>
-                        <input type="text" name="additional_doc_name_1" class="form-control" autocomplete="off"
+                        <input type="text" name="additional_doc_name" class="form-control" autocomplete="off"
                           placeholder="e.g., Passport, License, etc.">
                       </div>
                       <div class="col-md-6">
                         <label class="form-label">Attach Document</label>
                         <div class="document-upload-inline" id="additionalDoc1Container">
-                          <input type="file" id="additionalDoc1Upload" name="additional_doc_1"
+                          <input type="file" id="additionalDoc1Upload" name="additional_docs"
                             accept="image/*,application/pdf" style="display:none;">
                           <button type="button" class="btn btn-outline-secondary btn-sm"
                             onclick="document.getElementById('additionalDoc1Upload').click()">

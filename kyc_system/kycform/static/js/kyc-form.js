@@ -665,19 +665,20 @@ jsonData["temp_house_number"]  = $("#temp_house_number").val() || null;
             fd.append(item.name, el.files[0], el.files[0].name);
         }
     });
+// Additional dynamic docs
+$(".additional-doc-item").each(function () {
+    const idx = $(this).data("doc-index");
+    const nameInput = $(this).find(`input[name="additional_doc_name_${idx}"]`);
+    const fileInput = $(this).find(`#additionalDoc${idx}Upload`)[0];
 
-    // Additional dynamic docs
-    $(".additional-doc-item").each(function () {
-        const idx = $(this).data("doc-index");
-        const nameInput = $(this).find(`input[name="additional_doc_name_${idx}"]`);
-        const fileInput = $(this).find(`#additionalDoc${idx}Upload`)[0];
+    // Send doc display name (optional)
+    fd.append("additional_doc_names[]", nameInput.val() || "");
 
-        fd.append(`additional_doc_name_${idx}`, nameInput.val() || "");
-
-        if (fileInput && fileInput.files.length > 0) {
-            fd.append(`additional_doc_${idx}`, fileInput.files[0], fileInput.files[0].name);
-        }
-    });
+    // FIX: send file under SAME FIELD NAME additional_docs
+    if (fileInput && fileInput.files.length > 0) {
+        fd.append("additional_docs", fileInput.files[0]);
+    }
+});
 
     // Show loading
     Swal.fire({
@@ -868,18 +869,19 @@ $("#saveContinueBtn").off("click").on("click", async function (e) {
     setTimeout(fillBSDates, 900);
 
     // ------------------------
-    // Fix marital status radio
-    // ------------------------
-    if (data.marital_status) {
-      const ms = String(data.marital_status).trim().toLowerCase();
+// Fix marital status radio
+// ------------------------
+if (data.marital_status) {
+    const ms = String(data.marital_status).trim().toLowerCase();
 
-      $("input[name='marital_status']").each(function () {
-        if ($(this).val().trim().toLowerCase() === ms) {
-          this.checked = true;
-          $(this).trigger("change");  // activates spouse-name required logic
+    $("input[name='marital_status']").each(function () {
+        if (String($(this).val()).trim().toLowerCase() === ms) {
+            this.checked = true;
+            $(this).trigger("change");
         }
-      });
-    }
+    });
+}
+
 
 
     // 3) dynamic selects (retry until options available)

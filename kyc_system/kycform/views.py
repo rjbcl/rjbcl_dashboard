@@ -12,6 +12,7 @@ Full views.py for KYC form handling.
 
 import json
 import os
+import uuid
 import traceback
 import urllib.request
 from datetime import datetime, date
@@ -24,9 +25,13 @@ from django.forms.models import model_to_dict
 from django.http import JsonResponse
 from django.shortcuts import render, redirect
 from django.urls import reverse
+from django.db import transaction
+from django.core.files import File
 from django.utils.text import get_valid_filename
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
+from django.utils.text import get_valid_filename
+from django.utils import timezone
 from django.core.exceptions import PermissionDenied
 from django.contrib import messages
 
@@ -34,6 +39,7 @@ from .models import (
     KycUserInfo, KycAgentInfo, KycPolicy, KycAdmin,
     KycSubmission, KycDocument, KYCTemporary
 )
+from .storage_utils import save_uploaded_file_to_storage 
 
 
 # -----------------------------------------------------------------------------
@@ -365,40 +371,58 @@ def reset_password(request):
 def kyc_form_view(request):
     """
     Loads KYC update form with full prefill data.
-    Priority order:
-       1) KYCTemporary (Save & Continue)
-       2) KycSubmission (Final Saved Data)
-       3) KycUserInfo (Base Policyholder Info)
-    Always forces file URLs from model FileFields (submission.*.url)
+    Priority:
+        1) KYCTemporary (Save & Continue)
+        2) KycSubmission (Final saved submission)
+        3) KycUserInfo (Base info)
+
+    This version:
+        - Fixes marital_status wiping issues
+        - Normalizes married/unmarried
+        - Ensures correct file URLs
+        - Adds rejection_message for frontend
+        - Prevents empty values overwriting valid ones
     """
-    
+
     policy_no = request.GET.get("policy_no")
     if not policy_no:
         messages.error(request, "Missing policy number.")
         return redirect("/")
 
-    # Policy
+    # Load policy
     try:
         policy = KycPolicy.objects.get(policy_number=policy_no)
     except KycPolicy.DoesNotExist:
         messages.error(request, "Invalid policy number.")
         return redirect("/")
 
-    # User
+    # Load Base User
     try:
         user = KycUserInfo.objects.get(user_id=policy.user_id)
     except KycUserInfo.DoesNotExist:
         messages.error(request, "User not found.")
         return redirect("/")
 
-    # Redirect verified/pending
+    # Stop verified or pending
     if user.kyc_status in ["PENDING", "VERIFIED"]:
         return redirect(f"/dashboard/?policy_no={policy_no}")
 
-    # 1) User info
+    # ---------------------------------
+    # REJECTION MESSAGE FOR FRONTEND
+    # ---------------------------------
+    rejection_message = None
+    if user.kyc_status == "REJECTED":
+        try:
+            sub = KycSubmission.objects.get(user=user)
+            rejection_message = sub.rejection_comment or "Your KYC was rejected. Please review and resubmit."
+        except KycSubmission.DoesNotExist:
+            rejection_message = "Your KYC was rejected. Please review and resubmit."
+
+    # ---------------------------------
+    # LOAD THREE SOURCES
+    # ---------------------------------
     user_info = safe_model_dict(model_to_dict(user, exclude=["password"]))
 
-    # 2) Submission data
     try:
         submission = KycSubmission.objects.get(user=user)
         submission_data = safe_model_dict(
@@ -408,103 +432,97 @@ def kyc_form_view(request):
         submission = None
         submission_data = {}
 
-    # 3) Temp draft
     try:
         temp = KYCTemporary.objects.get(policy_no=policy_no)
         temp_data = safe_model_dict(temp.data_json)
     except KYCTemporary.DoesNotExist:
         temp_data = {}
 
-    # Merge priority: temp > submission > user
-    # Merge priority: temp > submission > user
+    # ---------------------------------
+    # MERGE PRIORITY (temp > submission > user)
+    # ---------------------------------
     merged = user_info.copy()
 
-    # Apply submission second
+    # apply submission second
     for k, v in submission_data.items():
-        if v not in [None, "", []]:
-         merged[k] = v
-
-    # Apply temp last (highest priority, even if empty string)
-    for k, v in temp_data.items():
-        if v not in [None, "", []]:
+        if v not in [None, "", [], {}]:
             merged[k] = v
 
-    # Start final prefill output
-    fixed = {}
+    # apply temp highest priority
+    for k, v in temp_data.items():
+        if v not in [None, "", [], {}]:
+            merged[k] = v
 
-    # Copy simple fields directly
+    # SAFE Fix: do NOT read marital_status from user (it doesn't exist in model)
+    # Only temp > submission determines marital_status
+    if merged.get("marital_status") in [None, "", "null", "None"]:
+        merged["marital_status"] = None
+
+
+    # ---------------------------------
+    # START FINAL PREFILL OUTPUT
+    # ---------------------------------
+    fixed = {}
     simple_fields = [
-        # Personal
         "salutation", "first_name", "middle_name", "last_name", "full_name_nep",
         "email", "mobile", "gender", "nationality", "marital_status",
         "dob_ad", "dob_bs", "dob_bs_auto",
 
-        # Family
         "spouse_name", "father_name", "mother_name", "grand_father_name",
         "father_in_law_name", "son_name", "daughter_name", "daughter_in_law_name",
 
-        # Documents (text info)
         "citizenship_no", "citizen_bs", "citizen_ad", "citizenship_place",
         "passport_no", "nid_no",
 
-        # Permanent Address
         "perm_province", "perm_district", "perm_municipality", "perm_ward",
         "perm_address", "perm_house_number",
 
-        # Temporary Address
         "temp_province", "temp_district", "temp_municipality", "temp_ward",
         "temp_address", "temp_house_number",
 
-        # Bank
         "bank_name", "bank_branch", "account_number", "account_type", "branch_name",
 
-        # Occupation
         "occupation", "occupation_description", "income_mode", "annual_income",
         "income_source", "pan_number", "qualification", "employer_name", "office_address",
 
-        # Nominee
         "nominee_name", "nominee_relation", "nominee_dob_ad", "nominee_dob_bs",
         "nominee_contact", "guardian_name", "guardian_relation",
 
-        # AML / PEP
-        "is_pep", "is_aml",
-
-        "_current_step"
+        "is_pep", "is_aml", "_current_step"
     ]
-    
 
+    # Apply fields
     for f in simple_fields:
         fixed[f] = merged.get(f)
 
-    # --------------------------------------------
-    # Normalize marital_status (fix radio prefill)
-    # --------------------------------------------
+    # ---------------------------------
+    # FINAL CLEAN NORMALIZATION OF marital_status
+    # ---------------------------------
     ms = merged.get("marital_status")
 
     if ms:
-        # Convert: married → Married, unmarried → Unmarried
-        ms = str(ms).strip().title()
+        s = str(ms).strip().lower()
+        if s in ["married", "m", "1", "yes", "true", "विवाहित"]:
+            fixed["marital_status"] = "Married"
+        elif s in ["unmarried", "single", "u", "0", "no", "false", "अविवाहित"]:
+            fixed["marital_status"] = "Unmarried"
+        else:
+            fixed["marital_status"] = None
     else:
-        ms = None
-    fixed["marital_status"] = ms
+        fixed["marital_status"] = None
 
-    # ---------------------------------------------------------------
-    # FORCE FILE URLs FROM MODEL (NOT JSON)
-    # ---------------------------------------------------------------
+    # ---------------------------------
+    # FILE URL MAPPING
+    # ---------------------------------
     if submission:
         fixed["photo_url"] = submission.photo.url if submission.photo else None
         fixed["citizenship_front_url"] = submission.citizenship_front.url if submission.citizenship_front else None
         fixed["citizenship_back_url"] = submission.citizenship_back.url if submission.citizenship_back else None
         fixed["signature_url"] = submission.signature.url if submission.signature else None
         fixed["passport_doc_url"] = submission.passport_doc.url if submission.passport_doc else None
-
-        # Additional docs
         fixed["additional_docs"] = submission.additional_docs or []
-
-        # NID (stored separately)
         fixed["nid_url"] = merged.get("nid_url")
     else:
-        # No submission yet
         fixed["photo_url"] = None
         fixed["citizenship_front_url"] = None
         fixed["citizenship_back_url"] = None
@@ -513,22 +531,24 @@ def kyc_form_view(request):
         fixed["additional_docs"] = merged.get("additional_docs", [])
         fixed["nid_url"] = merged.get("nid_url")
 
-    # ---------------------------------------------------------------
-    # NOW CHECK LOCK STATUS (Correct Position)
-    # ---------------------------------------------------------------
-    if submission and submission.is_lock:
-        if not request.user.is_superuser:
-            messages.error(request, "This KYC is locked after verification. Only super admin can modify.")
-            return redirect(f"/dashboard/?policy_no={policy_no}")
-    # ---------------------------------------------------------------
-    # Return final prefill
-    # ---------------------------------------------------------------
+    # ---------------------------------
+    # LOCK CHECK
+    # ---------------------------------
+    if submission and submission.is_lock and not request.user.is_superuser:
+        messages.error(request, "This KYC is locked after verification. Only super admin can modify.")
+        return redirect(f"/dashboard/?policy_no={policy_no}")
+
+    # ---------------------------------
+    # SEND DATA TO FRONTEND
+    # ---------------------------------
     prefill_json = json.dumps(fixed, ensure_ascii=False)
 
     return render(request, "kyc_form_update.html", {
         "policy_no": policy_no,
-        "prefill_json": prefill_json
+        "prefill_json": prefill_json,
+        "rejection_message": rejection_message,
     })
+
 
 # -----------------------------------------------------------------------------
 # Final submission handler (exposed for form POST)
@@ -583,24 +603,290 @@ def kyc_form_submit(request):
         messages.error(request, f"KYC submission failed: {e}")
         return redirect(f"/kyc-form/?policy_no={policy_no}")
 
-# -----------------------------------------------------------------------------
-# process_kyc_submission  (callable by view + possible service re-use)
-# -----------------------------------------------------------------------------
-@csrf_exempt
+# ------------------------------------------------------------------
+# Helper: save files and create KycDocument audit rows (single source)
+# ------------------------------------------------------------------
+
+# Adjust these according to policy/regulator requirements
+MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024  # 10 MB
+ALLOWED_EXTENSIONS = {".jpg", ".jpeg", ".png", ".pdf"}
+ALLOWED_CONTENT_TYPES = {"image/jpeg", "image/png", "application/pdf"}
+
+def _validate_uploaded_file(uploaded_file):
+    """
+    Raise ValidationError if the file is not allowed.
+    Checks content_type and extension and size.
+    """
+    # size
+    if uploaded_file.size > MAX_FILE_SIZE_BYTES:
+        raise ValidationError(f"File too large: {uploaded_file.size} bytes (max {MAX_FILE_SIZE_BYTES})")
+
+    # content type
+    ctype = getattr(uploaded_file, "content_type", None)
+    if ctype and ctype not in ALLOWED_CONTENT_TYPES:
+        raise ValidationError(f"Disallowed content type: {ctype}")
+
+    # extension
+    _, ext = os.path.splitext(uploaded_file.name or "")
+    ext = ext.lower()
+    if ext not in ALLOWED_EXTENSIONS:
+        raise ValidationError(f"Disallowed file extension: {ext}")
+
+def _safe_uuid_filename(original_name):
+    """
+    Build a sanitized filename: <uuid4><ext>
+    Keeps extension for content-type mapping.
+    """
+    _, ext = os.path.splitext(original_name or "")
+    ext = ext.lower()
+    return f"{uuid.uuid4().hex}{ext or ''}"
+
+@transaction.atomic
+def _save_files_and_submission(request, user, submission=None, actor=None):
+    """
+    Save uploaded files to disk (via FileField.save), create KycDocument audit rows,
+    maintain submission.additional_docs JSON, and return (submission, urls, additional_struct).
+
+    actor: optional dict or string to include in metadata (e.g., {"actor":"agent","id":...}) for audit logs.
+    """
+    print("DEBUG additional_docs LIST =", request.FILES.getlist("additional_docs"))
+
+    if not submission:
+        submission, _ = KycSubmission.objects.get_or_create(user=user)
+
+    # Prepare return structures
+    urls = {}
+    # copy to avoid mutating original in error cases
+    additional_struct = list(submission.additional_docs) if submission.additional_docs else []
+
+    # mapping: form-field-name -> (submission_attr_name, doc_type, url_key)
+    single_file_map = {
+        "photo": ("photo", "PHOTO", "photo_url"),
+        "citizenship-front": ("citizenship_front", "CITIZENSHIP_FRONT", "citizenship_front_url"),
+        "citizenship-back": ("citizenship_back", "CITIZENSHIP_BACK", "citizenship_back_url"),
+        "signature": ("signature", "SIGNATURE", "signature_url"),
+        "passport_doc": ("passport_doc", "ADDITIONAL", "passport_doc_url"),
+        "nid": ("nid_file", "NID", "nid_url"),
+    }
+
+    # Helper to persist file into a KycDocument and link to submission
+    def _create_kyc_document(uploaded_file, doc_type, submission, user, original_filename):
+        """
+        Validates, saves file to storage using FileField.save(), creates KycDocument row,
+        returns doc instance (saved).
+        """
+
+        # Validate file
+        _validate_uploaded_file(uploaded_file)
+
+        # Build safe filename
+        safe_name = _safe_uuid_filename(original_filename)
+
+        # Create KycDocument instance without file so we can call file.save() correctly
+        doc = KycDocument(
+            user=user,
+            submission=submission,
+            doc_type=doc_type,
+            file_name=get_valid_filename(original_filename),
+            metadata={"ingested_at": timezone.now().isoformat()}
+        )
+        # Save object to get an id (optional but helpful for metadata)
+        doc.save()
+
+        # Save file into the FileField using Django storage & upload_to rules
+        # Use uploaded_file (UploadedFile) directly; FileField.save handles backend naming & storage
+        doc.file.save(safe_name, uploaded_file, save=True)
+
+        # Ensure this doc is current and mark others of same type as non-current
+        KycDocument.objects.filter(user=user, doc_type=doc_type, is_current=True).exclude(id=doc.id).update(is_current=False)
+
+        # attach audit metadata (who/when)
+        meta = doc.metadata or {}
+        meta.update({
+            "uploaded_by": actor or getattr(user, "user_id", str(user)),
+            "uploaded_at": timezone.now().isoformat()
+        })
+        doc.metadata = meta
+        doc.save(update_fields=["metadata"])
+
+        return doc
+
+    # -------------------------
+    # Single-file fields loop
+    # -------------------------
+    for form_field, (sub_field, doc_type, url_key) in single_file_map.items():
+        f = request.FILES.get(form_field)
+        if not f:
+            # expose existing url if present on submission
+            existing_file = getattr(submission, sub_field, None)
+            try:
+                if existing_file and getattr(existing_file, "url", None):
+                    urls[url_key] = existing_file.url
+            except Exception:
+                # ignore storage errors
+                urls[url_key] = None
+            continue
+
+        # Validate, save into submission FileField using .save() so upload_to applies
+        try:
+            _validate_uploaded_file(f)
+        except ValidationError as e:
+            # Re-raise or attach to submission errors depending on your error handling pattern
+            raise
+
+        # sanitize original name for file_name field
+        original_filename = get_valid_filename(f.name)
+        safe_name = _safe_uuid_filename(original_filename)
+
+        # Save to submission FileField (ensures consistent storage path)
+        # We call save(False) first to set the field on the submission instance
+        getattr(submission, sub_field).save(safe_name, f, save=False)
+
+        # Create KycDocument audit row using the file saved on submission's FileField
+        # Note: Many storages require that the file is saved on the model instance itself.
+        # To ensure consistency, flush submission so the file exists in storage and url is available.
+        submission.save(update_fields=[sub_field])  # persist the file to storage
+
+        # Now create audit doc by opening the file from submission field
+        # Re-open using storage to get a File object
+        saved_file_field = getattr(submission, sub_field)
+        # saved_file_field is a FieldFile instance; pass it into doc.file.save() via File wrapper or use existing file
+        # We'll create doc and then copy file from saved_file_field to preserve storage path
+        # Easiest: instantiate a File wrapper around storage.open() (works for default storages)
+        try:
+            with saved_file_field.open("rb") as fh:
+                django_file = File(fh, name=os.path.basename(saved_file_field.name))
+                doc = KycDocument.objects.create(
+                    user=user,
+                    submission=submission,
+                    doc_type=doc_type,
+                    file_name=original_filename
+                )
+                # save file into doc.file (this will copy or reference depending on storage backend)
+                doc.file.save(django_file.name, django_file, save=True)
+        except Exception:
+            # Fallback: if storage doesn't allow open, create doc and point file to same name (may depend on storage)
+            doc = KycDocument.objects.create(
+                user=user,
+                submission=submission,
+                doc_type=doc_type,
+                file_name=original_filename,
+                file=saved_file_field  # FieldFile should be assignable in many cases
+            )
+            doc.save()
+
+        # Mark previous docs of same type as non-current
+        KycDocument.objects.filter(user=user, doc_type=doc_type, is_current=True).exclude(id=doc.id).update(is_current=False)
+        doc.is_current = True
+        doc.metadata = (doc.metadata or {})
+        doc.metadata.update({"linked_to_submission": submission.id, "linked_at": timezone.now().isoformat(), "uploaded_by": actor or getattr(user, "user_id", str(user))})
+        doc.save(update_fields=["is_current", "metadata"])
+
+        # build url (now available)
+        urls[url_key] = getattr(doc.file, "url", None)
+
+        # Update additional_struct for UI: remove any existing entry for same field and append new
+        entry = {
+            "doc_id": doc.id,
+            "file_name": doc.file_name,
+            "file_url": getattr(doc.file, "url", None),
+            "type": doc_type,
+            "field": form_field,
+            "is_current": doc.is_current,
+        }
+        additional_struct = [d for d in additional_struct if d.get("field") != form_field]
+        additional_struct.append(entry)
+
+    # -------------------------
+    # Multi-file additional_docs
+    # -------------------------
+    multi_files = request.FILES.getlist("additional_docs")
+    for uploaded in multi_files:
+        try:
+            doc = _create_kyc_document(uploaded, "ADDITIONAL", submission, user, original_filename=uploaded.name)
+        except ValidationError:
+            # handle per-file validation failures as you prefer (skip, collect errors, raise)
+            raise
+
+        additional_struct.append({
+            "doc_id": doc.id,
+            "file_name": doc.file_name,
+            "file_url": getattr(doc.file, "url", None),
+            "type": "ADDITIONAL",
+            "is_current": doc.is_current,
+        })
+
+    # -------------------------
+    # Handle removal of additional docs (frontend posted remove_additional_doc_ids)
+    # -------------------------
+    remove_ids = request.POST.getlist("remove_additional_doc_ids")
+    if remove_ids:
+        # convert to ints safely
+        try:
+            remove_ids_int = [int(x) for x in remove_ids]
+        except ValueError:
+            remove_ids_int = []
+
+        # For audit & compliance we prefer to unlink from submission and mark not-current,
+        # instead of hard-deleting rows and media files. If policy requires actual deletion,
+        # swap the update() to delete() and also remove storage files.
+        docs_to_unlink = KycDocument.objects.filter(id__in=remove_ids_int, user=user, submission=submission)
+        # record metadata before unlinking
+        now_iso = timezone.now().isoformat()
+        for d in docs_to_unlink:
+            meta = d.metadata or {}
+            meta.update({"archived_by": actor or getattr(user, "user_id", str(user)), "archived_at": now_iso})
+            d.metadata = meta
+            d.is_current = False
+            d.submission = None  # unlink from submission; FK is SET_NULL on model
+            d.save(update_fields=["metadata", "is_current", "submission"])
+
+        # Remove from additional_struct used for UI
+        additional_struct = [d for d in additional_struct if str(d.get("doc_id")) not in set(map(str, remove_ids_int))]
+
+    # -------------------------
+    # Merge frontend posted additional_docs metadata (if provided)
+    # -------------------------
+    posted_additional = request.POST.get("additional_docs")
+    if posted_additional:
+        try:
+            posted_list = json.loads(posted_additional)
+            merged_add = []
+            for p in posted_list:
+                match = next((d for d in additional_struct if d.get("file_name") == p.get("file_name") or str(d.get("doc_id")) == str(p.get("doc_id"))), None)
+                if match:
+                    match.update(p)
+                    merged_add.append(match)
+                else:
+                    merged_add.append(p)
+            additional_struct = merged_add
+        except Exception:
+            # ignore parse errors
+            pass
+
+    # Save additional_struct on submission (no file data here, only metadata)
+    submission.additional_docs = additional_struct
+
+    # Persist submission (ensure any changes to submission FileFields and additional_docs are saved)
+    submission.save()
+
+    # Build guaranteed urls map (recompute to ensure storage url is present)
+    for key, val in list(urls.items()):
+        if not val:
+            # attempt to find doc by type for submission
+            mapped = {v[1]: k for k, v in single_file_map.items()}  # doc_type -> form_field
+            # not necessary but kept for completeness
+
+    return submission, urls, additional_struct
+
+
+# ------------------------------------------------------------------
+# Main: process_kyc_submission using helper (unified flow)
+# ------------------------------------------------------------------
 def process_kyc_submission(request):
     """
-    Final KYC submission handler.
-    - Accepts POST form-data (multipart)
-    - Merges saved draft + new data
-    - Saves all files (photo, citizenship, passport, signature)
-    - Writes BACK file URLs into data_json so frontend can show previews
-    - Marks user KYC status as PENDING
-    - Returns updated user
+    Final KYC submission handler (uses single helper for file handling).
     """
-
-    # ---------------------------------------------------------------
-    # Basic validation
-    # ---------------------------------------------------------------
     raw_json = request.POST.get("kyc_data")
     policy_no = request.POST.get("policy_no")
 
@@ -609,113 +895,82 @@ def process_kyc_submission(request):
 
     try:
         parsed = json.loads(raw_json) if raw_json else {}
-        
     except Exception:
         parsed = {}
 
-    # ---------------------------------------------------------------
-    # Merge draft data saved via save-progress
-    # ---------------------------------------------------------------
+    # Load draft
     try:
         temp = KYCTemporary.objects.get(policy_no=policy_no)
         temp_data = temp.data_json or {}
     except KYCTemporary.DoesNotExist:
-        temp, temp_data = None, {}
+        temp = None
+        temp_data = {}
 
-    merged = {**temp_data, **parsed}
+    # Merge priority: temp (highest) > parsed
+    merged = {**parsed}
+    for k, v in temp_data.items():
+        # preserve temp values when non-empty
+        if v not in [None, "", [], {}]:
+            merged[k] = v
 
-    # ---------------------------------------------------------------
-    # Load User + Policy
-    # ---------------------------------------------------------------
+    # Load user & policy
     try:
         policy = KycPolicy.objects.get(policy_number=policy_no)
         user = KycUserInfo.objects.get(user_id=policy.user_id)
     except Exception:
         raise Exception("User or policy not found.")
 
-    # ---------------------------------------------------------------
-    # Update user basic fields
-    # ---------------------------------------------------------------
-    user.first_name = merged.get("first_name") or user.first_name
-    user.middle_name = merged.get("middle_name") or user.middle_name
-    user.last_name = merged.get("last_name") or user.last_name
-    user.full_name_nep = merged.get("full_name_nep") or user.full_name_nep
-    user.email = merged.get("email") or user.email
-    user.phone_number = merged.get("mobile") or user.phone_number
-
+    # Update base user fields (only if provided)
+    if merged.get("first_name"):
+        user.first_name = merged.get("first_name")
+    if merged.get("middle_name"):
+        user.middle_name = merged.get("middle_name")
+    if merged.get("last_name"):
+        user.last_name = merged.get("last_name")
+    if merged.get("full_name_nep"):
+        user.full_name_nep = merged.get("full_name_nep")
+    if merged.get("email"):
+        user.email = merged.get("email")
+    if merged.get("mobile"):
+        user.phone_number = merged.get("mobile")
     if merged.get("dob_ad"):
         try:
             user.dob = datetime.strptime(merged["dob_ad"], "%Y-%m-%d").date()
         except Exception:
             pass
 
-    # When user resubmits, set status back to pending
+    # Mark as pending (resubmission)
     user.kyc_status = "PENDING"
     user.save()
 
-    # ---------------------------------------------------------------
-    # Load or create submission record
-    # ---------------------------------------------------------------
-    try:
-        submission = KycSubmission.objects.get(user=user)
-    except KycSubmission.DoesNotExist:
-        submission = KycSubmission(user=user)
+    # Load or create submission
+    submission, _ = KycSubmission.objects.get_or_create(user=user)
 
-    # ---------------------------------------------------------------
-    # Normalize boolean helper
-    # ---------------------------------------------------------------
-    def _norm_bool(v):
-        if v is None:
-            return False
-        s = str(v).strip().lower()
-        return s in ("1", "true", "yes", "y")
-
-    # ---------------------------------------------------------------
-    # Copy mapped fields
-    # ---------------------------------------------------------------
-    field_map = [
-        # Personal
-        "salutation", "first_name", "middle_name", "last_name", "full_name_nep",
-        "gender","marital_status", "nationality", "dob_ad", "dob_bs", "email", "mobile",
-
-        # Family
-        "spouse_name", "father_name", "mother_name", "grand_father_name",
-        "father_in_law_name", "son_name", "daughter_name", "daughter_in_law_name",
-
-        # Documents
-        "citizenship_no", "citizen_bs", "citizen_ad", "citizenship_place",
-        "passport_no", "nid_no",
-
-        # Permanent
-        "perm_province", "perm_district", "perm_municipality", "perm_ward",
-        "perm_address", "perm_house_number",
-
-        # Temporary
-        "temp_province", "temp_district", "temp_municipality", "temp_ward",
-        "temp_address", "temp_house_number",
-
-        # Bank
-        "bank_name", "account_number", "account_type", "branch_name",
-
-        # Occupation
-        "occupation", "occupation_description",
-        "income_mode", "annual_income", "income_source", "pan_number",
-        "qualification", "employer_name", "office_address",
-
-        # Nominee
-        "nominee_name", "nominee_relation", "nominee_dob_ad", "nominee_dob_bs",
-        "nominee_contact", "guardian_name", "guardian_relation",
+    # Copy simple mapped fields (only if present in merged)
+    mapped_fields = [
+        "salutation","first_name","middle_name","last_name","full_name_nep",
+        "gender","marital_status","nationality","dob_ad","dob_bs","email","mobile",
+        "spouse_name","father_name","mother_name","grand_father_name",
+        "father_in_law_name","son_name","daughter_name","daughter_in_law_name",
+        "citizenship_no","citizen_bs","citizen_ad","citizenship_place",
+        "passport_no","nid_no","perm_province","perm_district","perm_municipality",
+        "perm_ward","perm_address","perm_house_number",
+        "temp_province","temp_district","temp_municipality","temp_ward","temp_address","temp_house_number",
+        "bank_name","bank_branch","account_number","account_type","branch_name",
+        "occupation","occupation_description","income_mode","annual_income","income_source",
+        "pan_number","qualification","employer_name","office_address",
+        "nominee_name","nominee_relation","nominee_dob_ad","nominee_dob_bs","nominee_contact",
+        "guardian_name","guardian_relation",
     ]
+    for f in mapped_fields:
+        if f in merged and merged.get(f) not in [None, ""]:
+            # special case: branch_name -> bank_branch
+            if f == "branch_name":
+                submission.bank_branch = merged[f]
+            else:
+                setattr(submission, f, merged[f])
 
-    for f in field_map:
-        if f in merged:
-            setattr(submission, f, merged[f])
-
-    # Map branch_name to bank_branch
-    if merged.get("branch_name"):
-        submission.bank_branch = merged["branch_name"]
-
-    # Convert AD dates
+    # Normalize AD dates for submission
     for df in ("dob_ad", "citizen_ad", "nominee_dob_ad"):
         if merged.get(df):
             try:
@@ -723,72 +978,52 @@ def process_kyc_submission(request):
             except Exception:
                 pass
 
-    # AML / PEP
+    # Normalize boolean flags
+    def _norm_bool(v):
+        if v is None:
+            return False
+        return str(v).strip().lower() in ("1", "true", "yes", "y")
+
     submission.is_pep = _norm_bool(merged.get("is_pep"))
     submission.is_aml = _norm_bool(merged.get("is_aml"))
 
-    # ---------------------------------------------------------------
-    # File Save Helpers
-    # ---------------------------------------------------------------
-    dest_folder = f"kyc/{user.user_id}"
-
-    def _save_file(request_key, model_field):
-        """Save uploaded file and return final URL."""
-        file_obj = request.FILES.get(request_key)
-        if file_obj:
-            saved_path, url = save_uploaded_file_to_storage(file_obj, dest_folder)
-            getattr(submission, model_field).save(get_valid_filename(file_obj.name), file_obj, save=False)
-            return url
-        return None
-
-    # Save each known file field
-    photo_url = _save_file("photo", "photo")
-    cit_front_url = _save_file("citizenship-front", "citizenship_front")
-    cit_back_url = _save_file("citizenship-back", "citizenship_back")
-    signature_url = _save_file("signature", "signature")
-    passport_doc_url = _save_file("passport_doc", "passport_doc")
-
-    # ---------------------------------------------------------------
-    # NID handling (special case)
-    # ---------------------------------------------------------------
-    nid_url = None
-    nid_file = request.FILES.get("nid")
-
-    if nid_file:
-        saved_path, nid_url = save_uploaded_file_to_storage(nid_file, dest_folder)
-        try:
-            KycDocument.objects.create(
-                user=user,
-                doc_type="NID",
-                file_path=saved_path,
-                file_name=get_valid_filename(nid_file.name),
-            )
-        except Exception:
-            pass
+    # If frontend passes marital_status via POST (radio) prefer POST, then merged
+    if "marital_status" in request.POST:
+        submission.marital_status = request.POST.get("marital_status")
     else:
-        nid_url = merged.get("nid_url") or merged.get("nid")
+        if merged.get("marital_status") not in [None, "", "null"]:
+            submission.marital_status = merged.get("marital_status")
 
-    # Additional docs
-    submission.additional_docs = merged.get("additional_docs", [])
+    # --------------------
+    # FILE HANDLING (single place)
+    # --------------------
+    # Call helper - it attaches files to submission (but helper does NOT call submission.save())
+    submission, urls, additional_struct = _save_files_and_submission(request, user, submission=submission)
 
-    # ---------------------------------------------------------------
-    # WRITE BACK ALL FILE URLs INTO JSON FOR PREFILL
-    # ---------------------------------------------------------------
-    merged["photo_url"] = photo_url or (submission.photo.url if submission.photo else None)
-    merged["citizenship_front_url"] = cit_front_url or (submission.citizenship_front.url if submission.citizenship_front else None)
-    merged["citizenship_back_url"] = cit_back_url or (submission.citizenship_back.url if submission.citizenship_back else None)
-    merged["signature_url"] = signature_url or (submission.signature.url if submission.signature else None)
-    merged["passport_doc_url"] = passport_doc_url or (submission.passport_doc.url if submission.passport_doc else None)
-    merged["nid_url"] = nid_url
+    # After file fields have been attached to submission, update URL keys using submission state
+    # Some storage backends expose .url only after model.save(); try direct attribute if available
+    final_urls = {
+        "photo_url": urls.get("photo_url") or (submission.photo.url if getattr(submission, "photo", None) else None),
+        "citizenship_front_url": urls.get("citizenship_front_url") or (submission.citizenship_front.url if getattr(submission, "citizenship_front", None) else None),
+        "citizenship_back_url": urls.get("citizenship_back_url") or (submission.citizenship_back.url if getattr(submission, "citizenship_back", None) else None),
+        "signature_url": urls.get("signature_url") or (submission.signature.url if getattr(submission, "signature", None) else None),
+        "passport_doc_url": urls.get("passport_doc_url") or (submission.passport_doc.url if getattr(submission, "passport_doc", None) else None),
+        "nid_url": urls.get("nid_url") or merged.get("nid_url") or None,
+    }
 
-    # Additional docs returned for frontend
-    merged["additional_docs"] = submission.additional_docs
+    # ensure additional_struct is what helper produced
+    submission.additional_docs = additional_struct
 
-    # Store full JSON
+    # Write back merged JSON for frontend prefill and audit
+    merged.update(final_urls)
+    merged["additional_docs"] = additional_struct
+
     submission.data_json = merged
-    submission.save()
+    submission.version = (submission.version or 1) + 1
+    submission.submitted_at = timezone.now()
+    submission.save()  # this writes FileFields & persists KycDocument references
 
-    # Remove draft
+    # delete draft if present
     if temp:
         try:
             temp.delete()
@@ -796,8 +1031,6 @@ def process_kyc_submission(request):
             pass
 
     return user
-
-
 
 # -----------------------------------------------------------------------------
 # Admin views
@@ -945,7 +1178,7 @@ def save_kyc_progress(request):
                 KycDocument.objects.create(
                     user=user,
                     doc_type="NID",
-                    file_path=saved_path,
+                    file=saved_path,
                     file_name=get_valid_filename(nid_file.name)
                 )
             except Exception:
@@ -1005,4 +1238,3 @@ def save_kyc_progress(request):
         "saved_files": saved_files,
         "additional_docs_count": len(parsed.get("additional_docs", []))
     })
-

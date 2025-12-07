@@ -1,0 +1,12 @@
+{% extends "admin/base_site.html" %}
+{% block content %}
+
+<h2>KYC Rejection – Enter Reason</h2>
+
+<form method="post">{% csrf_token %}
+    {{ form.as_p }}
+    <input type="hidden" name="action" value="mark_rejected">
+    <input type="submit" name="apply" value="Reject KYC" class="default">
+</form>
+
+{% endblock %}
