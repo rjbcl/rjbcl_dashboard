@@ -5,7 +5,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>राष्ट्रिय जीवन बीमा कम्पनी लिमिटेड | KYC Form</title>
+  <title>KYC Form | राष्ट्रिय जीवन बीमा कम्पनी लिमिटेड</title>
+  <link rel="icon" href="{% static 'images/favicon-logo.png' %}" type="image/png">
 
   <!-- Bootstrap (Local) -->
   <link href="{% static 'bootstrap/css/bootstrap.min.css' %}" rel="stylesheet">
@@ -18,6 +19,7 @@
   <link href="{% static 'css/sweetalert2.min.css' %}" rel="stylesheet">
 
   <!-- Custom CSS -->
+  <link href="{% static 'css/colors.css' %}" rel="stylesheet">
   <link href="{% static 'css/kyc-form.css' %}" rel="stylesheet">
 </head>
 
@@ -112,7 +114,6 @@
                   <button type="button" class="btn btn-link btn-sm text-danger" id="removePhoto">
                     Remove
                   </button>
-              
                   <!-- PREVIEW CONTAINER (patched) -->
                   <div id="photo_preview" class="mt-2">
                     {% if prefill_json.photo_url %}
@@ -151,8 +152,8 @@
               <div class="row">
                 <div class="col-md-4 mb-3">
                   <label class="form-label">Salutation</label>
-                  <select name="salutation" class="form-select">
-                    <option value="">Select</option>
+                  <select name="salutation" class="form-select no-arrow">
+                    <option value="">--</option>
                     <option value="Mr">Mr</option>
                     <option value="Mrs">Mrs</option>
                     <option value="Ms">Ms</option>
@@ -280,15 +281,16 @@
                     <div class="transparent-dark-div">
                       <div class="upload-icon">📄</div>
                       <label class="form-label text-white">Citizenship Front <span class="text-danger">*</span></label>
-                      <p class="form-text text-white-50">Supports jpg, jpeg and png. 500KB max.</p>
+                      <p class="form-text text-white-50">Supports jpg, jpeg and png. 1MB max.</p>
                       <input type="file" data-filename="citizenshipFrontFileName" id="citizenshipFrontUpload"
                         name="citizenship-front" accept="image/*,application/pdf" data-preview="citizenship_front"
                         style="display:none;" required>
-                      <button type="button" class="btn btn-outline-secondary btn-sm"
+                      <button type="button" class="btn document-btn btn-outline-secondary btn-success btn-sm"
                         onclick="document.getElementById('citizenshipFrontUpload').click()">
                         <span class="upload-icon-btn">⬇</span>
                       </button>
-                      <button type="button" class="btn btn-outline-danger btn-sm remove-btn" style="display:none;">
+                      <button type="button" class="btn btn-outline-danger btn-danger btn-sm remove-btn"
+                        style="display:none;">
                         <span class="fw-bolder">✕</span>
                       </button>
                       <span class="file-name" id="citizenshipFrontFileName">Citizenship Front</span>
@@ -301,18 +303,19 @@
                     <div class="transparent-dark-div">
                       <div class="upload-icon">📄</div>
                       <label class="form-label text-white">Citizenship Back <span class="text-danger">*</span></label>
-                      <p class="form-text text-white-50">Supports jpg, jpeg and png. 500KB max.</p>
+                      <p class="form-text text-white-50">Supports jpg, jpeg and png. 1MB max.</p>
                       <input type="file" data-filename="citizenshipBackFileName" id="citizenshipBackUpload"
                         name="citizenship-back" accept="image/*,application/pdf" data-preview="citizenship_back"
                         style="display:none;" required>
-                      <button type="button" class="btn btn-outline-secondary btn-sm"
+                      <button type="button" class="btn document-btn  btn-outline-secondary btn-success btn-sm"
                         onclick="document.getElementById('citizenshipBackUpload').click()">
                         <span class="upload-icon-btn">⬇</span>
                       </button>
-                      <button type="button" class="btn btn-outline-danger btn-sm remove-btn" style="display:none;">
+                      <button type="button" class="btn btn-outline-danger btn-danger btn-sm remove-btn"
+                        style="display:none;">
                         <span class="fw-bolder">✕</span>
                       </button>
-                      <span class="file-name" id="citizenshipBackFileName">Citizenship Back</span>
+                      <span class="file-name text-white" id="citizenshipBackFileName">Citizenship Back</span>
                     </div>
                   </div>
                 </div>
@@ -325,14 +328,15 @@
                     <div class="transparent-dark-div">
                       <div class="upload-icon">📄</div>
                       <label class="form-label text-white">National Identity Card (optional)</label>
-                      <p class="form-text text-white-50">Supports jpg, jpeg and png. 500KB max.</p>
+                      <p class="form-text text-white-50">Supports jpg, jpeg and png. 1MB max.</p>
                       <input type="file" data-filename="nidFileName" id="NidUpload" name="nid"
                         accept="image/*,application/pdf" data-preview="Nid_doc" style="display:none;">
-                      <button type="button" class="btn btn-outline-secondary btn-sm"
+                      <button type="button" class="btn document-btn btn-outline-secondary btn-success btn-sm"
                         onclick="document.getElementById('NidUpload').click()">
                         <span class="upload-icon-btn">⬇</span>
                       </button>
-                      <button type="button" class="btn btn-outline-danger btn-sm remove-btn" style="display:none;">
+                      <button type="button" class="btn btn-outline-danger btn-sm btn-danger remove-btn"
+                        style="display:none;">
                         <span class="fw-bolder">✕</span>
                       </button>
                       <span class="file-name" id="nidFileName">Rastriya Parichaya Patra</span>
@@ -345,14 +349,15 @@
                     <div class="transparent-dark-div">
                       <div class="upload-icon">📄</div>
                       <label class="form-label text-white">Signature <span class="text-danger">*</span></label>
-                      <p class="form-text text-white-50">Supports jpg, jpeg and png. 500KB max.</p>
+                      <p class="form-text text-white-50">Supports jpg, jpeg and png. 1MB max.</p>
                       <input type="file" data-filename="signatureFileName" id="signatureUpload" name="signature"
                         accept="image/*,application/pdf" data-preview="signature" style="display:none;" required>
-                      <button type="button" class="btn btn-outline-secondary btn-sm"
+                      <button type="button" class="btn document-btn btn-outline-secondary btn-success btn-sm"
                         onclick="document.getElementById('signatureUpload').click()">
                         <span class="upload-icon-btn">⬇</span>
                       </button>
-                      <button type="button" class="btn btn-outline-danger btn-sm remove-btn" style="display:none;">
+                      <button type="button" class="btn btn-outline-danger btn-sm btn-danger remove-btn"
+                        style="display:none;">
                         <span class="fw-bolder">✕</span>
                       </button>
                       <span class="file-name" id="signatureFileName">Your Signature</span>
@@ -547,8 +552,7 @@
                 </div>
                 <div class="col-md-4 mb-3">
                   <label class="form-label">Occupation Description <span class="text-danger">*</span></label>
-                  <input type="text" id="occupation_description" name="occupation_description"
-                    class="form-control">
+                  <input type="text" id="occupation_description" name="occupation_description" class="form-control">
                 </div>
                 <div class=" col-md-4 mb-3">
                   <label class="form-label">Income Mode <span class="text-danger">*</span></label>
@@ -573,8 +577,7 @@
                 </div>
                 <div class="col-md-4 mb-3">
                   <label class="form-label">PAN number <span class="text-danger">*</span></label>
-                  <input type="text" id="pan_number" name="pan_number" class="form-control" required
-                    autocomplete="off">
+                  <input type="text" id="pan_number" name="pan_number" class="form-control" required autocomplete="off">
                 </div>
               </div>
 
@@ -643,7 +646,8 @@
                 </div>
                 <div class="col-md-6 mb-3">
                   <label class="form-label">Nominee Contact Number <span class="text-danger">*</span></label>
-                  <input type="tel" name="nominee_contact" class="form-control" required autocomplete="off">
+                  <input type="tel" id="nominee_mobile" name="nominee_contact" class="form-control" required
+                    autocomplete="off">
                 </div>
               </div>
 
@@ -737,7 +741,7 @@
                       <div class="col-md-6">
                         <label class="form-label">Attach Document</label>
                         <div class="document-upload-inline" id="additionalDoc1Container">
-                          <input type="file" id="additionalDoc1Upload" name="additional_docs"
+                          <input type="file" id="additionalDoc1Upload" class="addDoc" name="additional_doc_1"
                             accept="image/*,application/pdf" style="display:none;">
                           <button type="button" class="btn btn-outline-secondary btn-sm"
                             onclick="document.getElementById('additionalDoc1Upload').click()">
@@ -754,7 +758,7 @@
                 <button type="button" class="btn btn-outline-success btn-sm" id="addMoreDocBtn">
                   <span>➕</span> Add Another Document
                 </button>
-                <span class="text-muted small ms-2" id="docCounter">(1/5 documents)</span>
+                <span class="text-muted small ms-2" id="docCounter">1/5 document(s)</span>
               </div>
 
               <!-- Declaration -->
@@ -798,11 +802,11 @@
           </form>
         </div>
       </div>
-
-      <footer class="form-footer">
-        <p>© Rastriya Jeeewan Beema Company Limited</p>
-      </footer>
     </div>
+
+    <footer class="form-footer">
+      <p>© Rastriya Jeeewan Beema Company Limited</p>
+    </footer>
   </div>
 
  <script src="{% static 'js/jquery-3.6.0.min.js' %}"></script>

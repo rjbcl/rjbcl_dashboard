@@ -33,9 +33,7 @@ class KycUserInfo(models.Model):
 
     # Admin review status
     kyc_status = models.CharField(
-        max_length=20,
-        choices=KYC_STATUS_CHOICES,
-        default="NOT_INITIATED"
+        max_length=20, choices=KYC_STATUS_CHOICES, default="NOT_INITIATED"
     )
 
     class Meta:

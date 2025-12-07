@@ -174,7 +174,7 @@ const AdditionalDocs = {
                     } else if (validation.error === 'type') {
                         swalError(
                             'Invalid File Type',
-                            'Please upload a valid image (JPG, PNG) or PDF file.'
+                            'Please upload a valid image (JPG, JPEG, PNG) or PDF file.'
                         );
                     }
                     // Clear the input

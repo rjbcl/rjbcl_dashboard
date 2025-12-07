@@ -48,7 +48,8 @@ CREATE TABLE IF NOT EXISTS kyc_agent_info (
     DOB DATE,
     phone_number VARCHAR,
     email VARCHAR,
-    password VARCHAR
+    password VARCHAR,
+    icense_number VARCHAR;
 );
 
 
@@ -141,8 +142,35 @@ INSERT INTO kyc_policy (policy_number, user_ID, created_at) VALUES
 ('POL003', 'USR003', '2025-03-20'),
 ('POL004', 'USR001', '2025-03-20');
 
+--=========================DUMMY TABLES REPRESENTING ACTUAL TABLES=====================
+
+CREATE TABLE tblPolicyDetail (
+    RowId BIGINT NOT NULL,
+    RegisterNo BIGINT NOT NULL,
+    PolicyNo VARCHAR(50) NOT NULL,
+    NewClientId varchar NOT NULL,
+    Term SMALLINT NOT NULL,
+    PayingTerm SMALLINT NOT NULL
+);
+
+CREATE TABLE tblKYCDetails (
+    RowId BIGSERIAL NOT NULL,
+    Branch SMALLINT NOT NULL,
+    FirstName VARCHAR(45) NOT NULL,
+    LastName VARCHAR(45) NOT NULL,
+    DOB DATE NOT NULL,
+    NewClientId varchar NOT NULL,
+    Mobile VARCHAR(70) NOT NULL,
+    CreatedBy VARCHAR(50) NOT NULL
+);
+-- ============DUMMY DATA INSERTION FOR THE ABOVE TABLES=================
 
 
+
+--====== SHOW DATA IN TABLES ======
 SELECT * from kyc_agent_info
 SELECT * from kyc_user_info
 SELECT * from kyc_policy
+SELECT * from kyc_status_table
+
+
