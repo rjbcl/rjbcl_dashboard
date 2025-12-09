@@ -5,6 +5,12 @@
   padding: 0;
 }
 
+:root {
+  --primary-blue: #4379f2;   /* visible blue */
+  --light-blue: #6ea8fe;     /* lighter blue */
+}
+
+
 html,
 body {
   height: 100vh;
@@ -545,9 +551,25 @@ body::before {
   }
 }
 
-
 .swal2-shown {
   position: absolute !important;
   /* force absolute positioning */
 
+}
+
+/* FINAL FIX */
+body.reset-password {
+    height: auto !important;
+    min-height: 100vh !important;
+    overflow-y: auto !important;
+}
+
+body.reset-password .login-wrapper {
+    height: auto !important;
+    max-height: none !important;
+}
+
+body.reset-password .login-section {
+    overflow-y: visible !important;
+    height: auto !important;
 }

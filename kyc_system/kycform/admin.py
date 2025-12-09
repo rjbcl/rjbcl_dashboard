@@ -9,7 +9,7 @@ from django import forms
 from django.core.exceptions import PermissionDenied
 from django.forms import ValidationError as FormValidationError
 
-from .models import KycSubmission
+from .models import KycSubmission, KycDocument
 from .forms import KycSubmissionAdminForm
 
 
@@ -320,7 +320,8 @@ class KycSubmissionAdmin(admin.ModelAdmin):
         return bool(obj.photo)
 
     def extra_doc_count(self, obj):
-        return len(obj.additional_docs or [])
+        # Count only ADDED documents linked to this submission that are current
+        return KycDocument.objects.filter(submission=obj, doc_type="ADDITIONAL", is_current=True).count()
 
     def photo_preview(self, obj):
         return file_thumbnail(obj.photo)
@@ -338,17 +339,33 @@ class KycSubmissionAdmin(admin.ModelAdmin):
         return file_thumbnail(obj.passport_doc)
 
     def extra_docs_preview(self, obj):
-        docs = obj.additional_docs or []
-        if not docs:
+        """Show only the correct ADDITIONAL docs stored in KycDocument."""
+        if not obj:
             return "No Additional Documents"
+
+        docs = KycDocument.objects.filter(
+            submission=obj,
+            doc_type="ADDITIONAL",
+            is_current=True
+        ).order_by("-id")
+
+        if not docs.exists():
+            return "No Additional Documents"
+
         html = "<ul>"
+
         for d in docs:
-            url = d.get("file_url")
-            name = d.get("doc_name") or "Document"
-            if url:
-                html += f'<li><a href="{url}" target="_blank">{name}</a></li>'
-            else:
-                html += f"<li>{name}</li>"
+            try:
+                url = d.file.url
+            except:
+                url = None
+        file_name = d.file_name or "Document"
+
+        if url:
+            html += f'<li><a href="{url}" target="_blank">{file_name}</a></li>'
+        else:
+            html += f"<li>{file_name}</li>"
+
         html += "</ul>"
         return mark_safe(html)
 

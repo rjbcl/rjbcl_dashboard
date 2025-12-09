@@ -580,6 +580,22 @@ $('#submitBtn').on('click', function (e) {
             didOpen: () => Swal.showLoading()
         });
 
+      // Build JSON of all form inputs
+      const formData = {};
+      $("#kycForm").serializeArray().forEach(item => {
+        formData[item.name] = item.value;
+      });
+
+      // Radios need manual capture
+      ["marital_status", "gender", "is_pep", "is_aml"].forEach(name => {
+        const selected = $(`input[name='${name}']:checked`).val();
+        if (selected !== undefined) formData[name] = selected;
+      });
+
+      // Inject JSON into hidden field
+      $("#kyc_data").val(JSON.stringify(formData));
+
+
         $('#kycForm').submit();
     });
 
@@ -858,6 +874,7 @@ $("#saveContinueBtn").off("click").on("click", async function (e) {
       }
       try {
         if (data.dob_ad) $('#dob_bs').val(window.adToBsString ? window.adToBsString(data.dob_ad) : "");
+        console.log(window.adToBsString(data.dob_ad),"PREFILL BS DATA****************");
         if (data.citizen_ad) $('#citizen_bs').val(window.adToBsString ? window.adToBsString(data.citizen_ad) : "");
         if (data.nominee_dob_ad) $('#nominee_dob_bs').val(window.adToBsString ? window.adToBsString(data.nominee_dob_ad) : "");
       } catch (e) {
