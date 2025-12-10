@@ -1,12 +1,21 @@
 /**************************************************
- * FINAL DATE CONVERSION SCRIPT (Corrected)
+ * INTEGRATED DATE CONVERSION SCRIPT
+ * With bindBsAdSync logic for prefill
  **************************************************/
-
-console.log("date-conversion.js loaded");
 
 $(document).ready(function () {
 
-    console.log("date-conversion.js initialized");
+    /**************************************************
+     * SweetAlert Helper
+     **************************************************/
+    function swalFire(title, text) {
+        Swal.fire({
+            icon: 'error',
+            title: title,
+            text: text,
+            confirmButtonColor: '#d33'
+        });
+    }
 
     /**************************************************
      * Nepali Digits → Latin Digits
@@ -83,6 +92,12 @@ $(document).ready(function () {
     }
 
     /**************************************************
+     * Expose globally for prefill and other modules
+     **************************************************/
+    window.adToBsString = adToBs;
+    window.bsToAdString = bsToAd;
+
+    /**************************************************
      * Datepicker Binding
      **************************************************/
     const bsFields = "#dob_bs, #citizen_bs, #nominee_dob_bs";
@@ -116,44 +131,99 @@ $(document).ready(function () {
     });
 
     /**************************************************
-     * AD → BS Sync
+     * BIND BS-AD SYNC WITH VALIDATION
      **************************************************/
-    $("#dob_ad, #citizen_ad, #nominee_dob_ad").on("change", function () {
-        const id = this.id;
-        const bs = adToBs($(this).val());
+    function bindBsAdSync(bsSelector, adSelector) {
+        const today = new Date();
+        
+        // BS input changes → update AD
+        $(bsSelector).on('input change blur', function () {
+            const ad = bsToAd($(this).val());
+            if (!ad) return;
+            
+            const adDate = new Date(ad);
+            if (adDate <= today) {
+                $(adSelector).val(ad);
+                $(adSelector).removeClass('is-invalid');
+            } else {
+                swalFire("Wrong Date", "Future Date Selected");
+                $(bsSelector + ', ' + adSelector).val('');
+            }
+        });
+        
+        // AD input changes → update BS
+        $(adSelector).on('input change blur', function () {
+            const ad = $(this).val();
+            if (!ad) return;
+            
+            const adDate = new Date(ad);
+            const bs = adToBs(ad);
+            
+            if (adDate <= today) {
+                $(bsSelector).val(bs);
+                $(bsSelector).removeClass('is-invalid');
+            } else {
+                swalFire("Wrong Date", "Future Date Selected");
+                $(bsSelector + ', ' + adSelector).val('');
+            }
+        });
+    }
 
-        if (id === "dob_ad") $("#dob_bs").val(bs);
-        if (id === "citizen_ad") $("#citizen_bs").val(bs);
-        if (id === "nominee_dob_ad") $("#nominee_dob_bs").val(bs);
+    // Apply binding to all date field pairs
+    bindBsAdSync('#dob_bs', '#dob_ad');
+    bindBsAdSync('#citizen_bs', '#citizen_ad');
+    bindBsAdSync('#nominee_dob_bs', '#nominee_dob_ad');
+
+    /**************************************************
+     * READY EVENT DISPATCH
+     **************************************************/
+    setTimeout(() => {
+        document.dispatchEvent(new Event("NepaliDatepickerReady"));
+        console.log("✅ NepaliDatepickerReady dispatched");
+    }, 150);
+
+    /**************************************************
+     * PREFILL LISTENER WITH BIND LOGIC
+     **************************************************/
+    document.addEventListener("NepaliDatepickerReady", () => {
+        console.log("📅 NepaliDatepickerReady received - applying prefill");
+
+        if (!window.prefill_data) {
+            console.log("No prefill_data available");
+            return;
+        }
+
+        const data = window.prefill_data;
+
+        // Prefill AD dates first, then trigger change to sync BS
+        // The bindBsAdSync handlers will automatically convert AD→BS
+        
+        if (data.dob_ad) {
+            $("#dob_ad").val(data.dob_ad).trigger('change');
+        }
+
+        if (data.citizen_ad) {
+            $("#citizen_ad").val(data.citizen_ad).trigger('change');
+        }
+
+        if (data.nominee_dob_ad) {
+            $("#nominee_dob_ad").val(data.nominee_dob_ad).trigger('change');
+        }
+
+        // Fallback: if BS dates exist in prefill but AD doesn't
+        if (data.dob_bs && !data.dob_ad) {
+            $("#dob_bs").val(data.dob_bs).trigger('change');
+        }
+
+        if (data.citizen_bs && !data.citizen_ad) {
+            $("#citizen_bs").val(data.citizen_bs).trigger('change');
+        }
+
+        if (data.nominee_dob_bs && !data.nominee_dob_ad) {
+            $("#nominee_dob_bs").val(data.nominee_dob_bs).trigger('change');
+        }
+
     });
 
-    /**************************************************
-     * READY EVENT
-     **************************************************/
-    console.log("Dispatching NepaliDatepickerReady...");
-    document.dispatchEvent(new Event("NepaliDatepickerReady"));
-
-    /**************************************************
- * PREFILL LISTENER
- **************************************************/
-document.addEventListener("NepaliDatepickerReady", () => {
-    console.log("NepaliDatepickerReady received in prefill block");
-
-    if (!window.prefill_data) return;
-
-    if (window.prefill_data.dob_ad)
-        $("#dob_bs").val(adToBs(window.prefill_data.dob_ad));
-
-    if (window.prefill_data.citizen_ad)
-        $("#citizen_bs").val(adToBs(window.prefill_data.citizen_ad));
-
-    if (window.prefill_data.nominee_dob_ad)
-        $("#nominee_dob_bs").val(adToBs(window.prefill_data.nominee_dob_ad));
+    console.log("✅ Date conversion script loaded");
 });
-
-console.log("Dispatching NepaliDatepickerReady…");
-document.dispatchEvent(new Event("NepaliDatepickerReady"));
-
-});
-
-

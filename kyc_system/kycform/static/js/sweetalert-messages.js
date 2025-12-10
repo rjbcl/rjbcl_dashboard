@@ -42,3 +42,29 @@ function swalQuestion(title, html, confirmButtonText)
       }
     })
   }
+
+
+    // SweetAlert helper wrappers
+  function swalError(title, html) {
+    if (typeof Swal !== "undefined") {
+      Swal.fire({
+        icon: "error",
+        title: title || "Error",
+        html: html || ""
+      });
+    } else {
+      alert((title || "Error") + "\n\n" + (html || ""));
+    }
+  }
+
+  function swalFire(title, html) {
+    if (typeof Swal !== "undefined") {
+      return Swal.fire({
+        title,
+        html,
+        icon: "warning",
+        confirmButtonText: "OK"
+      });
+    }
+    return Promise.resolve();
+  }
