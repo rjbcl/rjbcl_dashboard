@@ -1,0 +1,70 @@
+* [33m00f5f0e[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mAPI[m[33m, [m[1;32mLogin-authentication-work[m[33m)[m Changes on register and forget password logic
+*   [33m84d1675[m[33m ([m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m, [m[1;32mmain[m[33m)[m Merge branch 'Rayal--Database-Schema-and-Front-End-Manipulations'
+[32m|[m[33m\[m  
+[32m|[m * [33mace6a4d[m login integrated with Backend
+[32m|[m * [33m0e49112[m Minor changes
+[32m|[m * [33m2ec0058[m removed unnecessary files
+[32m|[m * [33m4f7a132[m renamed variables to be consistent with backend
+[32m|[m * [33m9ff4042[m nepali typing
+[32m|[m * [33m3421c10[m Seperated Colors.css
+[32m|[m * [33md43be0c[m Updated Queries
+[32m|[m * [33m3ab6da0[m Password Recovery Final
+[32m|[m * [33mb449f69[m registration page UI finalize
+[32m|[m * [33m9804683[m Registration for user and agent
+[32m|[m * [33m264af7c[m Minor Canges to keep the server running
+[32m|[m * [33m448ea68[m Final Login page
+[32m|[m * [33m68aa6fd[m UI adjustments, color selection
+[32m|[m * [33mab3e957[m added class for document seelction
+[32m|[m * [33m009c716[m Document upload Fix
+[32m|[m * [33mc3bd297[m Final Login Page
+[32m|[m * [33mc8bcd4d[m Kyc form image requirement added
+* [33m|[m [33md97dbf2[m Updated Gitignore
+* [33m|[m [33m7b4356a[m[33m ([m[1;31morigin/Backend-work-1st-phase[m[33m, [m[1;32mBackend-work-1st-phase[m[33m)[m Backend changes along with js for additonal documets and admin
+* [33m|[m [33macfa791[m made changes for is_locked and kyc status for admin
+* [33m|[m [33mfaec089[m changes in super admin and added save and contnue button with save button
+* [33m|[m [33m48c19bd[m Not_initiated and Incomplete status will have prefilled data in form
+* [33m|[m [33ma1d9bd3[m kyc form data mapped to kycsubmission table
+[33m|[m[33m/[m  
+* [33m0687870[m scroll to the top
+*   [33m270aad6[m Merge branch 'aakash_user_login'
+[34m|[m[35m\[m  
+[34m|[m * [33m928414f[m[33m ([m[1;31morigin/aakash_user_login[m[33m, [m[1;32maakash_user_login[m[33m)[m css and js file are seperated for login auth
+[34m|[m * [33m4eae8cb[m Autofill disabled for all login pages
+[34m|[m * [33m74f28d9[m Added new admin login and pop up message changes
+[34m|[m * [33m59e39fe[m changes on login authentication page for both agent and policy holder
+[34m|[m * [33m215b94a[m Agent login update
+[34m|[m * [33m375e596[m register page updated
+[34m|[m * [33mebbb82c[m user login changes
+[34m|[m * [33m88a515e[m test
+* [35m|[m [33mf920514[m Database Manipulation
+* [35m|[m [33m0e3678c[m Additional Documents page
+* [35m|[m [33m4cb7487[m Minor Issues Fixed
+* [35m|[m [33m997de58[m Financial Page Updated, added devnagari name field
+* [35m|[m [33m84266e3[m Address Fix
+* [35m|[m [33mf3e5b3d[m FIxed issues with removing is-valid classes
+* [35m|[m [33m9d361b2[m Fixed Steps Issues and added required status for documents
+* [35m|[m [33mda3225b[m Contact number and Martial status fixes
+* [35m|[m [33m3fe8ee5[m Date Converter
+* [35m|[m [33m0ddf14b[m Date Converter
+* [35m|[m [33mb1a8485[m Sweet alert modularization
+* [35m|[m [33me47d8b1[m select codes to ease
+* [35m|[m [33m2029229[m policy table Normalized
+* [35m|[m [33ma22f0e5[m All dependencies offline
+* [35m|[m [33m01123ac[m Responsive KYC Form
+* [35m|[m [33mb7e7b09[m Bootstrap FIles
+* [35m|[m [33md5d5946[m Bootstrap files
+[35m|[m [35m|[m *   [33md0338ec[m[33m ([m[1;35mrefs/stash[m[33m)[m On Rayal--API-integration: pass
+[35m|[m [35m|[m[35m/[m[1;31m|[m[1;32m\[m  
+[35m|[m[35m/[m[35m|[m [1;31m|[m [1;32m|[m 
+[35m|[m [35m|[m [1;31m|[m * [33m1f72b29[m untracked files on Rayal--API-integration: 62fe7cc Test Commit
+[35m|[m [35m|[m * [33m74fa072[m index on Rayal--API-integration: 62fe7cc Test Commit
+[35m|[m [35m|[m[35m/[m  
+[35m|[m[35m/[m[35m|[m   
+* [35m|[m [33m62fe7cc[m[33m ([m[1;31morigin/Rayal--API-integration[m[33m, [m[1;32mRayal--API-integration[m[33m)[m Test Commit
+[35m|[m[35m/[m  
+* [33m8639431[m Project Initization
+* [33m01bf47e[m form designed
+* [33m60fb338[m forms created for agent and policyholder
+* [33me8bba57[m login page designed
+* [33m9b49d0b[m template integrated
+* [33me966dda[m Initial commit
