@@ -15,6 +15,8 @@ import os
 import uuid
 import traceback
 import urllib.request
+import requests
+
 from datetime import datetime, date
 
 from django.conf import settings
@@ -35,6 +37,7 @@ from django.utils import timezone
 from django.core.exceptions import PermissionDenied
 from django.contrib import messages
 from django.contrib.auth.hashers import check_password, make_password
+from django.conf import settings
 
 import logging
 from django.apps import apps
@@ -47,6 +50,16 @@ from .models import (
 )
 from .storage_utils import save_uploaded_file_to_storage 
 
+
+FASTAPI_BASE = "http://127.0.0.1:9000"   # your FastAPI server
+API_USER = "rjbcl_api"
+API_PASS = "your_api_password"   # stored in .env ideally
+
+def get_fastapi_token():
+    url = f"{FASTAPI_BASE}/auth/login"
+    resp = requests.post(url, json={"username": API_USER, "password": API_PASS})
+    resp.raise_for_status()
+    return resp.json()["access_token"]
 
 # -----------------------------------------------------------------------------
 # Utilities
@@ -271,23 +284,39 @@ def policyholder_register_view(request):
         )
         return redirect_login_tab("policy")
 
-    # ----------------------------------------------------------
-    # 3) LOOKUP IN CORE (tblinsureddetail)
-    # ----------------------------------------------------------
-    with connection.cursor() as cur:
-        cur.execute("""
-            SELECT policyno, firstname, lastname, dob, mobile
-            FROM tblinsureddetail
-            WHERE policyno = %s
-            LIMIT 1
-        """, [policy_no])
-        row = cur.fetchone()
+   # ----------------------------------------------------------
+   # 3) LOOKUP IN CORE VIA FASTAPI (secure + centralized)
+   # ----------------------------------------------------------
+    try:
+        api_url = f"{settings.API_BASE_URL}/mssql/newpolicies"
+        headers = {"Authorization": f"Bearer {settings.API_TOKEN}"}
 
-    if not row:
-        messages.error(request, "Policy not found in core system.", extra_tags="error")
+        response = requests.get(api_url, params={
+            "policy_no": policy_no,
+            "dob": dob_ad
+        }, headers=headers)
+
+        if response.status_code == 404:
+            messages.error(request, "Policy not found in core system.", extra_tags="error")
+            return redirect("kyc:policy_register")
+
+        if response.status_code != 200:
+            messages.error(request, "Server error during policy lookup.", extra_tags="error")
+            return redirect("kyc:policy_register")
+        # API returns a list → extract first item
+        data = response.json()[0]
+
+        # Match keys returned by FastAPI
+        core_policy_no = data["PolicyNo"]
+        core_first = data["FirstName"]
+        core_last = data["LastName"]
+        core_dob = data["DOB"]
+        core_mobile = data["Mobile"]
+    except Exception as e:
+        print("API LOOKUP ERROR:", e)
+        messages.error(request, "Could not connect to policy lookup API.")
         return redirect("kyc:policy_register")
 
-    core_policy_no, core_first, core_last, core_dob, core_mobile = row
 
     # ----------------------------------------------------------
     # 4) VALIDATE DOB + MOBILE
@@ -301,22 +330,30 @@ def policyholder_register_view(request):
         return redirect("kyc:policy_register")
 
     # ----------------------------------------------------------
-    # 5) FIND ALL RELATED POLICIES (same insured)
+    # 5) FIND ALL RELATED POLICIES FROM MSSQL (via FastAPI)
     # ----------------------------------------------------------
-    with connection.cursor() as cur:
-        cur.execute("""
-            SELECT policyno
-            FROM tblinsureddetail
-            WHERE firstname = %s
-              AND lastname = %s
-              AND dob = %s
-              AND mobile = %s
-        """, [core_first, core_last, core_dob, core_mobile])
+    try:
+        api_url = f"{settings.API_BASE_URL}/mssql/related-policies"
+        headers = {"Authorization": f"Bearer {settings.API_TOKEN}"}
 
-        related = [r[0] for r in cur.fetchall()]
+        resp = requests.get(api_url, params={
+            "firstname": core_first,
+            "lastname": core_last,
+            "dob": core_dob,
+            "mobile": core_mobile
+        }, headers=headers)
+
+        resp.raise_for_status()
+        related = resp.json()
+
+    except Exception as e:
+        print("RELATED POLICY LOOKUP ERROR:", e)
+        messages.error(request, "Could not fetch related policies.", extra_tags="error")
+        return redirect("kyc:policy_register")
 
     related_policy_numbers = set(related)
     related_policy_numbers.add(policy_no)
+
 
     # ----------------------------------------------------------
     # 6) CHECK IF ANY OF THESE POLICIES ALREADY HAVE user_id
