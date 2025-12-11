@@ -1,7 +1,7 @@
 $(document).ready(function () {
     let currentStep = 1;
     const totalSteps = 5;
-    let highestStepReached = 1; // Track the furthest step user has reached
+    let highestStepReached = 1;
 
     function showStep(step) {
         if (step < 1 || step > 5) step = 1
@@ -26,7 +26,7 @@ $(document).ready(function () {
         }
 
         // Make unreached future steps non-clickable
-        for (let i = window.highestStepReached + 1; i <= totalSteps; i++) {
+        for (let i = highestStepReached + 1; i <= totalSteps; i++) {
             $(`.nav-step[data-step="${i}"]`).css('cursor', 'default');
         }
 
@@ -51,11 +51,11 @@ $(document).ready(function () {
         $('html, body').scrollTop(0);
     }
 
-    function validateStep(step) {
+    function validateStep(step, updateHighest = false) {
         let valid = true;
         const $current = $(`.form-step[data-step="${step}"]`);
         const missingFields = [];
-
+        
         $current.find('[required]').each(function () {
             const $field = $(this);
             // friendly label extraction
@@ -83,7 +83,6 @@ $(document).ready(function () {
 
                 // NEW: accept already-existing uploaded file
                 const existingUrl = $field.data("existing");
-                debugger
                 if ((!files || files.length === 0) && !existingUrl) {
                     valid = false;
                     $field.next('#photoBtn').removeClass('is-invalid');
@@ -111,7 +110,7 @@ $(document).ready(function () {
 
         if (!valid) {
             let errorMessage = 'कृपया सबै आवश्यक विवरण भर्नुहोस्।<br><small>Please fill all required fields.</small>';
-
+            highestStepReached = step;  //anush
             if (missingFields.length > 0 && missingFields.length <= 5) {
                 errorMessage += '<br><br><div style="text-align: left; font-size: 13px;"><strong>Missing:</strong><br>';
                 missingFields.forEach(field => {
@@ -120,17 +119,30 @@ $(document).ready(function () {
                 errorMessage += '</div>';
             }
             swalError('Incomplete Form', errorMessage);
-            for (var i = 5; i >= step; i--) {
+            
+            // Remove completed class from this step and all steps ahead
+            for (var i = totalSteps; i >= step; i--) {
                 $(`.nav-step[data-step="${i}"]`).removeClass('completed');
             }
         }
-        $(`.nav-step[data-step="${step}"]`).addClass('completed');
+        
+        // Only update highestStepReached when explicitly told to (when moving forward)
+        if (updateHighest && valid && step > highestStepReached) {
+            highestStepReached = step;
+            console.log("highestStepReached updated to:", highestStepReached);
+        }
+        
+        // Mark as completed only if valid and we're updating
+        if (valid && updateHighest) {
+            $(`.nav-step[data-step="${step}"]`).addClass('completed');
+        }
+        
         return valid;
     }
 
     $('#saveContinueBtn').off('click').on('click', async function (e) {
         e.preventDefault();
-        if (!validateStep(currentStep)) return;
+        if (!validateStep(currentStep, true)) return;
         const saved = await ajaxSaveKycProgress();
         if (!saved) return;
         currentStep++;
@@ -141,8 +153,6 @@ $(document).ready(function () {
     });
 
     $('#prevBtn').on('click', function () {
-        debugger
-        console.log(currentStep)
         currentStep--;
         showStep(currentStep);
     });
@@ -161,11 +171,23 @@ $(document).ready(function () {
         if (targetStep <= highestStepReached) {
             // If going forward, validate current step first
             if (targetStep > currentStep) {
-                if (validateStep(currentStep)) {
+                let allValid = true;
+
+                // validate every step from current up to targetStep (but don't update highest)
+                for (let step = currentStep; step < targetStep; step++) {
+                    if (!validateStep(step, false)) {
+                        allValid = false;
+                        break;
+                    }
+                }
+
+                // only move if all steps are valid
+                if (allValid) {
                     currentStep = targetStep;
                     showStep(currentStep);
                 }
-            } else {
+            }
+            else {
                 // Going backward - no validation needed
                 currentStep = targetStep;
                 showStep(currentStep);
@@ -248,5 +270,3 @@ $(document).ready(function () {
     // const label = getFieldLabel($('#citizenshipFrontUpload')); // "Citizenship Front"
     // const label = getFieldLabel($('input[name="first_name"]')); // "First Name"
 });
-
-

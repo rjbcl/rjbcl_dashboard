@@ -4,13 +4,6 @@
   margin: 0;
   padding: 0;
 }
-
-:root {
-  --primary-blue: #4379f2;   /* visible blue */
-  --light-blue: #6ea8fe;     /* lighter blue */
-}
-
-
 html,
 body {
   height: 100vh;
