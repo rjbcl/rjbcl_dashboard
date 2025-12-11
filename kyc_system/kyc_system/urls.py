@@ -8,6 +8,8 @@ urlpatterns = [
 
     # All KYC system actions
     path("", include("kycform.urls", namespace="kyc")),
+
+    path('api/', include('kycform.api_urls')),
 ]
 
 # Serve media files only in development
