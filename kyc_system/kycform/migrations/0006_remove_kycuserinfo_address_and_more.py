@@ -10,14 +10,14 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        migrations.RemoveField(
-            model_name='kycuserinfo',
-            name='address',
-        ),
-        migrations.RemoveField(
-            model_name='kycuserinfo',
-            name='citizenship_number',
-        ),
+        # migrations.RemoveField(
+        #     model_name='kycuserinfo',
+        #     name='address',
+        # ),
+        # migrations.RemoveField(
+        #     model_name='kycuserinfo',
+        #     name='citizenship_number',
+        # ),
         migrations.AddField(
             model_name='kycuserinfo',
             name='email',
