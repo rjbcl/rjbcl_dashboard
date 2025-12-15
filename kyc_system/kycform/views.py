@@ -40,6 +40,8 @@ from django.contrib.auth.hashers import check_password, make_password
 from django.http import FileResponse
 from django.shortcuts import get_object_or_404
 from django.views.decorators.cache import never_cache
+from kycform.utils import log_kyc_change
+
 
 from django.conf import settings
 
@@ -611,7 +613,7 @@ def kyc_form_view(request):
     # REJECTION MESSAGE FOR FRONTEND
     # ---------------------------------
     rejection_message = None
-    if user.kyc_status == "REJECTED":
+    if user.kyc_status in ["REJECTED", "INCOMPLETE"]:
         try:
             sub = KycSubmission.objects.get(user=user)
             rejection_message = sub.rejection_comment or "Your KYC was rejected. Please review and resubmit."
@@ -1089,6 +1091,17 @@ def _save_files_and_submission(request, user, submission=None, actor=None):
             meta["display_name"] = display_name
             doc.metadata = meta
             doc.save(update_fields=["metadata"])
+
+        # ✅ AUDIT LOG — ADD / REUPLOAD DOCUMENT
+        log_kyc_change(
+            submission=submission,
+            action="DOCUMENT",
+            actor_type="USER",
+            actor_identifier=user.user_id,
+            field_name="additional_document",
+            new_value=doc.file_name,
+            comment=display_name or None,
+        )
         additional_struct.append({
             "doc_id": doc.id,
             "file_name": doc.file_name,
@@ -1117,6 +1130,16 @@ def _save_files_and_submission(request, user, submission=None, actor=None):
         # record metadata before unlinking
         now_iso = timezone.now().isoformat()
         for d in docs_to_unlink:
+             # ✅ AUDIT LOG — DOCUMENT REMOVAL
+            log_kyc_change(
+                submission=submission,
+                action="DOCUMENT",
+                actor_type="ADMIN",
+                actor_identifier=request.user.username if request.user.is_authenticated else "system",
+                field_name="additional_document",
+                old_value=d.file_name,
+                comment="Document marked inactive / removed",
+            )
             meta = d.metadata or {}
             meta.update({"archived_by": actor or getattr(user, "user_id", str(user)), "archived_at": now_iso})
             d.metadata = meta
@@ -1241,6 +1264,16 @@ def process_kyc_submission(request):
     # Load or create submission
     submission, _ = KycSubmission.objects.get_or_create(user=user)
 
+    # -------------------------
+    # AUDIT: capture old values before modification
+    # -------------------------
+    old_values = {}
+
+    if submission.pk:
+        for f in submission._meta.fields:
+            old_values[f.name] = getattr(submission, f.name)
+
+
     # Copy simple mapped fields (only if present in merged)
     mapped_fields = [
         "salutation","first_name","middle_name","last_name","full_name_nep",
@@ -1316,6 +1349,26 @@ def process_kyc_submission(request):
     submission.data_json = merged
     submission.version = (submission.version or 1) + 1
     submission.submitted_at = timezone.now()
+
+
+    # -------------------------
+    # AUDIT: log field-level changes by USER
+    # -------------------------
+    for field_name, old_val in old_values.items():
+        try:
+            new_val = getattr(submission, field_name)
+        except Exception:
+            continue
+        if old_val != new_val:
+            log_kyc_change(
+                submission=submission,
+                action="UPDATE",
+                actor_type="USER",
+                actor_identifier=user.user_id,
+                field_name=field_name,
+                old_value=old_val,
+                new_value=new_val,
+            )
     submission.save()  # this writes FileFields & persists KycDocument references
 
     # delete draft if present

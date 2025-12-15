@@ -8,6 +8,7 @@ from django.shortcuts import render, redirect
 from django import forms
 from django.core.exceptions import PermissionDenied
 from django.forms import ValidationError as FormValidationError
+from .models import KycChangeLog, KycUserInfo
 
 from .models import KycSubmission, KycDocument
 from .forms import KycSubmissionAdminForm
@@ -176,7 +177,7 @@ class KycSubmissionAdmin(admin.ModelAdmin):
             status = obj.user.kyc_status if obj else None
 
     # FORCE Django to treat rejection_comment_input as a visible field
-        if status == "REJECTED":
+        if status in ["REJECTED", "INCOMPLETE"]:
             form.base_fields["rejection_comment_input"].widget = forms.Textarea(
                 attrs={"rows": 3, "placeholder": "Provide rejection reason..."}
             )
@@ -248,6 +249,17 @@ class KycSubmissionAdmin(admin.ModelAdmin):
     # changeform_view
     # -------------------------------------------------------------------
     def changeform_view(self, request, object_id=None, form_url="", extra_context=None):
+        
+         # ✅ Capture OLD status BEFORE admin edits
+        if object_id:
+            try:
+                sub = KycSubmission.objects.select_related("user").get(pk=object_id)
+                request._old_kyc_status = sub.user.kyc_status
+            except KycSubmission.DoesNotExist:
+                request._old_kyc_status = None
+        else:
+            request._old_kyc_status = None
+
         extra_context = extra_context or {}
         extra_context["show_save_and_continue"] = False
 
@@ -272,14 +284,64 @@ class KycSubmissionAdmin(admin.ModelAdmin):
             messages.error(request, str(exc))
             return redirect("admin:kycform_kycsubmission_changelist")
 
+    # ---------------------------------------------------
+    # ADMIN FIELD CHANGE AUDIT LOGGER
+    # ---------------------------------------------------
+    def _log_admin_field_changes(self, request, old_obj, new_obj):
+        ignored_fields = {
+            "id",
+            "submitted_at",
+            "data_json",
+            "locked_at",
+            "review_started_at",
+             "version",   
+            "rejection_comment",
+        }
+
+        for field in new_obj._meta.fields:
+            field_name = field.name
+
+            if field_name in ignored_fields:
+                continue
+
+            old_val = getattr(old_obj, field_name, None)
+            new_val = getattr(new_obj, field_name, None)
+
+            if old_val != new_val:
+                KycChangeLog.objects.create(
+                    submission=new_obj,
+                    action="ADMIN_UPDATE",
+                    field_name=field_name,
+                    old_value=str(old_val),
+                    new_value=str(new_val),
+                    actor_type="ADMIN",
+                    actor_identifier=request.user.username,
+                )
+
+
     # -------------------------------------------------------------------
     # Save model
     # -------------------------------------------------------------------
     def save_model(self, request, obj, form, change):
+
+        # ✅ FIX 1: always define old_obj
+        old_obj = None
+        if change:
+            old_obj = KycSubmission.objects.get(pk=obj.pk)
+
         try:
             kyc_status = form.cleaned_data.get("kyc_status")
         except Exception:
             kyc_status = None
+        
+        # 🔒 REQUIRE COMMENT for REJECTED / INCOMPLETE
+        comment = None
+        if kyc_status in ["REJECTED", "INCOMPLETE"]:
+            comment = form.cleaned_data.get("rejection_comment_input")
+            if not comment:
+                raise FormValidationError(
+                    "Comment is required when marking KYC as INCOMPLETE or REJECTED."
+                )
 
         if kyc_status == "VERIFIED" and not getattr(obj, "is_lock", False) and not request.user.is_superuser:
             raise FormValidationError(
@@ -291,6 +353,7 @@ class KycSubmissionAdmin(admin.ModelAdmin):
             if not getattr(obj, "locked_at", None):
                 obj.locked_at = timezone.now()
 
+       # ✅ APPLY STATUS (NO LOGGING YET)
         if obj.user and kyc_status:
             obj.user.kyc_status = kyc_status
             obj.user.save()
@@ -305,6 +368,45 @@ class KycSubmissionAdmin(admin.ModelAdmin):
             pass
 
         super().save_model(request, obj, form, change)
+
+        old_status = getattr(request, "_old_kyc_status", None)
+        new_status = obj.user.kyc_status if obj.user else None
+
+         # ✅ LOG STATUS CHANGE (AFTER SAVE)
+        if old_status != new_status:
+            KycChangeLog.objects.create(
+                submission=obj,
+                action="STATUS_CHANGE",
+                field_name="kyc_status",
+                old_value=old_status or "",
+                new_value=new_status or "",
+                actor_type="ADMIN",
+                actor_identifier=request.user.username,
+            )
+        # 📝 SAVE & LOG ADMIN COMMENT (REJECTED / INCOMPLETE)
+        if kyc_status in ["REJECTED", "INCOMPLETE"] and comment:
+            obj.rejection_comment = comment
+            obj.save(update_fields=["rejection_comment"])
+
+            comment_field = (
+            "rejection_reason"
+                if kyc_status == "REJECTED"
+                else "incomplete_reason"
+            )
+
+            KycChangeLog.objects.create(
+                submission=obj,
+                action="ADMIN_COMMENT",
+                field_name=comment_field,
+                old_value="",
+                new_value=comment,
+                actor_type="ADMIN",
+                actor_identifier=request.user.username,
+            )
+
+        # ✅ FIX 3: log field-level changes
+        if old_obj:
+            self._log_admin_field_changes(request, old_obj, obj)
 
     # -------------------------------------------------------------------
     # PREVIEW / DISPLAY HELPERS
@@ -411,7 +513,7 @@ class KycSubmissionAdmin(admin.ModelAdmin):
             # if "kyc_status" in fields and "is_lock" in fields:
                 # This is guaranteed to be the Submission Metadata section
             if title == "Submission Metadata":
-                    if status == "REJECTED":
+                    if status in ["REJECTED", "INCOMPLETE"]:
                         if "rejection_comment_input" not in fields:
                             fields.append("rejection_comment_input")
 
@@ -504,3 +606,36 @@ class KycSubmissionAdmin(admin.ModelAdmin):
             return render(request, "admin/reject_comment.html", {"form": form})
 
     mark_rejected_with_comment.short_description = "Reject with reason (show comment form)"
+
+    def get_changeform_initial_data(self, request):
+        initial = super().get_changeform_initial_data(request)
+        return initial
+
+
+@admin.register(KycChangeLog)
+class KycChangeLogAdmin(admin.ModelAdmin):
+    list_display = (
+        "submission",
+        "action",
+        "field_name",
+        "actor_type",
+        "actor_identifier",
+        "created_at",
+    )
+    list_filter = ("action", "actor_type", "created_at")
+    search_fields = ("field_name", "old_value", "new_value", "actor_identifier")
+    readonly_fields = [f.name for f in KycChangeLog._meta.fields]
+
+    # 🔐 FORCE VISIBILITY IN SIDEBAR
+    def has_module_permission(self, request):
+        return True
+
+    # 🔒 HARD READ-ONLY (AUDIT SAFE)
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False
