@@ -37,6 +37,10 @@ from django.utils import timezone
 from django.core.exceptions import PermissionDenied
 from django.contrib import messages
 from django.contrib.auth.hashers import check_password, make_password
+from django.http import FileResponse
+from django.shortcuts import get_object_or_404
+from django.views.decorators.cache import never_cache
+
 from django.conf import settings
 
 import logging
@@ -549,6 +553,7 @@ def reset_password(request):
 # KYC Form view (prefill) — single endpoint returning the template + prefill JSON
 # -----------------------------------------------------------------------------
 @csrf_exempt
+@never_cache
 def kyc_form_view(request):
 
     # -------------------------
@@ -626,6 +631,19 @@ def kyc_form_view(request):
     except KycSubmission.DoesNotExist:
         submission = None
         submission_data = {}
+    
+    # ---------------------------------
+    # LOAD ADDITIONAL DOCUMENTS (DB SOURCE OF TRUTH)
+    # ---------------------------------
+    if submission:
+        additional_docs = KycDocument.objects.filter(
+            user=user,
+            submission=submission,
+            doc_type="ADDITIONAL",
+            is_current=True
+        ).order_by("uploaded_at")
+    else:
+        additional_docs = []
 
     try:
         temp = KYCTemporary.objects.get(policy_no=policy_no)
@@ -715,7 +733,6 @@ def kyc_form_view(request):
         fixed["citizenship_back_url"] = submission.citizenship_back.url if submission.citizenship_back else None
         fixed["signature_url"] = submission.signature.url if submission.signature else None
         fixed["passport_doc_url"] = submission.passport_doc.url if submission.passport_doc else None
-        fixed["additional_docs"] = submission.additional_docs or []
         fixed["nid_url"] = merged.get("nid_url")
     else:
         fixed["photo_url"] = None
@@ -723,7 +740,6 @@ def kyc_form_view(request):
         fixed["citizenship_back_url"] = None
         fixed["signature_url"] = None
         fixed["passport_doc_url"] = None
-        fixed["additional_docs"] = merged.get("additional_docs", [])
         fixed["nid_url"] = merged.get("nid_url")
 
     # ---------------------------------
@@ -742,6 +758,7 @@ def kyc_form_view(request):
         "policy_no": policy_no,
         "prefill_json": prefill_json,
         "rejection_message": rejection_message,
+        "additional_docs": additional_docs, 
     })
 
 
@@ -869,8 +886,6 @@ def _save_files_and_submission(request, user, submission=None, actor=None):
 
     # Prepare return structures
     urls = {}
-    # copy to avoid mutating original in error cases
-    additional_struct = list(submission.additional_docs) if submission.additional_docs else []
 
     # mapping: form-field-name -> (submission_attr_name, doc_type, url_key)
     single_file_map = {
@@ -878,9 +893,27 @@ def _save_files_and_submission(request, user, submission=None, actor=None):
         "citizenship-front": ("citizenship_front", "CITIZENSHIP_FRONT", "citizenship_front_url"),
         "citizenship-back": ("citizenship_back", "CITIZENSHIP_BACK", "citizenship_back_url"),
         "signature": ("signature", "SIGNATURE", "signature_url"),
-        "passport_doc": ("passport_doc", "ADDITIONAL", "passport_doc_url"),
         "nid": ("nid_file", "NID", "nid_url"),
     }
+
+    existing_additional_docs = KycDocument.objects.filter(
+    user=user,
+        submission=submission,
+        doc_type="ADDITIONAL",
+        is_current=True
+    ).order_by("uploaded_at")
+    additional_struct = [
+        {
+            "doc_id": d.id,
+            "file_name": d.file_name,
+            "file_url": d.file.url if d.file else None,
+            "display_name": (d.metadata or {}).get("display_name", ""),
+            "type": "ADDITIONAL",
+            "is_current": d.is_current,
+        }
+        for d in existing_additional_docs
+    ]
+
 
     # Helper to persist file into a KycDocument and link to submission
     def _create_kyc_document(uploaded_file, doc_type, submission, user, original_filename):
@@ -911,8 +944,13 @@ def _save_files_and_submission(request, user, submission=None, actor=None):
         doc.file.save(safe_name, uploaded_file, save=True)
 
         # Ensure this doc is current and mark others of same type as non-current
-        KycDocument.objects.filter(user=user, doc_type=doc_type, is_current=True).exclude(id=doc.id).update(is_current=False)
-
+        if doc_type != "ADDITIONAL":
+            KycDocument.objects.filter(
+                user=user,
+                doc_type=doc_type,
+                is_current=True
+            ).exclude(id=doc.id).update(is_current=False)
+            
         # attach audit metadata (who/when)
         meta = doc.metadata or {}
         meta.update({
@@ -989,7 +1027,12 @@ def _save_files_and_submission(request, user, submission=None, actor=None):
             doc.save()
 
         # Mark previous docs of same type as non-current
-        KycDocument.objects.filter(user=user, doc_type=doc_type, is_current=True).exclude(id=doc.id).update(is_current=False)
+        if doc_type != "ADDITIONAL":
+            KycDocument.objects.filter(
+                user=user,
+                doc_type=doc_type,
+                is_current=True
+            ).exclude(id=doc.id).update(is_current=False)
         doc.is_current = True
         doc.metadata = (doc.metadata or {})
         doc.metadata.update({"linked_to_submission": submission.id, "linked_at": timezone.now().isoformat(), "uploaded_by": actor or getattr(user, "user_id", str(user))})
@@ -1011,23 +1054,50 @@ def _save_files_and_submission(request, user, submission=None, actor=None):
         additional_struct.append(entry)
 
     # -------------------------
-    # Multi-file additional_docs
+    # Multi-file additional_docs (REPLACE-ALL LOGIC)
     # -------------------------
     multi_files = request.FILES.getlist("additional_docs")
-    for uploaded in multi_files:
+    doc_names = request.POST.getlist("additional_doc_names[]")
+
+    if multi_files:
+        # 🔴 HARD GUARANTEE: deactivate ALL previous additional docs
+        KycDocument.objects.filter(
+            user=user,
+            submission=submission,
+            doc_type="ADDITIONAL",
+                is_current=True
+        ).update(is_current=False)
+
+    for idx, uploaded in enumerate(multi_files):
         try:
-            doc = _create_kyc_document(uploaded, "ADDITIONAL", submission, user, original_filename=uploaded.name)
+            doc = _create_kyc_document(
+                uploaded,
+                "ADDITIONAL",
+                submission,
+                user,
+                original_filename=uploaded.name
+            )
         except ValidationError:
-            # handle per-file validation failures as you prefer (skip, collect errors, raise)
             raise
 
+        display_name = ""
+        if idx < len(doc_names):
+            display_name = doc_names[idx].strip()
+
+        if display_name:
+            meta = doc.metadata or {}
+            meta["display_name"] = display_name
+            doc.metadata = meta
+            doc.save(update_fields=["metadata"])
         additional_struct.append({
             "doc_id": doc.id,
             "file_name": doc.file_name,
             "file_url": getattr(doc.file, "url", None),
+            "display_name": display_name,
             "type": "ADDITIONAL",
-            "is_current": doc.is_current,
+            "is_current": True,
         })
+
 
     # -------------------------
     # Handle removal of additional docs (frontend posted remove_additional_doc_ids)
@@ -1060,22 +1130,22 @@ def _save_files_and_submission(request, user, submission=None, actor=None):
     # -------------------------
     # Merge frontend posted additional_docs metadata (if provided)
     # -------------------------
-    posted_additional = request.POST.get("additional_docs")
-    if posted_additional:
-        try:
-            posted_list = json.loads(posted_additional)
-            merged_add = []
-            for p in posted_list:
-                match = next((d for d in additional_struct if d.get("file_name") == p.get("file_name") or str(d.get("doc_id")) == str(p.get("doc_id"))), None)
-                if match:
-                    match.update(p)
-                    merged_add.append(match)
-                else:
-                    merged_add.append(p)
-            additional_struct = merged_add
-        except Exception:
-            # ignore parse errors
-            pass
+    # posted_additional = request.POST.get("additional_docs")
+    # if posted_additional:
+    #     try:
+    #         posted_list = json.loads(posted_additional)
+    #         merged_add = []
+    #         for p in posted_list:
+    #             match = next((d for d in additional_struct if d.get("file_name") == p.get("file_name") or str(d.get("doc_id")) == str(p.get("doc_id"))), None)
+    #             if match:
+    #                 match.update(p)
+    #                 merged_add.append(match)
+    #             else:
+    #                 merged_add.append(p)
+    #         additional_struct = merged_add
+    #     except Exception:
+    #         # ignore parse errors
+    #         pass
 
     # Save additional_struct on submission (no file data here, only metadata)
     submission.additional_docs = additional_struct
@@ -1476,3 +1546,23 @@ def save_kyc_progress(request):
         "saved_files": saved_files,
         "additional_docs_count": len(parsed.get("additional_docs", []))
     })
+
+def view_additional_doc(request, doc_id):
+    """
+    Securely stream an additional KYC document.
+    """
+    if not request.session.get("authenticated"):
+        return redirect("/auth/policy/?tab=policy")
+
+    doc = get_object_or_404(
+        KycDocument,
+        id=doc_id,
+        doc_type="ADDITIONAL",
+        is_current=True
+    )
+
+    return FileResponse(
+        doc.file.open("rb"),
+        as_attachment=False,
+        filename=doc.file_name
+    )

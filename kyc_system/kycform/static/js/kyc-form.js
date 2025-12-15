@@ -683,18 +683,15 @@ jsonData["temp_house_number"]  = $("#temp_house_number").val() || null;
     });
 // Additional dynamic docs
 $(".additional-doc-item").each(function () {
-    const idx = $(this).data("doc-index");
-    const nameInput = $(this).find(`input[name="additional_doc_name_${idx}"]`);
-    const fileInput = $(this).find(`#additionalDoc${idx}Upload`)[0];
+    const fileInput = $(this).find('input[type="file"]')[0];
+    const nameInput = $(this).find('input[type="text"]');
 
-    // Send doc display name (optional)
-    fd.append("additional_doc_names[]", nameInput.val() || "");
-
-    // FIX: send file under SAME FIELD NAME additional_docs
     if (fileInput && fileInput.files.length > 0) {
         fd.append("additional_docs", fileInput.files[0]);
+        fd.append("additional_doc_names[]", nameInput.val() || "");
     }
 });
+
 
     // Show loading
     Swal.fire({

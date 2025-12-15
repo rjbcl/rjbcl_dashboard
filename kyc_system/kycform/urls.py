@@ -53,4 +53,13 @@ urlpatterns = [
     # -------------------------------
     path("save-progress/", views.save_kyc_progress, name="save_kyc_progress"),
 
+    # -------------------------------
+    # DOCUMENT VIEWING (SECURE)
+    # -------------------------------
+    path(
+        "kyc/additional-doc/<int:doc_id>/",
+        views.view_additional_doc,
+        name="view_additional_doc"
+    ),
+
 ]
