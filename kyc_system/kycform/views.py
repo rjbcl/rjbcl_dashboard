@@ -168,7 +168,7 @@ def policyholder_login(request):
     # SUCCESSFUL LOGIN → SET SESSION
     # --------------------------
     request.session["authenticated"] = True
-    request.session["policy_no"] = policy_no
+    request.session["policy_no"] = policy_no    
     # --------------------------------------
     # KYC routing logic remains same
     # --------------------------------------
@@ -701,10 +701,18 @@ def kyc_form_view(request):
     # ---------------------------------
     prefill_json = json.dumps(fixed, ensure_ascii=False)
 
+    # Build full name from user info
+    full_name_parts = [user.first_name]
+    if user.middle_name:
+        full_name_parts.append(user.middle_name)
+    full_name_parts.append(user.last_name)
+    full_name = " ".join(full_name_parts)
+
     return render(request, "kyc_form_update.html", {
         "policy_no": policy_no,
         "prefill_json": prefill_json,
         "rejection_message": rejection_message,
+        "user_name": full_name,  # Changed from "Test Name" to actual full name
     })
 
 

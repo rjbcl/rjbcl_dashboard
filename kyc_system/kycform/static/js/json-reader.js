@@ -79,7 +79,7 @@ async function loadBanks() {
 
 async function loadOccupations() {
     try {
-        const res = await fetch('/static/json/occupations.json');
+        const res = await fetch('/static/json/Occupations.json');
         const data = await res.json();
         const occupations = data.occupations || [];
         occupations.sort((a, b) => a.name.localeCompare(b.name));

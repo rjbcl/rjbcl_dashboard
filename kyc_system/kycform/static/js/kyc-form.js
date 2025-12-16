@@ -4,6 +4,59 @@ $(document).ready(function () {
   // SECTION 0: UTILITIES & HELPERS
   // =============================
   const log = (...args) => console.debug.apply(console, args);
+  var params = new URLSearchParams(window.location.search);
+  $('#Pol_number').text(policy);
+
+
+  //GET NAME FROM PREFILL DATA
+  $('.step-title').text(window.user_name ? window.user_name : 'KYC Form');
+
+  //Dashboard Btn
+  $('#DashboardBtn').on('click', function (e) {
+    e.preventDefault(); // prevent the default "#" link behavior
+    window.location.href = window.location.origin + '/dashboard/';
+  });
+
+  //Logout Btn
+
+  $('#logoutBtn').on('click', function (e) {
+    e.preventDefault(); // prevent the default "#" link behavior
+    window.location.href = window.location.origin + '/';
+  });
+
+
+  // ---------------------------NAV LINKS FOR LOGOUT AND DASHBOARD
+  // Toggle menu on click
+  $('.step-indicator .content').on('click', function (e) {
+    e.preventDefault();
+    toggleMenu();
+  });
+
+  function toggleMenu() {
+    $('.nav-links').toggleClass('show');
+    $('.collapse-menu').toggleClass('active');
+
+    // Optional: smooth scroll into view when opened
+    if ($('.nav-links').hasClass('show')) {
+      setTimeout(function () {
+        $('.nav-links')[0].scrollIntoView({
+          behavior: 'smooth',
+          block: 'nearest'
+        });
+      }, 100);
+    }
+  }
+
+  // Close menu when clicking outside
+  $(document).on('click', function (e) {
+    if (!$(e.target).closest('.step-indicator').length) {
+      if ($('.nav-links').hasClass('show')) {
+        $('.nav-links').removeClass('show');
+        $('.collapse-menu').removeClass('active');
+      }
+    }
+  });
+
 
   function safeText(el) {
     try {

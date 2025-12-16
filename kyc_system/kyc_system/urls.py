@@ -10,6 +10,6 @@ urlpatterns = [
     path("", include("kycform.urls", namespace="kyc")),
 ]
 
-# Serve media files only in development
-if settings.DEBUG:
+# Serve media files in development and production
+if settings.DEBUG or not settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
