@@ -2,3 +2,5 @@
 /KYC_env/
 .vscode
 /Frontend/
+__pycache__/
+*.pyc

@@ -4,7 +4,9 @@ from django.db import models
 from django.utils import timezone
 from django.contrib.auth.models import User
 from django.contrib.auth.hashers import make_password, check_password
+from django.contrib.auth import get_user_model
 
+User = get_user_model()
 
 # ================================================================
 # MAIN USER MODEL (LOGIN + BASIC ACCOUNT DETAILS)
@@ -376,3 +378,50 @@ class KYCTemporary(models.Model):
 
     def __str__(self):
         return f"Draft KYC for {self.policy_no}"
+    
+# ================================================================
+# KYC CHANGE LOG MODEL
+# ================================================================
+
+class KycChangeLog(models.Model):
+    ACTION_CHOICES = [
+        ("CREATE", "Create"),
+        ("UPDATE", "Update"),
+        ("DELETE", "Delete"),
+        ("STATUS", "Status Change"),
+        ("DOCUMENT", "Document Change"),
+    ]
+
+    ACTOR_TYPE = [
+        ("USER", "User"),
+        ("ADMIN", "Admin"),
+        ("AGENT", "Agent"),
+        ("SYSTEM", "System"),
+    ]
+
+    id = models.BigAutoField(primary_key=True)
+
+    submission = models.ForeignKey(
+        "KycSubmission",
+        on_delete=models.CASCADE,
+        related_name="change_logs"
+    )
+
+    field_name = models.CharField(max_length=100, blank=True, null=True)
+    old_value = models.TextField(blank=True, null=True)
+    new_value = models.TextField(blank=True, null=True)
+
+    action = models.CharField(max_length=20, choices=ACTION_CHOICES)
+    actor_type = models.CharField(max_length=20, choices=ACTOR_TYPE)
+    actor_identifier = models.CharField(max_length=100, blank=True, null=True)
+
+    comment = models.TextField(blank=True, null=True)
+
+    created_at = models.DateTimeField(default=timezone.now)
+
+    class Meta:
+        db_table = "kyc_change_log"
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"{self.submission.user.user_id} | {self.action} | {self.field_name}"

@@ -97,7 +97,7 @@ AUTH_PASSWORD_VALIDATORS = [
 
 # INTERNATIONALIZATION
 LANGUAGE_CODE = 'en-us'
-TIME_ZONE = 'UTC'
+TIME_ZONE = "Asia/Kathmandu"
 USE_I18N = True
 USE_TZ = True
 
@@ -121,3 +121,13 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 # -----------------------------------------------------------
+
+
+API_BACKEND_TOKEN = "super-secret-backend-token-123456"
+FASTAPI_BASE_URL = "http://127.0.0.1:9000"
+
+# ------------------------------
+# FASTAPI INTEGRATION SETTINGS
+# ------------------------------
+API_BASE_URL = config("API_BASE_URL", default="http://127.0.0.1:9000")
+API_TOKEN = config("API_TOKEN", default="super-secret-backend-token-123456")
