@@ -10,8 +10,8 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        migrations.RemoveField(
-            model_name='kycuserinfo',
-            name='user_email',
-        ),
+        # migrations.RemoveField(
+        #     model_name='kycuserinfo',
+        #     name='user_email',
+        # ),
     ]
