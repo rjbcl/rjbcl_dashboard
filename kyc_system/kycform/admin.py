@@ -250,18 +250,21 @@ class KycSubmissionAdmin(admin.ModelAdmin):
     # -------------------------------------------------------------------
     def changeform_view(self, request, object_id=None, form_url="", extra_context=None):
         
-         # ✅ Capture OLD status BEFORE admin edits
+         # ✅ Capture PRISTINE submission BEFORE admin edits (for audit)
         if object_id:
             try:
-                sub = KycSubmission.objects.select_related("user").get(pk=object_id)
-                request._old_kyc_status = sub.user.kyc_status
+                request._old_submission = (
+                    KycSubmission.objects
+                    .select_related("user")
+                    .get(pk=object_id)
+                )
+                request._old_kyc_status = request._old_submission.user.kyc_status
             except KycSubmission.DoesNotExist:
+                request._old_submission = None
                 request._old_kyc_status = None
         else:
+            request._old_submission = None
             request._old_kyc_status = None
-
-        extra_context = extra_context or {}
-        extra_context["show_save_and_continue"] = False
 
         try:
             obj = None
@@ -324,11 +327,8 @@ class KycSubmissionAdmin(admin.ModelAdmin):
     # -------------------------------------------------------------------
     def save_model(self, request, obj, form, change):
 
-        # ✅ FIX 1: always define old_obj
-        old_obj = None
-        if change:
-            old_obj = KycSubmission.objects.get(pk=obj.pk)
-
+        old_obj = getattr(request, "_old_submission", None)
+        
         try:
             kyc_status = form.cleaned_data.get("kyc_status")
         except Exception:
@@ -373,7 +373,7 @@ class KycSubmissionAdmin(admin.ModelAdmin):
         new_status = obj.user.kyc_status if obj.user else None
 
          # ✅ LOG STATUS CHANGE (AFTER SAVE)
-        if old_status != new_status:
+        if old_status and new_status and old_status != new_status:
             KycChangeLog.objects.create(
                 submission=obj,
                 action="STATUS_CHANGE",
@@ -639,3 +639,4 @@ class KycChangeLogAdmin(admin.ModelAdmin):
 
     def has_delete_permission(self, request, obj=None):
         return False
+    
