@@ -5,3 +5,4 @@ python-decouple==3.8
 sqlparse==0.5.3
 tzdata==2025.2
 django-cors-headers===4.9.0
+whitenoise===6.11.0
