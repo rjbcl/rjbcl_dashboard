@@ -3,18 +3,20 @@ $(document).ready(function () {
   // =============================
   // SECTION 0: UTILITIES & HELPERS
   // =============================
+  //PREVENTS FORM SUBMISSION ON ENTER KEY PRESS
+  $("#kycForm").on("keypress", function (e) {
+    if (e.key === "Enter") {
+      e.preventDefault(); // stop form submission
+    }
+  });
+
   const log = (...args) => console.debug.apply(console, args);
   var params = new URLSearchParams(window.location.search);
-  $('#Pol_number').text(params.get("policy_no"));
+  $('#Pol_number').text(policy);
 
 
   //GET NAME FROM PREFILL DATA
-  let full_name = window.prefill_data.first_name + (window.prefill_data.middle_name ? " " + window.prefill_data.middle_name : "") + " " + window.prefill_data.last_name
-  $('.step-title').text(full_name ? full_name : 'KYC Form');
-
-  // Get the value of "policy_no"
-
-
+  $('.step-title').text(window.user_name ? window.user_name : 'KYC Form');
 
   //Dashboard Btn
   $('#DashboardBtn').on('click', function (e) {
@@ -84,7 +86,7 @@ $(document).ready(function () {
   }
 
   // Allow only Devanagari characters (U+0900–U+097F) and spaces
-  $("#nep-first-name").on("input", function () {
+  $("#full_name_nep").on("input", function () {
     let value = $(this).val();
     value = value.replace(/[^\u0900-\u097F\s]/g, '');
     $(this).val(value);
@@ -183,6 +185,7 @@ $(document).ready(function () {
         resetField($incomeSource, { readonly: true, disabled: true, preserveValue: false });
         resetField($panNumber, { readonly: true, disabled: true, preserveValue: false });
         $occupationDesc.closest('.mb-3').hide();
+        $occupationDesc.removeAttr('required');
 
       } else if (isOther) {
         // Other occupation - show description field, PAN optional, preserve values
@@ -298,8 +301,7 @@ $(document).ready(function () {
     });
 
     // Track progress step
-    jsonData["_current_step"] = typeof currentStep !== "undefined" ? currentStep : 1;
-
+    jsonData["_current_step"] = typeof currentStep !== "undefined" ? currentStep + 1 : 1;
     // --------------------------------------
     // Build multipart (FormData)
     // --------------------------------------

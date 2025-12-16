@@ -1,5 +1,5 @@
 $(document).ready(function () {
-    let currentStep = 1;
+    window.currentStep = 1;
     const totalSteps = 5;
     let highestStepReached = 1;
 

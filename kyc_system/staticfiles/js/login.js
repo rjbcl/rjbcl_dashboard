@@ -59,7 +59,7 @@ $(document).ready(function () {
 
     if (msgTags.includes('success')) {
       showSuccessMessage(msgText);
-    } else if (msgText.includes('Incorrect password!') || msgText.includes('Invalid policy number or user not found.')|| msgText.includes('Agent code not found!')) {
+    } else if (msgText.includes('Incorrect password!') || msgText.includes('Invalid policy number or user not found.') || msgText.includes('Agent code not found!')) {
       showErrorMessage("Invalid Credentials. Please Try Again!");
     } else if (msgTags.includes('warning')) {
       showErrorMessage(msgText);
@@ -162,12 +162,13 @@ $(document).ready(function () {
       $field.removeClass('is-invalid');
     }
   });
-    // USER REGISTRATION DATE PICKER INITIALIZATION
-  $("#user_dob_bs").NepaliDatePicker();
-  $("#user_dob_ad").on("focus", function () {
-    this.showPicker();
-  });
-
+  // USER REGISTRATION DATE PICKER INITIALIZATION
+  if (typeof NepaliDatePicker !== 'undefined') {
+    $("#user_dob_bs").NepaliDatePicker();
+    $("#user_dob_ad").on("focus", function () {
+      this.showPicker();
+    });
+  }
 });
 
 // ===========================
