@@ -33,57 +33,56 @@
             <img src="{% static 'images/rjbclogo.png' %}" alt="RJBC Logo" class="logo" style="cursor:pointer;">
           </a>
         </div>
-      </div>
 
-      <div class="step-indicator">
-        <div class="content  d-flex align-items-center justify-content-between">
-          <div>
-            <h6 class="step-title">KYC Form </h6>
-            <p class="step-subtitle small" id="Pol_number">POLXXX</p>
+        <div class="step-indicator">
+          <div class="content  d-flex align-items-center justify-content-between">
+            <div>
+              <h6 class="step-title">KYC Form </h6>
+              <p class="step-subtitle small" id="Pol_number">POLXXX</p>
+            </div>
+
+            <div class="collapse-menu bg-info">
+              <i class="bi bi-caret-down-fill"></i>
+            </div>
           </div>
-
-          <div class="collapse-menu bg-info">
-            <i class="bi bi-caret-down-fill"></i>
+          <div class="nav-links">
+            <a href="#" class="nav-link" id="DashboardBtn">
+              <i class="bi bi-house-door"></i> Dashboard
+            </a>
+            <a href="#" class="nav-link" id="logoutBtn">
+              <i class="bi bi-box-arrow-right"></i> Logout
+            </a>
           </div>
         </div>
-        <div class="nav-links">
-          <a href="#" class="nav-link" id="DashboardBtn">
-            <i class="bi bi-house-door"></i> Dashboard
+
+        <nav class="nav-steps">
+          <a href="#" class="nav-step active" data-step="1">
+            <span class="step-number">1</span>
+            <span class="step-name">Personal Details</span>
           </a>
-          <a href="#" class="nav-link" id="logoutBtn">
-            <i class="bi bi-box-arrow-right"></i> Logout
+          <a href="#" class="nav-step" data-step="2">
+            <span class="step-number">2</span>
+            <span class="step-name">Address Details</span>
           </a>
-        </div>
+          <a href="#" class="nav-step" data-step="3">
+            <span class="step-number">3</span>
+            <span class="step-name">Financial Details</span>
+          </a>
+          <a href="#" class="nav-step" data-step="4">
+            <span class="step-number">4</span>
+            <span class="step-name">Nominee Details</span>
+          </a>
+          <a href="#" class="nav-step" data-step="5">
+            <span class="step-number">5</span>
+            <span class="step-name">Additional Details</span>
+          </a>
+        </nav>
       </div>
 
-      <nav class="nav-steps">
-        <a href="#" class="nav-step active" data-step="1">
-          <span class="step-number">1</span>
-          <span class="step-name">Personal Details</span>
-        </a>
-        <a href="#" class="nav-step" data-step="2">
-          <span class="step-number">2</span>
-          <span class="step-name">Address Details</span>
-        </a>
-        <a href="#" class="nav-step" data-step="3">
-          <span class="step-number">3</span>
-          <span class="step-name">Financial Details</span>
-        </a>
-        <a href="#" class="nav-step" data-step="4">
-          <span class="step-number">4</span>
-          <span class="step-name">Nominee Details</span>
-        </a>
-        <a href="#" class="nav-step" data-step="5">
-          <span class="step-number">5</span>
-          <span class="step-name">Additional Details</span>
-        </a>
-      </nav>
-    </div>
-
-    <!-- Main Content -->
-    <div class="col-md-9 main-content">
-      {% if rejection_message %}
-      <div style="
+      <!-- Main Content -->
+      <div class="col-md-9 main-content">
+        {% if rejection_message %}
+        <div style="
             background:#ffe6e6;
             padding:14px;
             border-left:6px solid #cc0000;
@@ -92,755 +91,758 @@
             font-size:15px;
             color:#7a0000;
         ">
-        <strong>Your KYC was rejected.</strong><br>
-        {{ rejection_message }}
-      </div>
-      {% endif %}
+          <strong>Your KYC was rejected.</strong><br>
+          {{ rejection_message }}
+        </div>
+        {% endif %}
 
-      <div class="form-container">
-        <form id="kycForm" method="POST" action="{% url 'kyc:kyc_submit' %}" enctype="multipart/form-data">
-          {% csrf_token %}
-          <input type="hidden" name="kyc_data" id="kyc_data">
-          <input type="hidden" name="policy_no" id="policyField">
+        <div class="form-container">
+          <form id="kycForm" method="POST" action="{% url 'kyc:kyc_submit' %}" enctype="multipart/form-data">
+            {% csrf_token %}
+            <input type="hidden" name="kyc_data" id="kyc_data">
+            <input type="hidden" name="policy_no" id="policyField">
 
-          <!-- Step 1: Personal Details -->
-          <div class="form-step active" data-step="1">
-            <h4 class="form-step-title">Personal Details</h4>
+            <!-- Step 1: Personal Details -->
+            <div class="form-step active" data-step="1">
+              <h4 class="form-step-title">Personal Details</h4>
 
-            <!-- Photo Upload -->
-            <div class="photo-upload-section">
-              <div class="photo-preview">
-                <img id="photoPreview" src="{% static 'images/default-avatar.png' %}" alt="Photo">
+              <!-- Photo Upload -->
+              <div class="photo-upload-section">
+                <div class="photo-preview">
+                  <img id="photoPreview" src="{% static 'images/default-avatar.png' %}" alt="Photo">
+                </div>
+                <div class="photo-upload-controls">
+
+                  <label class="form-label">
+                    Passport Size Photo <span class="text-danger">*</span>
+                  </label>
+                  <p class="form-text">Supports jpg, jpeg and png. 300KB max.</p>
+
+                  <!-- FILE INPUT (patched) -->
+                  <label class="form-label d-none">Passport Photo</label>
+                  <input type="file" id="photoUpload" name="photo" accept="image/*" data-preview="photo"
+                    data-existing="{{ prefill_json.photo_url|default:'' }}" style="display:none;" required>
+
+                  <!-- UPLOAD BUTTON -->
+                  <button id="photoBtn" type="button" class="btn btn-outline-primary btn-sm mb-1"
+                    onclick="document.getElementById('photoUpload').click()">
+                    Upload
+                  </button>
+
+                  <!-- REMOVE BUTTON -->
+                  <button type="button" class="btn btn-link btn-sm text-danger" id="removePhoto">
+                    Remove
+                  </button>
+                  <!-- PREVIEW CONTAINER (patched) -->
+                  <div id="photo_preview" class="mt-2">
+                    {% if prefill_json.photo_url %}
+                    <img src="{{ prefill_json.photo_url }}" class="uploaded-preview-img" style="max-height: 140px;">
+                    {% endif %}
+                  </div>
+                </div>
+
               </div>
-              <div class="photo-upload-controls">
 
-                <label class="form-label">
-                  Passport Size Photo <span class="text-danger">*</span>
-                </label>
-                <p class="form-text">Supports jpg, jpeg and png. 300KB max.</p>
-
-                <!-- FILE INPUT (patched) -->
-                <label class="form-label d-none">Passport Photo</label>
-                <input type="file" id="photoUpload" name="photo" accept="image/*" data-preview="photo"
-                  data-existing="{{ prefill_json.photo_url|default:'' }}" style="display:none;" required>
-
-                <!-- UPLOAD BUTTON -->
-                <button id="photoBtn" type="button" class="btn btn-outline-primary btn-sm mb-1"
-                  onclick="document.getElementById('photoUpload').click()">
-                  Upload
-                </button>
-
-                <!-- REMOVE BUTTON -->
-                <button type="button" class="btn btn-link btn-sm text-danger" id="removePhoto">
-                  Remove
-                </button>
-                <!-- PREVIEW CONTAINER (patched) -->
-                <div id="photo_preview" class="mt-2">
-                  {% if prefill_json.photo_url %}
-                  <img src="{{ prefill_json.photo_url }}" class="uploaded-preview-img" style="max-height: 140px;">
-                  {% endif %}
+              <!-- Name Fields -->
+              <div class="row">
+                <div class="col-md-1 mb-3">
+                  <label class="form-label">Salutation</label>
+                  <select name="salutation" class="form-select no-arrow px-2" sty>
+                    <option value="">--</option>
+                    <option value="Mr">Mr</option>
+                    <option value="Mrs">Mrs</option>
+                    <option value="Ms">Ms</option>
+                    <option value="Dr">Dr</option>
+                  </select>
+                </div>
+                <div class="col-md-3 mb-3">
+                  <label class="form-label">First Name<span class="text-danger">*</span></label>
+                  <input type="text" name="first_name" class="form-control alpha-text" required autocomplete="off">
+                </div>
+                <div class="col-md-4 mb-3">
+                  <label class="form-label">Middle Name</label>
+                  <input type="text" name="middle_name" class="form-control alpha-text" autocomplete="off">
+                </div>
+                <div class="col-md-4 mb-3">
+                  <label class="form-label">Last Name <span class="text-danger">*</span></label>
+                  <input type="text" name="last_name" class="form-control alpha-text" required autocomplete="off">
                 </div>
               </div>
 
-            </div>
-
-            <!-- Name Fields -->
-            <div class="row">
-              <div class="col-md-1 mb-3">
-                <label class="form-label">Salutation</label>
-                <select name="salutation" class="form-select no-arrow px-2" sty>
-                  <option value="">--</option>
-                  <option value="Mr">Mr</option>
-                  <option value="Mrs">Mrs</option>
-                  <option value="Ms">Ms</option>
-                  <option value="Dr">Dr</option>
-                </select>
-              </div>
-              <div class="col-md-3 mb-3">
-                <label class="form-label">First Name<span class="text-danger">*</span></label>
-                <input type="text" name="first_name" class="form-control alpha-text" required autocomplete="off">
-              </div>
-              <div class="col-md-4 mb-3">
-                <label class="form-label">Middle Name</label>
-                <input type="text" name="middle_name" class="form-control alpha-text" autocomplete="off">
-              </div>
-              <div class="col-md-4 mb-3">
-                <label class="form-label">Last Name <span class="text-danger">*</span></label>
-                <input type="text" name="last_name" class="form-control alpha-text" required autocomplete="off">
-              </div>
-            </div>
-
-            <div class="row">
-              <div class="col-md-4 mb-3">
-                <label class="form-label">पूरा नाम (देवनागरीमा) <span class="text-danger">*</span></label>
-                <input type="text" id="full_name_nep" name="full_name_nep" class="form-control"
-                  pattern="[\u0900-\u097F\s।॥]+" lang="ne" required autocomplete="off">
-              </div>
-
-              <div class="col-md-4 mb-3">
-                <label class="form-label">Nationality <span class="text-danger">*</span></label>
-                <select name="nationality" class="form-select" required>
-                  <option value="Nepalese" selected>Nepalese</option>
-                  <option value="Indian">Indian</option>
-                  <option value="Chinese">Chinese</option>
-                  <option value="Others">Other</option>
-                </select>
-              </div>
-
-              <div class="col-md-4 mb-3">
-                <label class="form-label">Gender <span class="text-danger">*</span></label>
-                <div class="gender-options">
-                  <div class="form-check form-check-inline">
-                    <input class="form-check-input" type="radio" id="male" name="gender" value="Male" required>
-                    <label class="form-check-label" for="male">Male</label>
-                  </div>
-                  <div class="form-check form-check-inline">
-                    <input class="form-check-input" id="female" type="radio" name="gender" value="Female">
-                    <label class="form-check-label" for="female">Female</label>
-                  </div>
-                  <div class="form-check form-check-inline">
-                    <input class="form-check-input" id="other-gender" type="radio" name="gender" value="Other">
-                    <label class="form-check-label" for="other-gender">Other</label>
-                  </div>
+              <div class="row">
+                <div class="col-md-4 mb-3">
+                  <label class="form-label">पूरा नाम (देवनागरीमा) <span class="text-danger">*</span></label>
+                  <input type="text" id="full_name_nep" name="full_name_nep" class="form-control"
+                    pattern="[\u0900-\u097F\s।॥]+" lang="ne" required autocomplete="off">
                 </div>
-              </div>
-            </div>
 
-            <!-- DOB -->
-            <div class="row">
-              <div class="col-md-4 mb-3">
-                <label class="form-label">Date of Birth (BS) <span class="text-danger">*</span></label>
-                <input type="text" id="dob_bs" name="dob_bs" class="form-control" placeholder="YYYY/MM/DD" required
-                  autocomplete="off">
-              </div>
-              <div class="col-md-4 mb-3" onclick="document.getElementById('dob_ad').showPicker()">
-                <label class="form-label">Date of Birth (AD) <span class="text-danger">*</span></label>
-                <input type="date" id="dob_ad" name="dob_ad" class="form-control" placeholder="YYYY-MM-DD" required
-                  autocomplete="off">
-              </div>
-
-              <div class="col-md-4 mb-3">
-                <label class="form-label">Marital Status <span class="text-danger">*</span></label>
-                <div class="marital-options">
-                  <div class="form-check form-check-inline">
-                    <input class="form-check-input" id="Married" type="radio" name="marital_status" value="Married"
-                      required>
-                    <label class="form-check-label" for="Married">Married</label>
-                  </div>
-                  <div class="form-check form-check-inline">
-                    <input class="form-check-input" id="Unmarried" type="radio" name="marital_status" value="Unmarried">
-                    <label class="form-check-label" for="Unmarried">Unmarried</label>
-                  </div>
+                <div class="col-md-4 mb-3">
+                  <label class="form-label">Nationality <span class="text-danger">*</span></label>
+                  <select name="nationality" class="form-select" required>
+                    <option value="Nepalese" selected>Nepalese</option>
+                    <option value="Indian">Indian</option>
+                    <option value="Chinese">Chinese</option>
+                    <option value="Others">Other</option>
+                  </select>
                 </div>
-              </div>
-            </div>
 
-            <!-- Contact -->
-            <div class="row mb-4">
-              <div class="col-md-4 mb-3">
-                <label class="form-label">Email Address <span class="text-danger">*</span></label>
-                <input type="email" name="email" class="form-control" required autocomplete="off">
-              </div>
-              <div class="col-md-4 mb-3">
-                <label class="form-label">Mobile No. <span class="text-danger">*</span></label>
-                <input type="text" id="mobile" name="mobile" class="form-control" required autocomplete="off">
-              </div>
-              <div class="col-md-4 mb-3">
-                <label class="form-label">Telephone No. </label>
-                <input type="text" name="telephone" class="form-control" autocomplete="off">
-              </div>
-            </div>
-
-            <h4 class="form-step-title">Documents</h4>
-
-            <!-- Citizenship number & Issued Dates -->
-            <div class="row">
-              <div class="col-md-4 mb-3">
-                <label class="form-label">Citizenship No.<span class="text-danger">*</span></label>
-                <input type="text" name="citizenship_no" class="form-control" required autocomplete="off">
-              </div>
-
-              <div class="col-md-4 mb-3">
-                <label class="form-label">Document Issued Date (BS) <span class="text-danger">*</span></label>
-                <input type="text" id="citizen_bs" name="citizen_bs" class="form-control" placeholder="YYYY/MM/DD"
-                  required autocomplete="off">
-              </div>
-
-              <div class="col-md-4 mb-3" onclick="document.getElementById('citizen_ad').showPicker()">
-                <label class="form-label">Document Issued Date (AD) <span class="text-danger">*</span></label>
-                <input type="date" id="citizen_ad" name="citizen_ad" class="form-control" placeholder="YYYY-MM-DD"
-                  required autocomplete="off">
-              </div>
-            </div>
-
-            <div class="row mb-4">
-              <div class="col-md-4 mb-3">
-                <label class="form-label">Document Issued Place <span class="text-danger">*</span></label>
-                <input type="text" name="citizenship_place" class="form-control alpha-text" required autocomplete="off">
-              </div>
-              <div class="col-md-4 mb-3">
-                <label class="form-label">Passport No.</label>
-                <input type="text" name="passport_no" class="form-control" autocomplete="off">
-              </div>
-              <div class="col-md-4 mb-3">
-                <label class="form-label">National Identity Card No.</label>
-                <input type="text" name="nid_no" class="form-control" autocomplete="off">
-              </div>
-            </div>
-
-            <!-- Document Uploads Citizenship -->
-            <div class="row mb-4">
-              <div class="col-md-6">
-                <div class="document-upload" id="citizenship_front">
-                  <div class="transparent-dark-div">
-                    <div class="upload-icon">📄</div>
-                    <label class="form-label text-white">Citizenship Front <span class="text-danger">*</span></label>
-                    <p class="form-text text-white-50">Supports jpg, jpeg and png. 1MB max.</p>
-                    <label for="citizenshipuoload" class="d-none">Citizenship Front</label>
-                    <input type="file" data-filename="citizenshipFrontFileName" id="citizenshipFrontUpload"
-                      name="citizenship-front" accept="image/*,application/pdf" data-preview="citizenship_front"
-                      style="display:none;" required>
-                    <button type="button" class="btn document-btn btn-outline-secondary btn-success btn-sm"
-                      onclick="document.getElementById('citizenshipFrontUpload').click()">
-                      <span class="upload-icon-btn">⬇</span>
-                    </button>
-                    <button type="button" class="btn btn-outline-danger btn-danger btn-sm remove-btn"
-                      style="display:none;">
-                      <span class="fw-bolder">✕</span>
-                    </button>
-                    <span class="file-name" id="citizenshipFrontFileName">Citizenship Front</span>
-                  </div>
-                </div>
-              </div>
-
-              <div class="col-md-6">
-                <div class="document-upload" id="citizenship_back">
-                  <div class="transparent-dark-div">
-                    <div class="upload-icon">📄</div>
-                    <label class="form-label text-white">Citizenship Back <span class="text-danger">*</span></label>
-                    <p class="form-text text-white-50">Supports jpg, jpeg and png. 1MB max.</p>
-                    <input type="file" data-filename="citizenshipBackFileName" id="citizenshipBackUpload"
-                      name="citizenship-back" accept="image/*,application/pdf" data-preview="citizenship_back"
-                      style="display:none;" required>
-                    <button type="button" class="btn document-btn  btn-outline-secondary btn-success btn-sm"
-                      onclick="document.getElementById('citizenshipBackUpload').click()">
-                      <span class="upload-icon-btn">⬇</span>
-                    </button>
-                    <button type="button" class="btn btn-outline-danger btn-danger btn-sm remove-btn"
-                      style="display:none;">
-                      <span class="fw-bolder">✕</span>
-                    </button>
-                    <span class="file-name text-white" id="citizenshipBackFileName">Citizenship Back</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <!-- Document Uploads NID & Signature-->
-            <div class="row mb-4">
-              <div class="col-md-6">
-                <div class="document-upload" id="Nid_doc">
-                  <div class="transparent-dark-div">
-                    <div class="upload-icon">📄</div>
-                    <label class="form-label text-white">National Identity Card (optional)</label>
-                    <p class="form-text text-white-50">Supports jpg, jpeg and png. 1MB max.</p>
-                    <input type="file" data-filename="nidFileName" id="NidUpload" name="nid"
-                      accept="image/*,application/pdf" data-preview="Nid_doc" style="display:none;">
-                    <button type="button" class="btn document-btn btn-outline-secondary btn-success btn-sm"
-                      onclick="document.getElementById('NidUpload').click()">
-                      <span class="upload-icon-btn">⬇</span>
-                    </button>
-                    <button type="button" class="btn btn-outline-danger btn-sm btn-danger remove-btn"
-                      style="display:none;">
-                      <span class="fw-bolder">✕</span>
-                    </button>
-                    <span class="file-name" id="nidFileName">Rastriya Parichaya Patra</span>
-                  </div>
-                </div>
-              </div>
-
-              <div class="col-md-6">
-                <div class="document-upload" id="signature">
-                  <div class="transparent-dark-div">
-                    <div class="upload-icon">📄</div>
-                    <label class="form-label text-white">Signature <span class="text-danger">*</span></label>
-                    <p class="form-text text-white-50">Supports jpg, jpeg and png. 1MB max.</p>
-                    <input type="file" data-filename="signatureFileName" id="signatureUpload" name="signature"
-                      accept="image/*,application/pdf" data-preview="signature" style="display:none;" required>
-                    <button type="button" class="btn document-btn btn-outline-secondary btn-success btn-sm"
-                      onclick="document.getElementById('signatureUpload').click()">
-                      <span class="upload-icon-btn">⬇</span>
-                    </button>
-                    <button type="button" class="btn btn-outline-danger btn-sm btn-danger remove-btn"
-                      style="display:none;">
-                      <span class="fw-bolder">✕</span>
-                    </button>
-                    <span class="file-name" id="signatureFileName">Your Signature</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <h4 class="form-step-title">Family Details</h4>
-            <!-- Married Details -->
-            <div class="row">
-              <div class="col-md-4 mb-3">
-                <label class="form-label">Spouse Name <span class="text-danger">*</span></label>
-                <input type="text" id="spouse_name" name="spouse_name" class="form-control alpha-text0" required
-                  autocomplete="off">
-              </div>
-              <div class="col-md-4 mb-3">
-                <label class="form-label">Grand Father's Name <span class="text-danger">*</span></label>
-                <input type="text" name="grand_father_name" class="form-control alpha-text" required autocomplete="off">
-              </div>
-              <div class="col-md-4 mb-3">
-                <label class="form-label">Proposer's Name <span style="font-size: 12px; color: grey;">(In case of a
-                    child)</span> </label>
-                <input type="text" name="proposer_name" class="form-control alpha-text" autocomplete="off">
-              </div>
-            </div>
-
-            <!-- Close Family -->
-            <div class="row">
-              <div class="col-md-4 mb-3">
-                <label class="form-label">Father's Name <span class="text-danger">*</span></label>
-                <input type="text" name="father_name" class="form-control alpha-text" required autocomplete="off">
-              </div>
-              <div class="col-md-4 mb-3">
-                <label class="form-label">Mother's Name <span class="text-danger">*</span></label>
-                <input type="text" name="mother_name" class="form-control alpha-text" required autocomplete="off">
-              </div>
-              <div class="col-md-4 mb-3">
-                <label class="form-label">Father in Law's Name</label>
-                <input type="text" name="father_in_law_name" class="form-control alpha-text" autocomplete="off">
-              </div>
-            </div>
-
-            <!-- Close Family 2 -->
-            <div class="row">
-              <div class="col-md-4 mb-3">
-                <label class="form-label">Son's Name</label>
-                <input type="text" name="son_name" class="form-control alpha-text" autocomplete="off">
-              </div>
-              <div class="col-md-4 mb-3">
-                <label class="form-label">Daughter's Name</label>
-                <input type="text" name="daughter_name" class="form-control alpha-text" autocomplete="off">
-              </div>
-              <div class="col-md-4 mb-3">
-                <label class="form-label">Daughter in Law's Name</label>
-                <input type="text" name="daughter_in_law_name" class="form-control alpha-text" autocomplete="off">
-              </div>
-            </div>
-          </div>
-
-          <!-- Step 2: Address Details -->
-          <div class="form-step" data-step="2">
-            <h4 class="form-step-title">Address Details</h4>
-
-            <h6 class="section-subtitle">स्थायी ठेगाना (Permanent Address)</h6>
-            <div class="row">
-              <div class="col-md-3 mb-3">
-                <label class="form-label">Province <span class="text-danger">*</span></label>
-                <select id="perm_province" name="perm_province" class="form-select" required>
-                  <option value="">Select Province</option>
-                </select>
-              </div>
-              <div class="col-md-3 mb-3">
-                <label class="form-label">District <span class="text-danger">*</span></label>
-                <select id="perm_district" name="perm_district" class="form-select" required>
-                  <option value="">Select District</option>
-                </select>
-              </div>
-              <div class="col-md-3 mb-3">
-                <label class="form-label">Municipality <span class="text-danger">*</span></label>
-                <select id="perm_muni" name="perm_municipality" class="form-select" required>
-                  <option value="">Select Municipality</option>
-                </select>
-              </div>
-              <div class="col-md-3 mb-3">
-                <label class="form-label">Ward <span class="text-danger">*</span></label>
-                <input type="number" id="perm_ward" name="perm_ward" class="form-control" required autocomplete="off">
-              </div>
-            </div>
-
-            <div class="row">
-              <div class="col-md-3 mb-3">
-                <label class="form-label">Address <span class="text-danger">*</span></label>
-                <input type="text" id="perm_address" name="perm_address" class="form-control" required
-                  autocomplete="off">
-              </div>
-              <div class="col-md-3 mb-3">
-                <label class="form-label">House No.</label>
-                <input type="text" id="perm_house_number" name="perm_house_number" class="form-control"
-                  autocomplete="off">
-              </div>
-            </div>
-
-            <h6 class="section-subtitle mt-4">अस्थायी ठेगाना (Temporary Address)</h6>
-            <div class="form-check mb-3">
-              <input class="form-check-input" type="checkbox" id="sameAddress">
-              <label class="form-check-label" for="sameAddress">
-                Same as Permanent Address
-              </label>
-            </div>
-            <div class="row">
-              <div class="col-md-3 mb-3">
-                <label class="form-label">Province <span class="text-danger">*</span></label>
-                <select id="temp_province" name="temp_province" class="form-select" required>
-                  <option value="">Select Province</option>
-                </select>
-              </div>
-              <div class="col-md-3 mb-3">
-                <label class="form-label">District <span class="text-danger">*</span></label>
-                <select id="temp_district" name="temp_district" class="form-select" required>
-                  <option value="">Select District</option>
-                </select>
-              </div>
-              <div class="col-md-3 mb-3">
-                <label class="form-label">Municipality <span class="text-danger">*</span></label>
-                <select id="temp_muni" name="temp_municipality" class="form-select" required>
-                  <option value="">Select Municipality</option>
-                </select>
-              </div>
-              <div class="col-md-3 mb-3">
-                <label class="form-label">Ward <span class="text-danger">*</span></label>
-                <input id="temp_ward" type="number" name="temp_ward" class="form-control" required autocomplete="off">
-              </div>
-            </div>
-            <div class="row">
-              <div class="col-md-3 mb-3">
-                <label class="form-label">Address <span class="text-danger">*</span></label>
-                <input id="temp_address" type="text" name="temp_address" class="form-control" required
-                  autocomplete="off">
-              </div>
-              <div class="col-md-3 mb-3">
-                <label class="form-label">House No.</label>
-                <input type="text" id="temp_house_number" name="temp_house_number" class="form-control"
-                  autocomplete="off">
-              </div>
-            </div>
-          </div>
-
-          <!-- Step 3: Financial Details -->
-          <div class="form-step" data-step="3">
-            <h4 class="form-step-title">Financial Details</h4>
-
-            <h6 class="section-subtitle mt-4">Bank Details</h6>
-            <div class="row">
-              <div class="col-md-6 mb-3">
-                <label class="form-label">Bank Name <span class="text-danger">*</span></label>
-                <select name="bank_name" id="bankSelect" class="form-select" required autocomplete="off">
-                  <option value="">Select Bank</option>
-                  <!-- Options will be populated dynamically -->
-                </select>
-              </div>
-              <div class="col-md-6 mb-3">
-                <label class="form-label">Branch <span class="text-danger">*</span></label>
-                <input type="text" name="branch_name" class="form-control" required autocomplete="off">
-              </div>
-            </div>
-
-            <div class="row">
-              <div class="col-md-6 mb-3">
-                <label class="form-label">Account Number <span class="text-danger">*</span></label>
-                <input type="text" name="account_number" class="form-control" required autocomplete="off">
-              </div>
-              <div class="col-md-6 mb-3">
-                <label class="form-label">Account Type <span class="text-danger">*</span></label>
-                <select name="account_type" class="form-select" required>
-                  <option value="">Select</option>
-                  <option value="Saving">Saving</option>
-                  <option value="Current">Current</option>
-                </select>
-              </div>
-            </div>
-
-            <h6 class="section-subtitle mt-4">Professional Details</h6>
-            <div class="row">
-              <div class="col-md-4 mb-3">
-                <label class="form-label">Occupation <span class="text-danger">*</span></label>
-                <select name="occupation" id="occupation" class="form-select" required>
-                  <option value="">Select Profession</option>
-                  <!-- Options will be populated dynamically -->
-                </select>
-              </div>
-              <div class="col-md-4 mb-3">
-                <label class="form-label">Occupation Description <span class="text-danger">*</span></label>
-                <input type="text" id="occupation_description" name="occupation_description" class="form-control">
-              </div>
-              <div class=" col-md-4 mb-3">
-                <label class="form-label">Income Mode <span class="text-danger">*</span></label>
-                <select name="income_mode" id="income_mode" class="form-select" required>
-                  <option value="">Select Mode</option>
-                  <option value="Yearly">Yearly</option>
-                  <option value="Monthly">Monthly</option>
-                </select>
-              </div>
-            </div>
-
-            <div class="row">
-              <div class="col-md-4 mb-3">
-                <label class="form-label">Annual Income (Rs.) <span class="text-danger">*</span></label>
-                <input type="number" id="annual_income" name="annual_income" class="form-control" required
-                  autocomplete="off">
-              </div>
-              <div class="col-md-4 mb-3">
-                <label class="form-label">Source of Income <span class="text-danger">*</span></label>
-                <input type="text" id="income_source" name="income_source" class="form-control" required
-                  autocomplete="off">
-              </div>
-              <div class="col-md-4 mb-3">
-                <label class="form-label">PAN number <span class="text-danger">*</span></label>
-                <input type="text" id="pan_number" name="pan_number" class="form-control" required autocomplete="off">
-              </div>
-            </div>
-
-            <div class="row">
-              <div class="col-md-4 mb-3">
-                <label class="form-label">Qualification<span class="text-danger">*</span></label>
-                <select name="qualification" id="qualification" class="form-select" required>
-                  <option value="">Select Qualification</option>
-                  <option value="Bachelor">Bachelor</option>
-                  <option value="SLC">SLC</option>
-                  <option value="Intermediate">Intermediate</option>
-                  <option value="Masters">Masters</option>
-                  <option value="PHD">PHD</option>
-                  <option value="SEE">SEE</option>
-                  <option value="Below SLC">Below SLC</option>
-                  <option value="Illiterate">Illiterate</option>
-                  <option value="Literate">Literate</option>
-                </select>
-              </div>
-              <div class="col-md-4 mb-3">
-                <label class="form-label">Employer Name </label>
-                <input type="text" name="employer_name" class="form-control" autocomplete="off">
-              </div>
-              <div class="col-md-4 mb-3">
-                <label class="form-label">Office Address</label>
-                <input type="text" name="office_address" class="form-control" autocomplete="off">
-              </div>
-            </div>
-          </div>
-
-          <!-- Step 4: Nominee Details -->
-          <div class="form-step" data-step="4">
-            <h4 class="form-step-title">Nominee Details</h4>
-
-            <div class="row">
-              <div class="col-md-6 mb-3">
-                <label class="form-label">Nominee Name <span class="text-danger">*</span></label>
-                <input type="text" name="nominee_name" class="form-control" required autocomplete="off">
-              </div>
-              <div class="col-md-6 mb-3">
-                <label class="form-label">Relationship with Nominee <span class="text-danger">*</span></label>
-                <select name="nominee_relation" class="form-select" required>
-                  <option value="">Select</option>
-                  <option value="Spouse">Spouse</option>
-                  <option value="Father">Father</option>
-                  <option value="Mother">Mother</option>
-                  <option value="Son">Son</option>
-                  <option value="Daughter">Daughter</option>
-                  <option value="Brother">Brother</option>
-                  <option value="Sister">Sister</option>
-                  <option value="In-Laws">In-Laws</option>
-                </select>
-              </div>
-            </div>
-
-            <div class="row">
-              <div class="col-md-3 mb-3">
-                <label class="form-label">Nominee DOB (BS) <span class="text-danger">*</span></label>
-                <input type="text" id="nominee_dob_bs" name="nominee_dob_bs" class="form-control"
-                  placeholder="YYYY/MM/DD" required>
-              </div>
-              <div class="col-md-3 mb-3" onclick="document.getElementById('nominee_dob_ad').showPicker()">
-                <label class="form-label">Nominee DOB (AD) <span class="text-danger">*</span></label>
-                <input type="date" id="nominee_dob_ad" name="nominee_dob_ad" class="form-control"
-                  placeholder="YYYY-MM-DD" required>
-              </div>
-              <div class="col-md-6 mb-3">
-                <label class="form-label">Nominee Contact Number <span class="text-danger">*</span></label>
-                <input type="tel" id="nominee_mobile" name="nominee_contact" class="form-control" required
-                  autocomplete="off">
-              </div>
-            </div>
-
-            <h6 class="section-subtitle mt-4">In Case of Minor</h6>
-            <div class="row">
-              <div class="col-md-6 mb-3">
-                <label class="form-label">Guardian Name</label>
-                <input type="text" name="guardian_name" class="form-control" autocomplete="off">
-              </div>
-              <div class="col-md-6 mb-3">
-                <label class="form-label">Guardian Relationship</label>
-                <input type="text" name="guardian_relation" class="form-control" autocomplete="off">
-              </div>
-            </div>
-          </div>
-
-          <!-- Step 5: Additional Details -->
-          <div class="form-step" data-step="5">
-            <h4 class="form-step-title">Additional Details</h4>
-
-            <!-- PEP and AML Declarations -->
-            <div class="declaration-section mb-4">
-              <h6 class="section-subtitle">Declaration Questions</h6>
-
-              <div class="declaration-question mb-4">
-                <label class="form-label fw-bold">
-                  Are you a Politically Exposed Person (PEP)?
-                  <span class="text-danger">*</span>
-                </label>
-                <p class="form-text text-muted small mb-2">
-                  के तपाईं राजनीतिक रूपमा उजागर व्यक्ति हुनुहुन्छ? (PEP includes current or former senior government
-                  officials, political party leaders, or their close associates)
-                </p>
-                <div class="declaration-options">
-                  <div class="form-check form-check-inline">
-                    <input class="form-check-input" type="radio" name="is_pep" id="pep_yes" value="yes" required>
-                    <label class="form-check-label" for="pep_yes">
-                      <span class="option-text">Yes / हो</span>
-                    </label>
-                  </div>
-                  <div class="form-check form-check-inline">
-                    <input class="form-check-input" type="radio" name="is_pep" id="pep_no" value="no">
-                    <label class="form-check-label" for="pep_no">
-                      <span class="option-text">No / होइन</span>
-                    </label>
-                  </div>
-                </div>
-              </div>
-
-              <div class="declaration-question mb-4">
-                <label class="form-label fw-bold">
-                  Have you ever been involved in Anti-Money Laundering (AML) related crimes?
-                  <span class="text-danger">*</span>
-                </label>
-                <p class="form-text text-muted small mb-2">
-                  के तपाईं कहिल्यै मनी लान्ड्रिङ विरोधी (AML) सम्बन्धित अपराधमा संलग्न हुनुभएको छ?
-                </p>
-                <div class="declaration-options">
-                  <div class="form-check form-check-inline">
-                    <input class="form-check-input" type="radio" name="is_aml" id="aml_yes" value="yes" required>
-                    <label class="form-check-label" for="aml_yes">
-                      <span class="option-text">Yes / हो</span>
-                    </label>
-                  </div>
-                  <div class="form-check form-check-inline">
-                    <input class="form-check-input" type="radio" name="is_aml" id="aml_no" value="no">
-                    <label class="form-check-label" for="aml_no">
-                      <span class="option-text">No / होइन</span>
-                    </label>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <!-- Additional Documents Section -->
-            <div class="additional-documents-section">
-              <h6 class="section-subtitle">Additional Documents (Optional)</h6>
-              <p class="form-text text-muted small mb-3">
-                You can attach up to 5 additional documents (e.g., passport, driving license, bank statement, etc.)
-              </p>
-
-              <div id="additionalDocsContainer">
-                <!-- First document field (always visible) -->
-                <div class="additional-doc-item" data-doc-index="1">
-                  <div class="row align-items-end mb-3">
-                    <div class="col-md-6">
-                      <label class="form-label">Document Name</label>
-                      <input type="text" class="form-control" autocomplete="off"
-                        placeholder="e.g., Passport, License, etc.">
+                <div class="col-md-4 mb-3">
+                  <label class="form-label">Gender <span class="text-danger">*</span></label>
+                  <div class="gender-options">
+                    <div class="form-check form-check-inline">
+                      <input class="form-check-input" type="radio" id="male" name="gender" value="Male" required>
+                      <label class="form-check-label" for="male">Male</label>
                     </div>
-                    <div class="col-md-6">
-                      <label class="form-label">Attach Document</label>
-                      <div class="document-upload-inline" id="additionalDoc1Container">
-                        <input type="file" id="additionalDoc1Upload" class="addDoc" name="additional_docs"
-                          accept="image/*,application/pdf" style="display:none;">
-                        <button type="button" class="btn btn-outline-secondary btn-sm"
-                          onclick="document.getElementById('additionalDoc1Upload').click()">
-                          <span class="upload-icon-btn">📎</span> Choose File
-                        </button>
-                        <span class="file-name-inline" id="additionalDoc1FileName">No file chosen</span>
+                    <div class="form-check form-check-inline">
+                      <input class="form-check-input" id="female" type="radio" name="gender" value="Female">
+                      <label class="form-check-label" for="female">Female</label>
+                    </div>
+                    <div class="form-check form-check-inline">
+                      <input class="form-check-input" id="other-gender" type="radio" name="gender" value="Other">
+                      <label class="form-check-label" for="other-gender">Other</label>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- DOB -->
+              <div class="row">
+                <div class="col-md-4 mb-3">
+                  <label class="form-label">Date of Birth (BS) <span class="text-danger">*</span></label>
+                  <input type="text" id="dob_bs" name="dob_bs" class="form-control" placeholder="YYYY/MM/DD" required
+                    autocomplete="off">
+                </div>
+                <div class="col-md-4 mb-3" onclick="document.getElementById('dob_ad').showPicker()">
+                  <label class="form-label">Date of Birth (AD) <span class="text-danger">*</span></label>
+                  <input type="date" id="dob_ad" name="dob_ad" class="form-control" placeholder="YYYY-MM-DD" required
+                    autocomplete="off">
+                </div>
+
+                <div class="col-md-4 mb-3">
+                  <label class="form-label">Marital Status <span class="text-danger">*</span></label>
+                  <div class="marital-options">
+                    <div class="form-check form-check-inline">
+                      <input class="form-check-input" id="Married" type="radio" name="marital_status" value="Married"
+                        required>
+                      <label class="form-check-label" for="Married">Married</label>
+                    </div>
+                    <div class="form-check form-check-inline">
+                      <input class="form-check-input" id="Unmarried" type="radio" name="marital_status"
+                        value="Unmarried">
+                      <label class="form-check-label" for="Unmarried">Unmarried</label>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Contact -->
+              <div class="row mb-4">
+                <div class="col-md-4 mb-3">
+                  <label class="form-label">Email Address <span class="text-danger">*</span></label>
+                  <input type="email" name="email" class="form-control" required autocomplete="off">
+                </div>
+                <div class="col-md-4 mb-3">
+                  <label class="form-label">Mobile No. <span class="text-danger">*</span></label>
+                  <input type="text" id="mobile" name="mobile" class="form-control" required autocomplete="off">
+                </div>
+                <div class="col-md-4 mb-3">
+                  <label class="form-label">Telephone No. </label>
+                  <input type="text" name="telephone" class="form-control" autocomplete="off">
+                </div>
+              </div>
+
+              <h4 class="form-step-title">Documents</h4>
+
+              <!-- Citizenship number & Issued Dates -->
+              <div class="row">
+                <div class="col-md-4 mb-3">
+                  <label class="form-label">Citizenship No.<span class="text-danger">*</span></label>
+                  <input type="text" name="citizenship_no" class="form-control" required autocomplete="off">
+                </div>
+
+                <div class="col-md-4 mb-3">
+                  <label class="form-label">Document Issued Date (BS) <span class="text-danger">*</span></label>
+                  <input type="text" id="citizen_bs" name="citizen_bs" class="form-control" placeholder="YYYY/MM/DD"
+                    required autocomplete="off">
+                </div>
+
+                <div class="col-md-4 mb-3" onclick="document.getElementById('citizen_ad').showPicker()">
+                  <label class="form-label">Document Issued Date (AD) <span class="text-danger">*</span></label>
+                  <input type="date" id="citizen_ad" name="citizen_ad" class="form-control" placeholder="YYYY-MM-DD"
+                    required autocomplete="off">
+                </div>
+              </div>
+
+              <div class="row mb-4">
+                <div class="col-md-4 mb-3">
+                  <label class="form-label">Document Issued Place <span class="text-danger">*</span></label>
+                  <input type="text" name="citizenship_place" class="form-control alpha-text" required
+                    autocomplete="off">
+                </div>
+                <div class="col-md-4 mb-3">
+                  <label class="form-label">Passport No.</label>
+                  <input type="text" name="passport_no" class="form-control" autocomplete="off">
+                </div>
+                <div class="col-md-4 mb-3">
+                  <label class="form-label">National Identity Card No.</label>
+                  <input type="text" name="nid_no" class="form-control" autocomplete="off">
+                </div>
+              </div>
+
+              <!-- Document Uploads Citizenship -->
+              <div class="row mb-4">
+                <div class="col-md-6">
+                  <div class="document-upload" id="citizenship_front">
+                    <div class="transparent-dark-div">
+                      <div class="upload-icon">📄</div>
+                      <label class="form-label text-white">Citizenship Front <span class="text-danger">*</span></label>
+                      <p class="form-text text-white-50">Supports jpg, jpeg and png. 1MB max.</p>
+                      <label for="citizenshipuoload" class="d-none">Citizenship Front</label>
+                      <input type="file" data-filename="citizenshipFrontFileName" id="citizenshipFrontUpload"
+                        name="citizenship-front" accept="image/*,application/pdf" data-preview="citizenship_front"
+                        style="display:none;" required>
+                      <button type="button" class="btn document-btn btn-outline-secondary btn-success btn-sm"
+                        onclick="document.getElementById('citizenshipFrontUpload').click()">
+                        <span class="upload-icon-btn">⬇</span>
+                      </button>
+                      <button type="button" class="btn btn-outline-danger btn-danger btn-sm remove-btn"
+                        style="display:none;">
+                        <span class="fw-bolder">✕</span>
+                      </button>
+                      <span class="file-name" id="citizenshipFrontFileName">Citizenship Front</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="col-md-6">
+                  <div class="document-upload" id="citizenship_back">
+                    <div class="transparent-dark-div">
+                      <div class="upload-icon">📄</div>
+                      <label class="form-label text-white">Citizenship Back <span class="text-danger">*</span></label>
+                      <p class="form-text text-white-50">Supports jpg, jpeg and png. 1MB max.</p>
+                      <input type="file" data-filename="citizenshipBackFileName" id="citizenshipBackUpload"
+                        name="citizenship-back" accept="image/*,application/pdf" data-preview="citizenship_back"
+                        style="display:none;" required>
+                      <button type="button" class="btn document-btn  btn-outline-secondary btn-success btn-sm"
+                        onclick="document.getElementById('citizenshipBackUpload').click()">
+                        <span class="upload-icon-btn">⬇</span>
+                      </button>
+                      <button type="button" class="btn btn-outline-danger btn-danger btn-sm remove-btn"
+                        style="display:none;">
+                        <span class="fw-bolder">✕</span>
+                      </button>
+                      <span class="file-name text-white" id="citizenshipBackFileName">Citizenship Back</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Document Uploads NID & Signature-->
+              <div class="row mb-4">
+                <div class="col-md-6">
+                  <div class="document-upload" id="Nid_doc">
+                    <div class="transparent-dark-div">
+                      <div class="upload-icon">📄</div>
+                      <label class="form-label text-white">National Identity Card (optional)</label>
+                      <p class="form-text text-white-50">Supports jpg, jpeg and png. 1MB max.</p>
+                      <input type="file" data-filename="nidFileName" id="NidUpload" name="nid"
+                        accept="image/*,application/pdf" data-preview="Nid_doc" style="display:none;">
+                      <button type="button" class="btn document-btn btn-outline-secondary btn-success btn-sm"
+                        onclick="document.getElementById('NidUpload').click()">
+                        <span class="upload-icon-btn">⬇</span>
+                      </button>
+                      <button type="button" class="btn btn-outline-danger btn-sm btn-danger remove-btn"
+                        style="display:none;">
+                        <span class="fw-bolder">✕</span>
+                      </button>
+                      <span class="file-name" id="nidFileName">Rastriya Parichaya Patra</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="col-md-6">
+                  <div class="document-upload" id="signature">
+                    <div class="transparent-dark-div">
+                      <div class="upload-icon">📄</div>
+                      <label class="form-label text-white">Signature <span class="text-danger">*</span></label>
+                      <p class="form-text text-white-50">Supports jpg, jpeg and png. 1MB max.</p>
+                      <input type="file" data-filename="signatureFileName" id="signatureUpload" name="signature"
+                        accept="image/*,application/pdf" data-preview="signature" style="display:none;" required>
+                      <button type="button" class="btn document-btn btn-outline-secondary btn-success btn-sm"
+                        onclick="document.getElementById('signatureUpload').click()">
+                        <span class="upload-icon-btn">⬇</span>
+                      </button>
+                      <button type="button" class="btn btn-outline-danger btn-sm btn-danger remove-btn"
+                        style="display:none;">
+                        <span class="fw-bolder">✕</span>
+                      </button>
+                      <span class="file-name" id="signatureFileName">Your Signature</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <h4 class="form-step-title">Family Details</h4>
+              <!-- Married Details -->
+              <div class="row">
+                <div class="col-md-4 mb-3">
+                  <label class="form-label">Spouse Name <span class="text-danger">*</span></label>
+                  <input type="text" id="spouse_name" name="spouse_name" class="form-control alpha-text0" required
+                    autocomplete="off">
+                </div>
+                <div class="col-md-4 mb-3">
+                  <label class="form-label">Grand Father's Name <span class="text-danger">*</span></label>
+                  <input type="text" name="grand_father_name" class="form-control alpha-text" required
+                    autocomplete="off">
+                </div>
+                <div class="col-md-4 mb-3">
+                  <label class="form-label">Proposer's Name <span style="font-size: 12px; color: grey;">(In case of a
+                      child)</span> </label>
+                  <input type="text" name="proposer_name" class="form-control alpha-text" autocomplete="off">
+                </div>
+              </div>
+
+              <!-- Close Family -->
+              <div class="row">
+                <div class="col-md-4 mb-3">
+                  <label class="form-label">Father's Name <span class="text-danger">*</span></label>
+                  <input type="text" name="father_name" class="form-control alpha-text" required autocomplete="off">
+                </div>
+                <div class="col-md-4 mb-3">
+                  <label class="form-label">Mother's Name <span class="text-danger">*</span></label>
+                  <input type="text" name="mother_name" class="form-control alpha-text" required autocomplete="off">
+                </div>
+                <div class="col-md-4 mb-3">
+                  <label class="form-label">Father in Law's Name</label>
+                  <input type="text" name="father_in_law_name" class="form-control alpha-text" autocomplete="off">
+                </div>
+              </div>
+
+              <!-- Close Family 2 -->
+              <div class="row">
+                <div class="col-md-4 mb-3">
+                  <label class="form-label">Son's Name</label>
+                  <input type="text" name="son_name" class="form-control alpha-text" autocomplete="off">
+                </div>
+                <div class="col-md-4 mb-3">
+                  <label class="form-label">Daughter's Name</label>
+                  <input type="text" name="daughter_name" class="form-control alpha-text" autocomplete="off">
+                </div>
+                <div class="col-md-4 mb-3">
+                  <label class="form-label">Daughter in Law's Name</label>
+                  <input type="text" name="daughter_in_law_name" class="form-control alpha-text" autocomplete="off">
+                </div>
+              </div>
+            </div>
+
+            <!-- Step 2: Address Details -->
+            <div class="form-step" data-step="2">
+              <h4 class="form-step-title">Address Details</h4>
+
+              <h6 class="section-subtitle">स्थायी ठेगाना (Permanent Address)</h6>
+              <div class="row">
+                <div class="col-md-3 mb-3">
+                  <label class="form-label">Province <span class="text-danger">*</span></label>
+                  <select id="perm_province" name="perm_province" class="form-select" required>
+                    <option value="">Select Province</option>
+                  </select>
+                </div>
+                <div class="col-md-3 mb-3">
+                  <label class="form-label">District <span class="text-danger">*</span></label>
+                  <select id="perm_district" name="perm_district" class="form-select" required>
+                    <option value="">Select District</option>
+                  </select>
+                </div>
+                <div class="col-md-3 mb-3">
+                  <label class="form-label">Municipality <span class="text-danger">*</span></label>
+                  <select id="perm_muni" name="perm_municipality" class="form-select" required>
+                    <option value="">Select Municipality</option>
+                  </select>
+                </div>
+                <div class="col-md-3 mb-3">
+                  <label class="form-label">Ward <span class="text-danger">*</span></label>
+                  <input type="number" id="perm_ward" name="perm_ward" class="form-control" required autocomplete="off">
+                </div>
+              </div>
+
+              <div class="row">
+                <div class="col-md-3 mb-3">
+                  <label class="form-label">Address <span class="text-danger">*</span></label>
+                  <input type="text" id="perm_address" name="perm_address" class="form-control" required
+                    autocomplete="off">
+                </div>
+                <div class="col-md-3 mb-3">
+                  <label class="form-label">House No.</label>
+                  <input type="text" id="perm_house_number" name="perm_house_number" class="form-control"
+                    autocomplete="off">
+                </div>
+              </div>
+
+              <h6 class="section-subtitle mt-4">अस्थायी ठेगाना (Temporary Address)</h6>
+              <div class="form-check mb-3">
+                <input class="form-check-input" type="checkbox" id="sameAddress">
+                <label class="form-check-label" for="sameAddress">
+                  Same as Permanent Address
+                </label>
+              </div>
+              <div class="row">
+                <div class="col-md-3 mb-3">
+                  <label class="form-label">Province <span class="text-danger">*</span></label>
+                  <select id="temp_province" name="temp_province" class="form-select" required>
+                    <option value="">Select Province</option>
+                  </select>
+                </div>
+                <div class="col-md-3 mb-3">
+                  <label class="form-label">District <span class="text-danger">*</span></label>
+                  <select id="temp_district" name="temp_district" class="form-select" required>
+                    <option value="">Select District</option>
+                  </select>
+                </div>
+                <div class="col-md-3 mb-3">
+                  <label class="form-label">Municipality <span class="text-danger">*</span></label>
+                  <select id="temp_muni" name="temp_municipality" class="form-select" required>
+                    <option value="">Select Municipality</option>
+                  </select>
+                </div>
+                <div class="col-md-3 mb-3">
+                  <label class="form-label">Ward <span class="text-danger">*</span></label>
+                  <input id="temp_ward" type="number" name="temp_ward" class="form-control" required autocomplete="off">
+                </div>
+              </div>
+              <div class="row">
+                <div class="col-md-3 mb-3">
+                  <label class="form-label">Address <span class="text-danger">*</span></label>
+                  <input id="temp_address" type="text" name="temp_address" class="form-control" required
+                    autocomplete="off">
+                </div>
+                <div class="col-md-3 mb-3">
+                  <label class="form-label">House No.</label>
+                  <input type="text" id="temp_house_number" name="temp_house_number" class="form-control"
+                    autocomplete="off">
+                </div>
+              </div>
+            </div>
+
+            <!-- Step 3: Financial Details -->
+            <div class="form-step" data-step="3">
+              <h4 class="form-step-title">Financial Details</h4>
+
+              <h6 class="section-subtitle mt-4">Bank Details</h6>
+              <div class="row">
+                <div class="col-md-6 mb-3">
+                  <label class="form-label">Bank Name <span class="text-danger">*</span></label>
+                  <select name="bank_name" id="bankSelect" class="form-select" required autocomplete="off">
+                    <option value="">Select Bank</option>
+                    <!-- Options will be populated dynamically -->
+                  </select>
+                </div>
+                <div class="col-md-6 mb-3">
+                  <label class="form-label">Branch <span class="text-danger">*</span></label>
+                  <input type="text" name="branch_name" class="form-control" required autocomplete="off">
+                </div>
+              </div>
+
+              <div class="row">
+                <div class="col-md-6 mb-3">
+                  <label class="form-label">Account Number <span class="text-danger">*</span></label>
+                  <input type="text" name="account_number" class="form-control" required autocomplete="off">
+                </div>
+                <div class="col-md-6 mb-3">
+                  <label class="form-label">Account Type <span class="text-danger">*</span></label>
+                  <select name="account_type" class="form-select" required>
+                    <option value="">Select</option>
+                    <option value="Saving">Saving</option>
+                    <option value="Current">Current</option>
+                  </select>
+                </div>
+              </div>
+
+              <h6 class="section-subtitle mt-4">Professional Details</h6>
+              <div class="row">
+                <div class="col-md-4 mb-3">
+                  <label class="form-label">Occupation <span class="text-danger">*</span></label>
+                  <select name="occupation" id="occupation" class="form-select" required>
+                    <option value="">Select Profession</option>
+                    <!-- Options will be populated dynamically -->
+                  </select>
+                </div>
+                <div class="col-md-4 mb-3">
+                  <label class="form-label">Occupation Description <span class="text-danger">*</span></label>
+                  <input type="text" id="occupation_description" name="occupation_description" class="form-control">
+                </div>
+                <div class=" col-md-4 mb-3">
+                  <label class="form-label">Income Mode <span class="text-danger">*</span></label>
+                  <select name="income_mode" id="income_mode" class="form-select" required>
+                    <option value="">Select Mode</option>
+                    <option value="Yearly">Yearly</option>
+                    <option value="Monthly">Monthly</option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="row">
+                <div class="col-md-4 mb-3">
+                  <label class="form-label">Annual Income (Rs.) <span class="text-danger">*</span></label>
+                  <input type="number" id="annual_income" name="annual_income" class="form-control" required
+                    autocomplete="off">
+                </div>
+                <div class="col-md-4 mb-3">
+                  <label class="form-label">Source of Income <span class="text-danger">*</span></label>
+                  <input type="text" id="income_source" name="income_source" class="form-control" required
+                    autocomplete="off">
+                </div>
+                <div class="col-md-4 mb-3">
+                  <label class="form-label">PAN number <span class="text-danger">*</span></label>
+                  <input type="text" id="pan_number" name="pan_number" class="form-control" required autocomplete="off">
+                </div>
+              </div>
+
+              <div class="row">
+                <div class="col-md-4 mb-3">
+                  <label class="form-label">Qualification<span class="text-danger">*</span></label>
+                  <select name="qualification" id="qualification" class="form-select" required>
+                    <option value="">Select Qualification</option>
+                    <option value="Bachelor">Bachelor</option>
+                    <option value="SLC">SLC</option>
+                    <option value="Intermediate">Intermediate</option>
+                    <option value="Masters">Masters</option>
+                    <option value="PHD">PHD</option>
+                    <option value="SEE">SEE</option>
+                    <option value="Below SLC">Below SLC</option>
+                    <option value="Illiterate">Illiterate</option>
+                    <option value="Literate">Literate</option>
+                  </select>
+                </div>
+                <div class="col-md-4 mb-3">
+                  <label class="form-label">Employer Name </label>
+                  <input type="text" name="employer_name" class="form-control" autocomplete="off">
+                </div>
+                <div class="col-md-4 mb-3">
+                  <label class="form-label">Office Address</label>
+                  <input type="text" name="office_address" class="form-control" autocomplete="off">
+                </div>
+              </div>
+            </div>
+
+            <!-- Step 4: Nominee Details -->
+            <div class="form-step" data-step="4">
+              <h4 class="form-step-title">Nominee Details</h4>
+
+              <div class="row">
+                <div class="col-md-6 mb-3">
+                  <label class="form-label">Nominee Name <span class="text-danger">*</span></label>
+                  <input type="text" name="nominee_name" class="form-control" required autocomplete="off">
+                </div>
+                <div class="col-md-6 mb-3">
+                  <label class="form-label">Relationship with Nominee <span class="text-danger">*</span></label>
+                  <select name="nominee_relation" class="form-select" required>
+                    <option value="">Select</option>
+                    <option value="Spouse">Spouse</option>
+                    <option value="Father">Father</option>
+                    <option value="Mother">Mother</option>
+                    <option value="Son">Son</option>
+                    <option value="Daughter">Daughter</option>
+                    <option value="Brother">Brother</option>
+                    <option value="Sister">Sister</option>
+                    <option value="In-Laws">In-Laws</option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="row">
+                <div class="col-md-3 mb-3">
+                  <label class="form-label">Nominee DOB (BS) <span class="text-danger">*</span></label>
+                  <input type="text" id="nominee_dob_bs" name="nominee_dob_bs" class="form-control"
+                    placeholder="YYYY/MM/DD" required>
+                </div>
+                <div class="col-md-3 mb-3" onclick="document.getElementById('nominee_dob_ad').showPicker()">
+                  <label class="form-label">Nominee DOB (AD) <span class="text-danger">*</span></label>
+                  <input type="date" id="nominee_dob_ad" name="nominee_dob_ad" class="form-control"
+                    placeholder="YYYY-MM-DD" required>
+                </div>
+                <div class="col-md-6 mb-3">
+                  <label class="form-label">Nominee Contact Number <span class="text-danger">*</span></label>
+                  <input type="tel" id="nominee_mobile" name="nominee_contact" class="form-control" required
+                    autocomplete="off">
+                </div>
+              </div>
+
+              <h6 class="section-subtitle mt-4">In Case of Minor</h6>
+              <div class="row">
+                <div class="col-md-6 mb-3">
+                  <label class="form-label">Guardian Name</label>
+                  <input type="text" name="guardian_name" class="form-control" autocomplete="off">
+                </div>
+                <div class="col-md-6 mb-3">
+                  <label class="form-label">Guardian Relationship</label>
+                  <input type="text" name="guardian_relation" class="form-control" autocomplete="off">
+                </div>
+              </div>
+            </div>
+
+            <!-- Step 5: Additional Details -->
+            <div class="form-step" data-step="5">
+              <h4 class="form-step-title">Additional Details</h4>
+
+              <!-- PEP and AML Declarations -->
+              <div class="declaration-section mb-4">
+                <h6 class="section-subtitle">Declaration Questions</h6>
+
+                <div class="declaration-question mb-4">
+                  <label class="form-label fw-bold">
+                    Are you a Politically Exposed Person (PEP)?
+                    <span class="text-danger">*</span>
+                  </label>
+                  <p class="form-text text-muted small mb-2">
+                    के तपाईं राजनीतिक रूपमा उजागर व्यक्ति हुनुहुन्छ? (PEP includes current or former senior government
+                    officials, political party leaders, or their close associates)
+                  </p>
+                  <div class="declaration-options">
+                    <div class="form-check form-check-inline">
+                      <input class="form-check-input" type="radio" name="is_pep" id="pep_yes" value="yes" required>
+                      <label class="form-check-label" for="pep_yes">
+                        <span class="option-text">Yes / हो</span>
+                      </label>
+                    </div>
+                    <div class="form-check form-check-inline">
+                      <input class="form-check-input" type="radio" name="is_pep" id="pep_no" value="no">
+                      <label class="form-check-label" for="pep_no">
+                        <span class="option-text">No / होइन</span>
+                      </label>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="declaration-question mb-4">
+                  <label class="form-label fw-bold">
+                    Have you ever been involved in Anti-Money Laundering (AML) related crimes?
+                    <span class="text-danger">*</span>
+                  </label>
+                  <p class="form-text text-muted small mb-2">
+                    के तपाईं कहिल्यै मनी लान्ड्रिङ विरोधी (AML) सम्बन्धित अपराधमा संलग्न हुनुभएको छ?
+                  </p>
+                  <div class="declaration-options">
+                    <div class="form-check form-check-inline">
+                      <input class="form-check-input" type="radio" name="is_aml" id="aml_yes" value="yes" required>
+                      <label class="form-check-label" for="aml_yes">
+                        <span class="option-text">Yes / हो</span>
+                      </label>
+                    </div>
+                    <div class="form-check form-check-inline">
+                      <input class="form-check-input" type="radio" name="is_aml" id="aml_no" value="no">
+                      <label class="form-check-label" for="aml_no">
+                        <span class="option-text">No / होइन</span>
+                      </label>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Additional Documents Section -->
+              <div class="additional-documents-section">
+                <h6 class="section-subtitle">Additional Documents (Optional)</h6>
+                <p class="form-text text-muted small mb-3">
+                  You can attach up to 5 additional documents (e.g., passport, driving license, bank statement, etc.)
+                </p>
+
+                <div id="additionalDocsContainer">
+                  <!-- First document field (always visible) -->
+                  <div class="additional-doc-item" data-doc-index="1">
+                    <div class="row align-items-end mb-3">
+                      <div class="col-md-6">
+                        <label class="form-label">Document Name</label>
+                        <input type="text" class="form-control" autocomplete="off"
+                          placeholder="e.g., Passport, License, etc.">
+                      </div>
+                      <div class="col-md-6">
+                        <label class="form-label">Attach Document</label>
+                        <div class="document-upload-inline" id="additionalDoc1Container">
+                          <input type="file" id="additionalDoc1Upload" class="addDoc" name="additional_docs"
+                            accept="image/*,application/pdf" style="display:none;">
+                          <button type="button" class="btn btn-outline-secondary btn-sm"
+                            onclick="document.getElementById('additionalDoc1Upload').click()">
+                            <span class="upload-icon-btn">📎</span> Choose File
+                          </button>
+                          <span class="file-name-inline" id="additionalDoc1FileName">No file chosen</span>
+                        </div>
                       </div>
                     </div>
                   </div>
                 </div>
-              </div>
+                
+                {% if additional_docs %}
+                <div class="mt-3" id="existingAdditionalDocs">
+                  <h6 class="small text-muted mb-2">Previously Uploaded Documents</h6>
 
-              {% if additional_docs %}
-              <div class="mt-3" id="existingAdditionalDocs">
-                <h6 class="small text-muted mb-2">Previously Uploaded Documents</h6>
+                  {% for doc in additional_docs %}
+                  <div class="d-flex align-items-center mb-2">
+                    <span class="me-2">📎</span>
 
-                {% for doc in additional_docs %}
-                <div class="d-flex align-items-center mb-2">
-                  <span class="me-2">📎</span>
+                    <a href="{% url 'kyc:view_additional_doc' doc.id %}" target="_blank">
+                      {{ doc.metadata.display_name|default:doc.file_name }}
+                    </a>
 
-                  <a href="{% url 'kyc:view_additional_doc' doc.id %}" target="_blank">
-                    {{ doc.metadata.display_name|default:doc.file_name }}
-                  </a>
-
-                  <small class="text-muted ms-2">
-                    (uploaded {{ doc.uploaded_at|date:"Y-m-d H:i" }})
-                  </small>
+                    <small class="text-muted ms-2">
+                      (uploaded {{ doc.uploaded_at|date:"Y-m-d H:i" }})
+                    </small>
+                  </div>
+                  {% endfor %}
                 </div>
-                {% endfor %}
-              </div>
-              {% endif %}
+                {% endif %}
 
-              <!-- Add More Button -->
-              <button type="button" class="btn btn-outline-success btn-sm" id="addMoreDocBtn">
-                <span>➕</span> Add Another Document
+                <!-- Add More Button -->
+                <button type="button" class="btn btn-outline-success btn-sm" id="addMoreDocBtn">
+                  <span>➕</span> Add Another Document
+                </button>
+                <span class="text-muted small ms-2" id="docCounter">1/5 document(s)</span>
+              </div>
+
+              <!-- Declaration -->
+              <h6 class="section-subtitle">घोषणा / Declaration</h6>
+              <div class="declaration-box">
+                <div class="form-check">
+                  <input class="form-check-input" type="checkbox" id="declaration" name="declaration" required
+                    autocomplete="off">
+                  <label class="form-check-label" for="declaration">
+                    <strong>के तपाईंले दिएको विवरण सत्य र ठ्याक्कै हो?</strong><br>
+                    I hereby declare that all the information provided above is true and accurate to the best of my
+                    knowledge.
+                  </label>
+                </div>
+              </div>
+            </div>
+
+            <!-- Navigation Buttons -->
+            <div class="form-navigation d-flex gap-2">
+              <button type="button" class="btn btn-outline-secondary" id="prevBtn" style="display:none;">
+                Previous
               </button>
-              <span class="text-muted small ms-2" id="docCounter">1/5 document(s)</span>
-            </div>
 
-            <!-- Declaration -->
-            <h6 class="section-subtitle">घोषणा / Declaration</h6>
-            <div class="declaration-box">
-              <div class="form-check">
-                <input class="form-check-input" type="checkbox" id="declaration" name="declaration" required
-                  autocomplete="off">
-                <label class="form-check-label" for="declaration">
-                  <strong>के तपाईंले दिएको विवरण सत्य र ठ्याक्कै हो?</strong><br>
-                  I hereby declare that all the information provided above is true and accurate to the best of my
-                  knowledge.
-                </label>
-              </div>
-            </div>
-          </div>
-
-          <!-- Navigation Buttons -->
-          <div class="form-navigation d-flex gap-2">
-            <button type="button" class="btn btn-outline-secondary" id="prevBtn" style="display:none;">
-              Previous
-            </button>
-
-            <!-- <button type="button" class="btn btn-dark" id="saveBtn">
+              <!-- <button type="button" class="btn btn-dark" id="saveBtn">
                 Save
               </button> -->
 
-            <button type="button" class="btn btn-primary" id="saveContinueBtn">
-              Save & Continue
-            </button>
+              <button type="button" class="btn btn-primary" id="saveContinueBtn">
+                Save & Continue
+              </button>
 
-            <!-- <button type="button" class="btn btn-primary" id="nextBtn">
+              <!-- <button type="button" class="btn btn-primary" id="nextBtn">
                 Continue
               </button>
              -->
-            <button type="submit" class="btn btn-success" id="submitBtn" style="display:none;">
-              पेश गर्नुहोस् / Submit
-            </button>
-          </div>
+              <button type="submit" class="btn btn-success" id="submitBtn" style="display:none;">
+                पेश गर्नुहोस् / Submit
+              </button>
+            </div>
 
-        </form>
+          </form>
+        </div>
       </div>
     </div>
-  </div>
 
-  <footer class="form-footer">
-    <p>© RJBCL</p>
-  </footer>
+    <footer class="form-footer">
+      <p>© RJBCL</p>
+    </footer>
   </div>
 
   <script src="{% static 'js/jquery-3.6.0.min.js' %}"></script>
