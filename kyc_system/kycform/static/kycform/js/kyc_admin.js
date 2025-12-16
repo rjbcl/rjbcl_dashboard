@@ -26,7 +26,7 @@ document.addEventListener("DOMContentLoaded", function () {
         ensureTextarea();
 
         if (!row) return;
-        if (status.value === "REJECTED") {
+        if (status.value === "REJECTED" || status.value === "INCOMPLETE") {
             row.classList.remove("hidden");
         } else {
             row.classList.add("hidden");
@@ -53,3 +53,4 @@ document.addEventListener("DOMContentLoaded", function () {
         updateRejectionCommentVisibility();
     });
 });
+

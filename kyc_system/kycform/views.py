@@ -40,6 +40,8 @@ from django.contrib.auth.hashers import check_password, make_password
 from django.http import FileResponse
 from django.shortcuts import get_object_or_404
 from django.views.decorators.cache import never_cache
+from kycform.utils import log_kyc_change
+
 
 from django.conf import settings
 
@@ -58,6 +60,14 @@ from .storage_utils import save_uploaded_file_to_storage
 FASTAPI_BASE = "http://127.0.0.1:9000"   # your FastAPI server
 API_USER = "rjbcl_api"
 API_PASS = "your_api_password"   # stored in .env ideally
+
+IGNORED_USER_AUDIT_FIELDS = {
+    "submitted_at",
+    "version",
+    "data_json",
+    "additional_docs",
+}
+
 
 def get_fastapi_token():
     url = f"{FASTAPI_BASE}/auth/login"
@@ -611,7 +621,7 @@ def kyc_form_view(request):
     # REJECTION MESSAGE FOR FRONTEND
     # ---------------------------------
     rejection_message = None
-    if user.kyc_status == "REJECTED":
+    if user.kyc_status in ["REJECTED", "INCOMPLETE"]:
         try:
             sub = KycSubmission.objects.get(user=user)
             rejection_message = sub.rejection_comment or "Your KYC was rejected. Please review and resubmit."
@@ -993,6 +1003,18 @@ def _save_files_and_submission(request, user, submission=None, actor=None):
         # We call save(False) first to set the field on the submission instance
         getattr(submission, sub_field).save(safe_name, f, save=False)
 
+        # 🔐 USER FILE CHANGE AUDIT
+        log_kyc_change(
+        submission=submission,
+        action="DOCUMENT_CHANGE",
+        actor_type="USER",
+        actor_identifier=user.user_id,
+        field_name=sub_field,
+        old_value="",
+        new_value=f.name,
+        )
+
+
         # Create KycDocument audit row using the file saved on submission's FileField
         # Note: Many storages require that the file is saved on the model instance itself.
         # To ensure consistency, flush submission so the file exists in storage and url is available.
@@ -1089,6 +1111,17 @@ def _save_files_and_submission(request, user, submission=None, actor=None):
             meta["display_name"] = display_name
             doc.metadata = meta
             doc.save(update_fields=["metadata"])
+
+        # ✅ AUDIT LOG — ADD / REUPLOAD DOCUMENT
+        log_kyc_change(
+            submission=submission,
+            action="DOCUMENT",
+            actor_type="USER",
+            actor_identifier=user.user_id,
+            field_name="additional_document",
+            new_value=doc.file_name,
+            comment=display_name or None,
+        )
         additional_struct.append({
             "doc_id": doc.id,
             "file_name": doc.file_name,
@@ -1117,6 +1150,16 @@ def _save_files_and_submission(request, user, submission=None, actor=None):
         # record metadata before unlinking
         now_iso = timezone.now().isoformat()
         for d in docs_to_unlink:
+             # ✅ AUDIT LOG — DOCUMENT REMOVAL
+            log_kyc_change(
+                submission=submission,
+                action="DOCUMENT",
+                actor_type="ADMIN",
+                actor_identifier=request.user.username if request.user.is_authenticated else "system",
+                field_name="additional_document",
+                old_value=d.file_name,
+                comment="Document marked inactive / removed",
+            )
             meta = d.metadata or {}
             meta.update({"archived_by": actor or getattr(user, "user_id", str(user)), "archived_at": now_iso})
             d.metadata = meta
@@ -1192,6 +1235,13 @@ def process_kyc_submission(request):
         parsed = json.loads(raw_json) if raw_json else {}
     except Exception:
         parsed = {}
+    
+    # ✅ Track ONLY user-intended changes
+    user_changed_fields = set(parsed.keys())
+
+    # Add file-based changes explicitly
+    if "photo" in request.FILES:
+        user_changed_fields.add("photo")
 
     # Load draft
     try:
@@ -1218,8 +1268,9 @@ def process_kyc_submission(request):
     # Update base user fields (only if provided)
     if merged.get("first_name"):
         user.first_name = merged.get("first_name")
-    if merged.get("middle_name"):
-        user.middle_name = merged.get("middle_name")
+    if "middle_name" in parsed:
+        user.middle_name = parsed.get("middle_name")
+
     if merged.get("last_name"):
         user.last_name = merged.get("last_name")
     if merged.get("full_name_nep"):
@@ -1241,6 +1292,16 @@ def process_kyc_submission(request):
     # Load or create submission
     submission, _ = KycSubmission.objects.get_or_create(user=user)
 
+    # -------------------------
+    # AUDIT: capture old values before modification
+    # -------------------------
+    old_values = {}
+
+    if submission.pk:
+        for f in submission._meta.fields:
+            old_values[f.name] = getattr(submission, f.name)
+
+
     # Copy simple mapped fields (only if present in merged)
     mapped_fields = [
         "salutation","first_name","middle_name","last_name","full_name_nep",
@@ -1258,12 +1319,12 @@ def process_kyc_submission(request):
         "guardian_name","guardian_relation",
     ]
     for f in mapped_fields:
-        if f in merged and merged.get(f) not in [None, ""]:
-            # special case: branch_name -> bank_branch
+        if f in parsed:   # 🔒 ONLY what user sent in THIS submit
             if f == "branch_name":
-                submission.bank_branch = merged[f]
+                submission.bank_branch = parsed[f]
             else:
-                setattr(submission, f, merged[f])
+                setattr(submission, f, parsed[f])
+
 
     # Normalize AD dates for submission
     for df in ("dob_ad", "citizen_ad", "nominee_dob_ad"):
@@ -1279,15 +1340,17 @@ def process_kyc_submission(request):
             return False
         return str(v).strip().lower() in ("1", "true", "yes", "y")
 
-    submission.is_pep = _norm_bool(merged.get("is_pep"))
-    submission.is_aml = _norm_bool(merged.get("is_aml"))
+    if "is_pep" in parsed:
+        submission.is_pep = _norm_bool(parsed.get("is_pep"))
+
+    if "is_aml" in parsed:
+        submission.is_aml = _norm_bool(parsed.get("is_aml"))
+
 
     # If frontend passes marital_status via POST (radio) prefer POST, then merged
-    if "marital_status" in request.POST:
-        submission.marital_status = request.POST.get("marital_status")
-    else:
-        if merged.get("marital_status") not in [None, "", "null"]:
-            submission.marital_status = merged.get("marital_status")
+    if "marital_status" in parsed:
+        submission.marital_status = parsed.get("marital_status")
+
 
     # --------------------
     # FILE HANDLING (single place)
@@ -1316,17 +1379,50 @@ def process_kyc_submission(request):
     submission.data_json = merged
     submission.version = (submission.version or 1) + 1
     submission.submitted_at = timezone.now()
-    submission.save()  # this writes FileFields & persists KycDocument references
 
-    # delete draft if present
-    if temp:
-        try:
-            temp.delete()
-        except Exception:
-            pass
 
-    return user
+    # Explicit document change logging
+    if old_values.get("photo") != submission.photo:
+        log_kyc_change(
+            submission=submission,
+            action="DOCUMENT_CHANGE",
+            actor_type="USER",
+            actor_identifier=user.user_id,
+            field_name="photo",
+            old_value=str(old_values.get("photo")),
+            new_value=str(submission.photo),
+        )
 
+
+    # -------------------------
+    # AUDIT: log meaningful USER changes only
+    # -------------------------
+    for field_name in user_changed_fields:
+        
+        # Only audit actual model fields
+        if field_name not in old_values:
+            continue
+
+        if field_name in IGNORED_USER_AUDIT_FIELDS:
+            continue
+
+        old_val = old_values.get(field_name)
+        new_val = getattr(submission, field_name, None)
+
+        # skip empty → empty
+        if old_val in [None, "", []] and new_val in [None, "", []]:
+            continue
+
+        if old_val != new_val:
+            log_kyc_change(
+                submission=submission,
+                action="USER_UPDATE",
+                actor_type="USER",
+                actor_identifier=user.user_id,
+                field_name=field_name,
+                old_value=str(old_val),
+                new_value=str(new_val),
+            )
 # -----------------------------------------------------------------------------
 # Admin views
 # -----------------------------------------------------------------------------
