@@ -234,11 +234,6 @@ function showSuccess(message) {
 }
 
 
-//  activate the data-tab="agent" tab by using JavaScript.
-
-$('.register-link').on('click', function () {
-  $('[data-tab="agent"]').trigger('click');
-});
 
 // SWITCH TAB BASED ON URL PARAMETER
 window.activeTab = "{{ active_tab }}";

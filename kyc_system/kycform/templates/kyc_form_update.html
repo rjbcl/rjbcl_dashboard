@@ -10,6 +10,7 @@
 
   <!-- Bootstrap (Local) -->
   <link href="{% static 'bootstrap/css/bootstrap.min.css' %}" rel="stylesheet">
+  <link rel="stylesheet" href="{% static 'bootstrap/css/bootstrap-icons.min.css' %}">
 
   <!-- Nepali Datepicker -->
   <link href="{% static 'css/nepali.datepicker.v5.0.6.min.css' %}" rel="stylesheet">
@@ -29,13 +30,29 @@
       <div class="col-md-3 sidebar">
         <div class="logo-section">
           <a href="{% url 'kyc:policy_logout' %}?tab=policy">
-          <img src="{% static 'images/rjbclogo.png' %}" alt="RJBC Logo" class="logo" style="cursor:pointer;">
+            <img src="{% static 'images/rjbclogo.png' %}" alt="RJBC Logo" class="logo" style="cursor:pointer;">
           </a>
         </div>
 
         <div class="step-indicator">
-          <h6 class="step-title">KYC Form</h6>
-          <p class="step-subtitle">Step <span id="currentStep">1</span> of 5</p>
+          <div class="content  d-flex align-items-center justify-content-between">
+            <div>
+              <h6 class="step-title">KYC Form </h6>
+              <p class="step-subtitle small" id="Pol_number">POLXXX</p>
+            </div>
+
+            <div class="collapse-menu bg-info">
+              <i class="bi bi-caret-down-fill"></i>
+            </div>
+          </div>
+          <div class="nav-links">
+            <a href="#" class="nav-link" id="DashboardBtn">
+              <i class="bi bi-house-door"></i> Dashboard
+            </a>
+            <a href="#" class="nav-link" id="logoutBtn">
+              <i class="bi bi-box-arrow-right"></i> Logout
+            </a>
+          </div>
         </div>
 
         <nav class="nav-steps">
@@ -84,7 +101,7 @@
             {% csrf_token %}
             <input type="hidden" name="kyc_data" id="kyc_data">
             <input type="hidden" name="policy_no" id="policyField">
-            
+
             <!-- Step 1: Personal Details -->
             <div class="form-step active" data-step="1">
               <h4 class="form-step-title">Personal Details</h4>
@@ -95,23 +112,23 @@
                   <img id="photoPreview" src="{% static 'images/default-avatar.png' %}" alt="Photo">
                 </div>
                 <div class="photo-upload-controls">
-              
+
                   <label class="form-label">
                     Passport Size Photo <span class="text-danger">*</span>
                   </label>
                   <p class="form-text">Supports jpg, jpeg and png. 300KB max.</p>
-              
+
                   <!-- FILE INPUT (patched) -->
                   <label class="form-label d-none">Passport Photo</label>
                   <input type="file" id="photoUpload" name="photo" accept="image/*" data-preview="photo"
                     data-existing="{{ prefill_json.photo_url|default:'' }}" style="display:none;" required>
-              
+
                   <!-- UPLOAD BUTTON -->
                   <button id="photoBtn" type="button" class="btn btn-outline-primary btn-sm mb-1"
                     onclick="document.getElementById('photoUpload').click()">
                     Upload
                   </button>
-              
+
                   <!-- REMOVE BUTTON -->
                   <button type="button" class="btn btn-link btn-sm text-danger" id="removePhoto">
                     Remove
@@ -123,7 +140,7 @@
                     {% endif %}
                   </div>
                 </div>
-              
+
               </div>
 
               <!-- Name Fields -->
@@ -155,8 +172,8 @@
               <div class="row">
                 <div class="col-md-4 mb-3">
                   <label class="form-label">पूरा नाम (देवनागरीमा) <span class="text-danger">*</span></label>
-                  <input type="text" id="full_name_nep" name="full_name_nep" class="form-control" required
-                    autocomplete="off">
+                  <input type="text" id="full_name_nep" name="full_name_nep" class="form-control"
+                    pattern="[\u0900-\u097F\s।॥]+" lang="ne" required autocomplete="off">
                 </div>
 
                 <div class="col-md-4 mb-3">
@@ -245,14 +262,14 @@
 
                 <div class="col-md-4 mb-3">
                   <label class="form-label">Document Issued Date (BS) <span class="text-danger">*</span></label>
-                  <input type="text" id="citizen_bs" name="citizen_bs" class="form-control"
-                    placeholder="YYYY/MM/DD" required autocomplete="off">
+                  <input type="text" id="citizen_bs" name="citizen_bs" class="form-control" placeholder="YYYY/MM/DD"
+                    required autocomplete="off">
                 </div>
 
                 <div class="col-md-4 mb-3" onclick="document.getElementById('citizen_ad').showPicker()">
                   <label class="form-label">Document Issued Date (AD) <span class="text-danger">*</span></label>
-                  <input type="date" id="citizen_ad" name="citizen_ad" class="form-control"
-                    placeholder="YYYY-MM-DD" required autocomplete="off">
+                  <input type="date" id="citizen_ad" name="citizen_ad" class="form-control" placeholder="YYYY-MM-DD"
+                    required autocomplete="off">
                 </div>
               </div>
 
@@ -278,7 +295,7 @@
                   <div class="document-upload" id="citizenship_front">
                     <div class="transparent-dark-div">
                       <div class="upload-icon">📄</div>
-                      <label class="form-label d-none">Citizenship Front <span class="text-danger">*</span></label>
+                      <label class="form-label text-white">Citizenship Front <span class="text-danger">*</span></label>
                       <p class="form-text text-white-50">Supports jpg, jpeg and png. 1MB max.</p>
                       <label for="citizenshipuoload" class="d-none">Citizenship Front</label>
                       <input type="file" data-filename="citizenshipFrontFileName" id="citizenshipFrontUpload"
@@ -636,7 +653,7 @@
                 <div class="col-md-3 mb-3">
                   <label class="form-label">Nominee DOB (BS) <span class="text-danger">*</span></label>
                   <input type="text" id="nominee_dob_bs" name="nominee_dob_bs" class="form-control"
-                    placeholder="YYYY/MM/DD" required >
+                    placeholder="YYYY/MM/DD" required>
                 </div>
                 <div class="col-md-3 mb-3" onclick="document.getElementById('nominee_dob_ad').showPicker()">
                   <label class="form-label">Nominee DOB (AD) <span class="text-danger">*</span></label>
@@ -756,15 +773,15 @@
                 {% if additional_docs %}
                 <div class="mt-3" id="existingAdditionalDocs">
                   <h6 class="small text-muted mb-2">Previously Uploaded Documents</h6>
-                
+
                   {% for doc in additional_docs %}
                   <div class="d-flex align-items-center mb-2">
                     <span class="me-2">📎</span>
-                
+
                     <a href="{% url 'kyc:view_additional_doc' doc.id %}" target="_blank">
                       {{ doc.metadata.display_name|default:doc.file_name }}
                     </a>
-                
+
                     <small class="text-muted ms-2">
                       (uploaded {{ doc.uploaded_at|date:"Y-m-d H:i" }})
                     </small>
@@ -796,26 +813,32 @@
             </div>
 
             <!-- Navigation Buttons -->
-            <div class="form-navigation d-flex gap-2">
+            <div class="form-navigation d-flex gap-2 justify-content-between">
               <button type="button" class="btn btn-outline-secondary" id="prevBtn" style="display:none;">
                 Previous
               </button>
-            
+
               <!-- <button type="button" class="btn btn-dark" id="saveBtn">
                 Save
               </button> -->
-            
-              <button type="button" class="btn btn-primary" id="saveContinueBtn">
-                Save & Continue
-              </button>
-            
-              <!-- <button type="button" class="btn btn-primary" id="nextBtn">
+              <div>
+                <button type="button" class="btn btn-primary" id="saveContinueBtn">
+                  Save & Continue
+                </button>
+
+                <!-- <button type="button" class="btn btn-primary" id="nextBtn">
                 Continue
               </button>
              -->
-              <button type="submit" class="btn btn-success" id="submitBtn" style="display:none;">
-                पेश गर्नुहोस् / Submit
-              </button>
+
+
+                <button type="button" class="btn btn-dark" id="previewBtn" style="display:none;">
+                  Preview
+                </button>
+                <button type="submit" class="btn btn-success" id="submitBtn" style="display:none;">
+                  पेश गर्नुहोस् / Submit
+                </button>
+              </div>
             </div>
 
           </form>
@@ -824,41 +847,44 @@
     </div>
 
     <footer class="form-footer">
-      <p>© Rastriya Jeeewan Beema Company Limited</p>
+      <p>© RJBCL</p>
     </footer>
   </div>
 
-<script src="{% static 'js/jquery-3.6.0.min.js' %}"></script>
-<script src="{% static 'js/nepali.datepicker.v5.0.6.min.js' %}"></script>
-<script src="{% static 'js/nepalify.production.min.js' %}"></script>
-<script src="{% static 'bootstrap/js/bootstrap.bundle.min.js' %}"></script>
-<script src="{% static 'js/sweetalert2.all.min.js' %}"></script>
-<script src="{% static 'js/sweetalert-messages.js' %}"></script>
+  <script src="{% static 'js/jquery-3.6.0.min.js' %}"></script>
+  <script src="{% static 'js/nepali.datepicker.v5.0.6.min.js' %}"></script>
+  <script src="{% static 'js/nepalify.production.min.js' %}"></script>
+  <script src="{% static 'bootstrap/js/bootstrap.bundle.min.js' %}"></script>
+  <script src="{% static 'js/sweetalert2.all.min.js' %}"></script>
+  <script src="{% static 'js/sweetalert-messages.js' %}"></script>
 
-<!-- Nepali core converter (must load BEFORE date-conversion.js) -->
-<script src="{% static 'js/nepaliFunctions.js' %}"></script>
+  <!-- Nepali core converter (must load BEFORE date-conversion.js) -->
+  <script src="{% static 'js/nepaliFunctions.js' %}"></script>
 
-<!-- LOAD JSON DATA -->
-<script src="{% static 'js/json-reader.js' %}"></script>
+  <!-- LOAD JSON DATA -->
+  <script src="{% static 'js/json-reader.js' %}"></script>
 
-<!-- DOCUMENT AND PHOTO UPLOAD LOGIC -->
-<script src="{% static 'js/docs-upload.js' %}"></script>
-
-
-<!-- Multi step navigation -->
-<script src="{% static 'js/multi-step.js' %}"></script>
-
-<!-- Main UI logic -->
-<script src="{% static 'js/kyc-form.js' %}"></script>
+  <!-- DOCUMENT AND PHOTO UPLOAD LOGIC -->
+  <script src="{% static 'js/docs-upload.js' %}"></script>
 
 
+  <!-- Multi step navigation -->
+  <script src="{% static 'js/multi-step.js' %}"></script>
+
+  <!-- Main UI logic -->
+  <script src="{% static 'js/kyc-form.js' %}"></script>
 
 
-<!-- IMPORTANT: load LAST so it overrides everything -->
-<script src="{% static 'js/date-conversion.js' %}"></script>
+
+
+  <!-- IMPORTANT: load LAST so it overrides everything -->
+  <script src="{% static 'js/date-conversion.js' %}"></script>
 
 
   <script>
+    window.prefill_data = JSON.parse(`{{ prefill_json|escapejs }}`);
+    window.user_name = `{{ user_name|escapejs }}`;
+
     // Get policy number from URL
     const params = new URLSearchParams(window.location.search);
     const policy = params.get("policy_no");
@@ -875,17 +901,13 @@
         span.textContent = inp.files && inp.files.length ? inp.files[0].name : 'No file chosen';
       });
     }
+
     bindFileName('additionalDoc1Upload', 'additionalDoc1FileName');
     bindFileName('citizenshipFrontUpload', 'citizenshipFrontFileName');
     bindFileName('citizenshipBackUpload', 'citizenshipBackFileName');
     bindFileName('NidUpload', 'nidFileName');
     bindFileName('signatureUpload', 'signatureFileName');
   </script>
-
-  <script>
-    window.prefill_data = JSON.parse(`{{ prefill_json|escapejs }}`);
-</script>
-
 
 </body>
 

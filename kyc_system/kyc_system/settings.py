@@ -17,8 +17,9 @@ config = Config(RepositoryEnv(ENV_PATH))
 # SECURITY
 SECRET_KEY = config("SECRET_KEY", default="unsafe-secret-key")
 DEBUG = config("DEBUG", default=True, cast=bool)
+# DEBUG = False
 
-ALLOWED_HOSTS = ['10.91.1.29','127.0.0.1']
+ALLOWED_HOSTS = ['*']
 
 
 # APPLICATIONS
@@ -38,6 +39,7 @@ INSTALLED_APPS = [
 # MIDDLEWARE
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -102,9 +104,13 @@ USE_TZ = True
 
 # STATIC FILES
 STATIC_URL = '/static/'
+STATIC_ROOT = BASE_DIR / 'staticfiles'
 STATICFILES_DIRS = [
-    os.path.join(BASE_DIR, 'kycform', 'static'),
+    BASE_DIR / 'kycform' / 'static',
 ]
+
+# STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+STATICFILES_STORAGE = 'django.contrib.staticfiles.storage.StaticFilesStorage'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
@@ -113,7 +119,7 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 # ✅ MEDIA FILE SETTINGS (REQUIRED for File Upload Preview)
 # -----------------------------------------------------------
 MEDIA_URL = '/media/'
-MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+MEDIA_ROOT = BASE_DIR / 'media'
 # -----------------------------------------------------------
 
 

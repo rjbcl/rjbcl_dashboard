@@ -3,7 +3,67 @@ $(document).ready(function () {
   // =============================
   // SECTION 0: UTILITIES & HELPERS
   // =============================
+  //PREVENTS FORM SUBMISSION ON ENTER KEY PRESS
+  $("#kycForm").on("keypress", function (e) {
+    if (e.key === "Enter") {
+      e.preventDefault(); // stop form submission
+    }
+  });
+
   const log = (...args) => console.debug.apply(console, args);
+  var params = new URLSearchParams(window.location.search);
+  $('#Pol_number').text(policy);
+
+
+  //GET NAME FROM PREFILL DATA
+  $('.step-title').text(window.user_name ? window.user_name : 'KYC Form');
+
+  //Dashboard Btn
+  $('#DashboardBtn').on('click', function (e) {
+    e.preventDefault(); // prevent the default "#" link behavior
+    window.location.href = window.location.origin + '/dashboard/';
+  });
+
+  //Logout Btn
+
+  $('#logoutBtn').on('click', function (e) {
+    e.preventDefault(); // prevent the default "#" link behavior
+    window.location.href = window.location.origin + '/';
+  });
+
+
+  // ---------------------------NAV LINKS FOR LOGOUT AND DASHBOARD
+  // Toggle menu on click
+  $('.step-indicator .content').on('click', function (e) {
+    e.preventDefault();
+    toggleMenu();
+  });
+
+  function toggleMenu() {
+    $('.nav-links').toggleClass('show');
+    $('.collapse-menu').toggleClass('active');
+
+    // Optional: smooth scroll into view when opened
+    if ($('.nav-links').hasClass('show')) {
+      setTimeout(function () {
+        $('.nav-links')[0].scrollIntoView({
+          behavior: 'smooth',
+          block: 'nearest'
+        });
+      }, 100);
+    }
+  }
+
+  // Close menu when clicking outside
+  $(document).on('click', function (e) {
+    if (!$(e.target).closest('.step-indicator').length) {
+      if ($('.nav-links').hasClass('show')) {
+        $('.nav-links').removeClass('show');
+        $('.collapse-menu').removeClass('active');
+      }
+    }
+  });
+
 
   function safeText(el) {
     try {
@@ -26,7 +86,7 @@ $(document).ready(function () {
   }
 
   // Allow only Devanagari characters (U+0900–U+097F) and spaces
-  $("#nep-first-name").on("input", function () {
+  $("#full_name_nep").on("input", function () {
     let value = $(this).val();
     value = value.replace(/[^\u0900-\u097F\s]/g, '');
     $(this).val(value);
@@ -125,6 +185,7 @@ $(document).ready(function () {
         resetField($incomeSource, { readonly: true, disabled: true, preserveValue: false });
         resetField($panNumber, { readonly: true, disabled: true, preserveValue: false });
         $occupationDesc.closest('.mb-3').hide();
+        $occupationDesc.removeAttr('required');
 
       } else if (isOther) {
         // Other occupation - show description field, PAN optional, preserve values
@@ -152,9 +213,12 @@ $(document).ready(function () {
   // ---------------------------
   // 8.1 — Final Submit
   // ---------------------------
-  $('#submitBtn').on('click', function (e) {
+  $('#submitBtn').on('click',async function (e) {
     e.preventDefault();
     if (!validateStep(totalSteps)) return false;
+    window.currentStep = 0;
+    const saved = await ajaxSaveKycProgress();
+    if (!saved) return;
 
     Swal.fire({
       title: 'Submit KYC Form?',
@@ -168,10 +232,8 @@ $(document).ready(function () {
       customClass: { popup: 'swal-nepali' }
     }).then((result) => {
       if (!result.isConfirmed) return;
-
       // Re-enable disabled fields (if copied from permanent)
       $('#kycForm').find(':disabled').prop('disabled', false);
-
       Swal.fire({
         title: 'Submitting...',
         html: 'कृपया पर्खनुहोस्...<br><small>Please wait...</small>',
@@ -240,8 +302,7 @@ $(document).ready(function () {
     });
 
     // Track progress step
-    jsonData["_current_step"] = typeof currentStep !== "undefined" ? currentStep : 1;
-
+    jsonData["_current_step"] = typeof currentStep !== "undefined" ? currentStep + 1 : 1;
     // --------------------------------------
     // Build multipart (FormData)
     // --------------------------------------
