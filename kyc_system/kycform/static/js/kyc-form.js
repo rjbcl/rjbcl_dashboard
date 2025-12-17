@@ -252,6 +252,13 @@ $(document).ready(function () {
         formData[name] = selected;
       }
     });
+    // Convert yes/no strings to boolean for is_pep and is_aml
+    if (formData["is_pep"]) {
+      formData["is_pep"] = formData["is_pep"].toLowerCase() === "yes";
+    }
+    if (formData["is_aml"]) {
+      formData["is_aml"] = formData["is_aml"].toLowerCase() === "yes";
+    }
 
     return formData;
   };
