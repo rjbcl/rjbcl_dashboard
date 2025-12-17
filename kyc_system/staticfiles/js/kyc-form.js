@@ -213,40 +213,94 @@ $(document).ready(function () {
   // ---------------------------
   // 8.1 — Final Submit
   // ---------------------------
-  $('#submitBtn').on('click', function (e) {
+ $('#submitBtn').on('click', async function (e) {
     e.preventDefault();
     if (!validateStep(totalSteps)) return false;
+    
+    window.currentStep = 0;
+    
+    // First, save the progress and capture the form data
+    const saved = await ajaxSaveKycProgress();
+    if (!saved) return;
 
-    Swal.fire({
-      title: 'Submit KYC Form?',
-      html: '<p>के तपाईं यो फारम पेश गर्न चाहनुहुन्छ?</p><small>Do you want to submit this form?</small>',
-      icon: 'question',
-      showCancelButton: true,
-      confirmButtonColor: '#28a745',
-      cancelButtonColor: '#6c757d',
-      confirmButtonText: 'Yes, Submit',
-      cancelButtonText: 'Cancel',
-      customClass: { popup: 'swal-nepali' }
-    }).then((result) => {
-      if (!result.isConfirmed) return;
+    // Collect the form data that was just saved
+    const formArray = $("#kycForm").serializeArray();
+    const previewData = {};
 
-      // Re-enable disabled fields (if copied from permanent)
-      $('#kycForm').find(':disabled').prop('disabled', false);
+    formArray.forEach(item => {
+        previewData[item.name] = item.value;
+    });
 
-      Swal.fire({
-        title: 'Submitting...',
-        html: 'कृपया पर्खनुहोस्...<br><small>Please wait...</small>',
-        allowOutsideClick: false,
-        allowEscapeKey: false,
-        showConfirmButton: false,
-        didOpen: () => Swal.showLoading()
-      });
+    // Force capture addresses (same as in ajaxSaveKycProgress)
+    previewData["perm_province"] = $("#perm_province").val() || null;
+    previewData["perm_district"] = $("#perm_district").val() || null;
+    previewData["perm_municipality"] = $("#perm_muni").val() || null;
+    previewData["perm_ward"] = $("#perm_ward").val() || null;
+    previewData["perm_address"] = $("#perm_address").val() || null;
+    previewData["perm_house_number"] = $("#perm_house_number").val() || null;
 
-      $('#kycForm').submit();
+    previewData["temp_province"] = $("#temp_province").val() || null;
+    previewData["temp_district"] = $("#temp_district").val() || null;
+    previewData["temp_municipality"] = $("#temp_muni").val() || null;
+    previewData["temp_ward"] = $("#temp_ward").val() || null;
+    previewData["temp_address"] = $("#temp_address").val() || null;
+    previewData["temp_house_number"] = $("#temp_house_number").val() || null;
+
+    // Fix radios manually
+    const radioNames = ["marital_status", "gender", "is_pep", "is_aml"];
+    radioNames.forEach(name => {
+        const selected = $(`input[name='${name}']:checked`).val();
+        if (selected !== undefined) {
+            previewData[name] = selected;
+        }
+    });
+
+    // Capture document URLs from the page if they exist (e.g., from img src or data attributes)
+    // Adjust these selectors based on your actual HTML structure
+    previewData["photo_url"] = $("#photoPreview").attr("src") || null;
+    previewData["citizenship_front_url"] = $("#citizenshipFrontPreview").attr("src") || null;
+    previewData["citizenship_back_url"] = $("#citizenshipBackPreview").attr("src") || null;
+    previewData["signature_url"] = $("#signaturePreview").attr("src") || null;
+    previewData["passport_doc_url"] = $("#passportPreview").attr("src") || null;
+    previewData["nid_url"] = $("#nidPreview").attr("src") || null;
+
+    // Show the preview modal
+    showPreviewModal(previewData);
+
+    // Handle the modal confirmation
+    $('#previewModal').off('hidden.bs.modal').on('hidden.bs.modal', function () {
+        // When modal is closed, ask for final confirmation
+        Swal.fire({
+            title: 'Submit KYC Form?',
+            html: '<p>के तपाईं यो फारम पेश गर्न चाहनुहुन्छ?</p><small>Do you want to submit this form?</small>',
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonColor: '#28a745',
+            cancelButtonColor: '#6c757d',
+            confirmButtonText: 'Yes, Submit',
+            cancelButtonText: 'Cancel',
+            customClass: { popup: 'swal-nepali' }
+        }).then((result) => {
+            if (!result.isConfirmed) return;
+            
+            // Re-enable disabled fields (if copied from permanent)
+            $('#kycForm').find(':disabled').prop('disabled', false);
+            
+            Swal.fire({
+                title: 'Submitting...',
+                html: 'कृपया पर्खनुहोस्...<br><small>Please wait...</small>',
+                allowOutsideClick: false,
+                allowEscapeKey: false,
+                showConfirmButton: false,
+                didOpen: () => Swal.showLoading()
+            });
+
+            $('#kycForm').submit();
+        });
     });
 
     return false;
-  });
+});
 
 
   // ======================================================================
