@@ -213,9 +213,12 @@ $(document).ready(function () {
   // ---------------------------
   // 8.1 — Final Submit
   // ---------------------------
-  $('#submitBtn').on('click', function (e) {
+  $('#submitBtn').on('click',async function (e) {
     e.preventDefault();
     if (!validateStep(totalSteps)) return false;
+    window.currentStep = 0;
+    const saved = await ajaxSaveKycProgress();
+    if (!saved) return;
 
     Swal.fire({
       title: 'Submit KYC Form?',
@@ -229,10 +232,8 @@ $(document).ready(function () {
       customClass: { popup: 'swal-nepali' }
     }).then((result) => {
       if (!result.isConfirmed) return;
-
       // Re-enable disabled fields (if copied from permanent)
       $('#kycForm').find(':disabled').prop('disabled', false);
-
       Swal.fire({
         title: 'Submitting...',
         html: 'कृपया पर्खनुहोस्...<br><small>Please wait...</small>',

@@ -42,9 +42,12 @@ $(document).ready(function () {
         if (step === totalSteps) {
             $('#saveContinueBtn').hide();
             $('#submitBtn').show();
+            $('#previewBtn').show();
+
         } else {
             $('#saveContinueBtn').show();
             $('#submitBtn').hide();
+            $('#previewBtn').hide();
         }
 
         // Scroll to top
@@ -129,7 +132,6 @@ $(document).ready(function () {
         // Only update highestStepReached when explicitly told to (when moving forward)
         if (updateHighest && valid && step > highestStepReached) {
             highestStepReached = step;
-            console.log("highestStepReached updated to:", highestStepReached);
         }
         
         // Mark as completed only if valid and we're updating
