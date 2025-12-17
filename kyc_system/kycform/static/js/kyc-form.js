@@ -210,6 +210,122 @@ $(document).ready(function () {
     update();
   })();
 
+
+  // ======================================================================
+  // SHARED DATA PARSING UTILITIES
+  // ======================================================================
+
+  /**
+   * Collects all form data including addresses, radios, and documents
+   * @returns {Object} Complete form data object
+   */
+  window.collectFormData = function () {
+    const formArray = $("#kycForm").serializeArray();
+    const formData = {};
+
+    // Convert array to object
+    formArray.forEach(item => {
+      formData[item.name] = item.value;
+    });
+
+    // Force capture permanent address
+    formData["perm_province"] = $("#perm_province").val() || null;
+    formData["perm_district"] = $("#perm_district").val() || null;
+    formData["perm_municipality"] = $("#perm_muni").val() || null;
+    formData["perm_ward"] = $("#perm_ward").val() || null;
+    formData["perm_address"] = $("#perm_address").val() || null;
+    formData["perm_house_number"] = $("#perm_house_number").val() || null;
+
+    // Force capture temporary address
+    formData["temp_province"] = $("#temp_province").val() || null;
+    formData["temp_district"] = $("#temp_district").val() || null;
+    formData["temp_municipality"] = $("#temp_muni").val() || null;
+    formData["temp_ward"] = $("#temp_ward").val() || null;
+    formData["temp_address"] = $("#temp_address").val() || null;
+    formData["temp_house_number"] = $("#temp_house_number").val() || null;
+
+    // Fix radio buttons manually
+    const radioNames = ["marital_status", "gender", "is_pep", "is_aml"];
+    radioNames.forEach(name => {
+      const selected = $(`input[name='${name}']:checked`).val();
+      if (selected !== undefined) {
+        formData[name] = selected;
+      }
+    });
+
+    return formData;
+  };
+
+  /**
+   * Helper function to extract URL from background-image CSS
+   * @param {string} elementId - Element selector (e.g., "#citizenship_front")
+   * @returns {string|null} Extracted URL or null
+   */
+  function extractBackgroundImageUrl(elementId) {
+    const bgImage = $(elementId).css('background-image');
+    if (bgImage && bgImage !== 'none') {
+      const match = bgImage.match(/url\(['"]?(.*?)['"]?\)/);
+      return match ? match[1] : null;
+    }
+    return null;
+  }
+
+  /**
+   * Collects document URLs from preview elements
+   */
+  window.collectDocumentUrls = function () {
+    return {
+      photo_url: $("#photoPreview").attr("src") || null,
+      citizenship_front_url: extractBackgroundImageUrl("#citizenship_front") || null,
+      citizenship_back_url: extractBackgroundImageUrl("#citizenship_back") || null,
+      signature_url: extractBackgroundImageUrl("#signature") || null,
+      passport_doc_url: extractBackgroundImageUrl("#passport_doc") || null,
+      nid_url: extractBackgroundImageUrl("#nid_doc") || null
+    };
+  };
+
+  /**
+   * Creates FormData object for AJAX submission
+   * @param {string} policyNo - Policy number
+   * @param {Object} jsonData - Form data as JSON
+   * @returns {FormData} Ready-to-submit FormData object
+   */
+  window.createSubmissionFormData = function (policyNo, jsonData) {
+    const fd = new FormData();
+    fd.append("policy_no", policyNo);
+    fd.append("kyc_data", JSON.stringify(jsonData));
+    fd.append("csrfmiddlewaretoken", $("input[name='csrfmiddlewaretoken']").val());
+
+    // Known single-file uploads
+    const fileMap = [
+      { id: "#photoUpload", name: "photo" },
+      { id: "#citizenshipFrontUpload", name: "citizenship-front" },
+      { id: "#citizenshipBackUpload", name: "citizenship-back" },
+      { id: "#signatureUpload", name: "signature" },
+      { id: "#NidUpload", name: "nid" },
+      { id: "#passportUpload", name: "passport_doc" }
+    ];
+
+    fileMap.forEach(item => {
+      const el = $(item.id)[0];
+      if (el && el.files && el.files.length > 0) {
+        fd.append(item.name, el.files[0], el.files[0].name);
+      }
+    });
+
+    // Additional dynamic docs
+    $(".additional-doc-item").each(function () {
+      const fileInput = $(this).find('input[type="file"]')[0];
+      const nameInput = $(this).find('input[type="text"]');
+
+      if (fileInput && fileInput.files.length > 0) {
+        fd.append("additional_docs", fileInput.files[0]);
+        fd.append("additional_doc_names[]", nameInput.val() || "");
+      }
+    });
+
+    return fd;
+  };
   // ---------------------------
   // 8.1 — Final Submit  preview model
   // ---------------------------
@@ -378,168 +494,50 @@ $(document).ready(function () {
 
     window.currentStep = 0;
 
-    // First, save the progress and capture the form data
+    // First, save the progress
     const saved = await ajaxSaveKycProgress();
     if (!saved) return;
 
-    // Collect the form data that was just saved
-    const formArray = $("#kycForm").serializeArray();
-    const previewData = {};
+    // Collect form data using shared function
+    const previewData = window.collectFormData();
 
-    formArray.forEach(item => {
-      previewData[item.name] = item.value;
-    });
+    // Add document URLs
+    Object.assign(previewData, window.collectDocumentUrls());
 
-    // Force capture addresses (same as in ajaxSaveKycProgress)
-    previewData["perm_province"] = $("#perm_province").val() || null;
-    previewData["perm_district"] = $("#perm_district").val() || null;
-    previewData["perm_municipality"] = $("#perm_muni").val() || null;
-    previewData["perm_ward"] = $("#perm_ward").val() || null;
-    previewData["perm_address"] = $("#perm_address").val() || null;
-    previewData["perm_house_number"] = $("#perm_house_number").val() || null;
-
-    previewData["temp_province"] = $("#temp_province").val() || null;
-    previewData["temp_district"] = $("#temp_district").val() || null;
-    previewData["temp_municipality"] = $("#temp_muni").val() || null;
-    previewData["temp_ward"] = $("#temp_ward").val() || null;
-    previewData["temp_address"] = $("#temp_address").val() || null;
-    previewData["temp_house_number"] = $("#temp_house_number").val() || null;
-
-    // Fix radios manually
-    const radioNames = ["marital_status", "gender", "is_pep", "is_aml"];
-    radioNames.forEach(name => {
-      const selected = $(`input[name='${name}']:checked`).val();
-      if (selected !== undefined) {
-        previewData[name] = selected;
-      }
-    });
-
-    // Helper function to extract URL from background-image CSS
-    function extractBackgroundImageUrl(elementId) {
-      const bgImage = $(elementId).css('background-image');
-      if (bgImage && bgImage !== 'none') {
-        // Extract URL from url("...") or url('...')
-        const match = bgImage.match(/url\(['"]?(.*?)['"]?\)/);
-        return match ? match[1] : null;
-      }
-      return null;
-    }
-    // Capture document URLs from background-image styles
-    previewData["photo_url"] = $("#photoPreview").attr("src") || null;
-    previewData["citizenship_front_url"] = extractBackgroundImageUrl("#citizenship_front") || null;
-    previewData["citizenship_back_url"] = extractBackgroundImageUrl("#citizenship_back") || null;
-    previewData["signature_url"] = extractBackgroundImageUrl("#signature") || null;
-    previewData["passport_doc_url"] = extractBackgroundImageUrl("#passport_doc") || null;
-    previewData["nid_url"] = extractBackgroundImageUrl("#nid_doc") || null;
-     // Show the preview modal
+    // Show the preview modal
     showPreviewModal(previewData);
 
     // Remove any existing event handlers to prevent duplicates
     $('#previewModal .btn-success').off('click');
 
     // Handle Close button click - directly call submission function
-    $('#previewModal .btn-success').on('click', function() {
-        // Close the modal first
-        $('#previewModal').modal('hide');
-        
-        // Wait for modal to fully close, then show confirmation
-        setTimeout(function() {
-            proceedWithSubmission();
-        }, 100); // Small delay to ensure modal is closed
+    $('#previewModal .btn-success').on('click', function () {
+      proceedWithSubmission();
     });
 
     return false;
-});
+  });
+
 
 
   // ======================================================================
   // 8.2 — COMMON SAVE FUNCTION (used by Save & SaveContinue)
   // ======================================================================
   async function ajaxSaveKycProgress() {
-
     const policyNo = $("#policyField").val();
     if (!policyNo) {
       Swal.fire("Missing Policy", "Policy number missing from form.", "error");
       return false;
     }
 
-    // --------------------------------------
-    // Collect form fields (serializeArray misses unchecked radios)
-    // --------------------------------------
-    const formArray = $("#kycForm").serializeArray();
-    const jsonData = {};
-
-    formArray.forEach(item => {
-      jsonData[item.name] = item.value;
-    });
-
-    // --------------------------------------
-    // FORCE CAPTURE OF PERMANENT ADDRESS
-    // --------------------------------------
-    jsonData["perm_province"] = $("#perm_province").val() || null;
-    jsonData["perm_district"] = $("#perm_district").val() || null;
-    jsonData["perm_municipality"] = $("#perm_muni").val() || null;
-    jsonData["perm_ward"] = $("#perm_ward").val() || null;
-    jsonData["perm_address"] = $("#perm_address").val() || null;
-    jsonData["perm_house_number"] = $("#perm_house_number").val() || null;
-
-    // --------------------------------------
-    // FORCE CAPTURE OF TEMPORARY ADDRESS
-    // --------------------------------------
-    jsonData["temp_province"] = $("#temp_province").val() || null;
-    jsonData["temp_district"] = $("#temp_district").val() || null;
-    jsonData["temp_municipality"] = $("#temp_muni").val() || null;
-    jsonData["temp_ward"] = $("#temp_ward").val() || null;
-    jsonData["temp_address"] = $("#temp_address").val() || null;
-    jsonData["temp_house_number"] = $("#temp_house_number").val() || null;
-
-
-    // Fix radios manually (ensures marital_status, gender, is_pep, is_aml always saved)
-    const radioNames = ["marital_status", "gender", "is_pep", "is_aml"];
-    radioNames.forEach(name => {
-      const selected = $(`input[name='${name}']:checked`).val();
-      if (selected !== undefined) {
-        jsonData[name] = selected;
-      }
-    });
+    // Collect form data using shared function
+    const jsonData = window.collectFormData();
 
     // Track progress step
     jsonData["_current_step"] = typeof currentStep !== "undefined" ? currentStep + 1 : 1;
-    // --------------------------------------
-    // Build multipart (FormData)
-    // --------------------------------------
-    const fd = new FormData();
-    fd.append("policy_no", policyNo);
-    fd.append("kyc_data", JSON.stringify(jsonData));
-    fd.append("csrfmiddlewaretoken", $("input[name='csrfmiddlewaretoken']").val());
 
-    // Known single-file uploads
-    const fileMap = [
-      { id: "#photoUpload", name: "photo" },
-      { id: "#citizenshipFrontUpload", name: "citizenship-front" },
-      { id: "#citizenshipBackUpload", name: "citizenship-back" },
-      { id: "#signatureUpload", name: "signature" },
-      { id: "#NidUpload", name: "nid" },
-      { id: "#passportUpload", name: "passport_doc" }
-    ];
-
-    fileMap.forEach(item => {
-      const el = $(item.id)[0];
-      if (el && el.files && el.files.length > 0) {
-        fd.append(item.name, el.files[0], el.files[0].name);
-      }
-    });
-    // Additional dynamic docs
-    $(".additional-doc-item").each(function () {
-      const fileInput = $(this).find('input[type="file"]')[0];
-      const nameInput = $(this).find('input[type="text"]');
-
-      if (fileInput && fileInput.files.length > 0) {
-        fd.append("additional_docs", fileInput.files[0]);
-        fd.append("additional_doc_names[]", nameInput.val() || "");
-      }
-    });
-
+    // Build FormData using shared function
+    const fd = window.createSubmissionFormData(policyNo, jsonData);
 
     // Show loading
     Swal.fire({
@@ -550,9 +548,7 @@ $(document).ready(function () {
       didOpen: () => Swal.showLoading()
     });
 
-    // --------------------------------------
     // AJAX POST
-    // --------------------------------------
     return new Promise((resolve) => {
       $.ajax({
         url: "/save-progress/",
