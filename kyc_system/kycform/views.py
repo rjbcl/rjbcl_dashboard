@@ -41,6 +41,7 @@ from django.http import FileResponse
 from django.shortcuts import get_object_or_404
 from django.views.decorators.cache import never_cache
 from kycform.utils import log_kyc_change
+from django.db import models
 
 
 from django.conf import settings
@@ -1292,6 +1293,30 @@ def process_kyc_submission(request):
     # Load or create submission
     submission, _ = KycSubmission.objects.get_or_create(user=user)
 
+    for field in submission._meta.fields:
+        name = field.name
+
+        if name in ["id", "user", "submitted_at", "version", "is_lock"]:
+            continue
+
+        # priority: temp_data > parsed
+        if name in temp_data:
+            value = temp_data.get(name)
+        elif name in parsed:
+            value = parsed.get(name)
+        else:
+            continue
+
+        if value in [None, "", []]:
+            continue
+
+        if isinstance(field, models.DateField):
+            try:
+                value = datetime.strptime(value, "%Y-%m-%d").date()
+            except Exception:
+                continue
+        setattr(submission, name, value)
+
     # -------------------------
     # AUDIT: capture old values before modification
     # -------------------------
@@ -1379,6 +1404,7 @@ def process_kyc_submission(request):
     submission.data_json = merged
     submission.version = (submission.version or 1) + 1
     submission.submitted_at = timezone.now()
+    submission.save()
 
 
     # Explicit document change logging
@@ -1423,6 +1449,9 @@ def process_kyc_submission(request):
                 old_value=str(old_val),
                 new_value=str(new_val),
             )
+    if temp:
+        temp.delete()
+
 # -----------------------------------------------------------------------------
 # Admin views
 # -----------------------------------------------------------------------------
