@@ -715,7 +715,9 @@ div.is-invalid {
 .form-footer p {
   margin: 0;
 }
-
+.preview-title{
+  color: var(--primary-blue);
+}
 /* Responsive Design */
 @media (max-width: 992px) {
   .sidebar {

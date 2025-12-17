@@ -211,15 +211,136 @@ $(document).ready(function () {
   })();
 
   // ---------------------------
-  // 8.1 — Final Submit
+  // 8.1 — Final Submit  preview model
   // ---------------------------
-  $('#submitBtn').on('click',async function (e) {
-    e.preventDefault();
-    if (!validateStep(totalSteps)) return false;
-    window.currentStep = 0;
-    const saved = await ajaxSaveKycProgress();
-    if (!saved) return;
+  function showPreviewModal(data) {
+    console.log(data);
+    function formatLabel(key) {
+      return key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+    }
 
+    function createField(label, value) {
+      if (value === null || value === undefined || value === '') {
+        value = '---';
+      }
+      return `
+                    <div class="col-md-6 col-lg-4 mb-3">
+                        <strong class="text-muted small">${label}: </strong>
+                        <span>${value}</span>
+                    </div>
+                `;
+    }
+
+    function createImageField(label, url) {
+      if (!url) return '';
+      return `
+                    <div class="col-md-6 col-lg-4 mb-3">
+                        <strong class="text-muted d-block small">${label} </strong>
+                        <img src="${url}" class="img-thumbnail mt-2" style="max-width: 200px; max-height: 200px;" alt="${label}">
+                    </div>
+                `;
+    }
+
+    // Personal Information
+    $('#personalInfo').html(
+      createField('Salutation', data.salutation) +
+      createField('First Name', data.first_name) +
+      createField('Middle Name', data.middle_name) +
+      createField('Last Name', data.last_name) +
+      createField('Full Name (Nepali)', data.full_name_nep) +
+      createField('Email', data.email) +
+      createField('Mobile', data.mobile) +
+      createField('Gender', data.gender) +
+      createField('Nationality', data.nationality) +
+      createField('Marital Status', data.marital_status) +
+      createField('Date of Birth (AD)', data.dob_ad) +
+      createField('Date of Birth (BS)', data.dob_bs) +
+      createField('Spouse Name', data.spouse_name) +
+      createField('Father Name', data.father_name) +
+      createField('Mother Name', data.mother_name) +
+      createField('Grand Father Name', data.grand_father_name) +
+      createField('Father in Law Name', data.father_in_law_name) +
+      createField('Son Name', data.son_name) +
+      createField('Daughter Name', data.daughter_name) +
+      createField('Daughter in Law Name', data.daughter_in_law_name) +
+      createField('Citizenship No', data.citizenship_no) +
+      createField('Citizenship Date (BS)', data.citizen_bs) +
+      createField('Citizenship Date (AD)', data.citizen_ad) +
+      createField('Citizenship Place', data.citizenship_place) +
+      createField('Passport No', data.passport_no) +
+      createField('NID No', data.nid_no) +
+      createField('PAN Number', data.pan_number) +
+      createField('Qualification', data.qualification)
+    );
+
+    // Permanent Address
+    $('#permAddress').html(
+      createField('Province', data.perm_province) +
+      createField('District', data.perm_district) +
+      createField('Municipality', data.perm_municipality) +
+      createField('Ward', data.perm_ward) +
+      createField('Address', data.perm_address) +
+      createField('House Number', data.perm_house_number)
+    );
+
+    // Temporary Address
+    $('#tempAddress').html(
+      createField('Province', data.temp_province) +
+      createField('District', data.temp_district) +
+      createField('Municipality', data.temp_municipality) +
+      createField('Ward', data.temp_ward) +
+      createField('Address', data.temp_address) +
+      createField('House Number', data.temp_house_number)
+    );
+
+    // Bank Information
+    $('#bankInfo').html(
+      createField('Bank Name', data.bank_name) +
+      createField('Branch Name', data.branch_name) +
+      createField('Account Number', data.account_number) +
+      createField('Account Type', data.account_type)
+    );
+
+    // Occupation Information
+    $('#occupationInfo').html(
+      createField('Occupation', data.occupation) +
+      createField('Occupation Description', data.occupation_description) +
+      createField('Income Mode', data.income_mode) +
+      createField('Annual Income', data.annual_income ? 'Rs. ' + data.annual_income.toLocaleString() : null) +
+      createField('Income Source', data.income_source) +
+      createField('Employer Name', data.employer_name) +
+      createField('Office Address', data.office_address) +
+      createField('Is PEP', data.is_pep ? data.is_pep.toUpperCase() : null) +
+      createField('Is AML', data.is_aml ? data.is_aml.toUpperCase() : null)
+    );
+
+    // Nominee Information
+    $('#nomineeInfo').html(
+      createField('Nominee Name', data.nominee_name) +
+      createField('Relation', data.nominee_relation) +
+      createField('Date of Birth (AD)', data.nominee_dob_ad) +
+      createField('Date of Birth (BS)', data.nominee_dob_bs) +
+      createField('Contact', data.nominee_contact) +
+      createField('Guardian Name', data.guardian_name) +
+      createField('Guardian Relation', data.guardian_relation)
+    );
+
+    // Documents
+    $('#documents').html(
+      createImageField('Photo', data.photo_url) +
+      createImageField('Citizenship Front', data.citizenship_front_url) +
+      createImageField('Citizenship Back', data.citizenship_back_url) +
+      createImageField('Signature', data.signature_url) +
+      createImageField('Passport', data.passport_doc_url) +
+      createImageField('NID', data.nid_url)
+    );
+
+    // Show modal
+    $('#previewModal').modal('show');
+  }
+
+  // Function to handle final submission confirmation
+  function proceedWithSubmission() {
     Swal.fire({
       title: 'Submit KYC Form?',
       html: '<p>के तपाईं यो फारम पेश गर्न चाहनुहुन्छ?</p><small>Do you want to submit this form?</small>',
@@ -232,8 +353,10 @@ $(document).ready(function () {
       customClass: { popup: 'swal-nepali' }
     }).then((result) => {
       if (!result.isConfirmed) return;
+
       // Re-enable disabled fields (if copied from permanent)
       $('#kycForm').find(':disabled').prop('disabled', false);
+
       Swal.fire({
         title: 'Submitting...',
         html: 'कृपया पर्खनुहोस्...<br><small>Please wait...</small>',
@@ -245,9 +368,88 @@ $(document).ready(function () {
 
       $('#kycForm').submit();
     });
+  }
+
+  // Make function globally accessible
+  window.showPreviewModal = showPreviewModal;
+  $('#submitBtn').on('click', async function (e) {
+    e.preventDefault();
+    if (!validateStep(totalSteps)) return false;
+
+    window.currentStep = 0;
+
+    // First, save the progress and capture the form data
+    const saved = await ajaxSaveKycProgress();
+    if (!saved) return;
+
+    // Collect the form data that was just saved
+    const formArray = $("#kycForm").serializeArray();
+    const previewData = {};
+
+    formArray.forEach(item => {
+      previewData[item.name] = item.value;
+    });
+
+    // Force capture addresses (same as in ajaxSaveKycProgress)
+    previewData["perm_province"] = $("#perm_province").val() || null;
+    previewData["perm_district"] = $("#perm_district").val() || null;
+    previewData["perm_municipality"] = $("#perm_muni").val() || null;
+    previewData["perm_ward"] = $("#perm_ward").val() || null;
+    previewData["perm_address"] = $("#perm_address").val() || null;
+    previewData["perm_house_number"] = $("#perm_house_number").val() || null;
+
+    previewData["temp_province"] = $("#temp_province").val() || null;
+    previewData["temp_district"] = $("#temp_district").val() || null;
+    previewData["temp_municipality"] = $("#temp_muni").val() || null;
+    previewData["temp_ward"] = $("#temp_ward").val() || null;
+    previewData["temp_address"] = $("#temp_address").val() || null;
+    previewData["temp_house_number"] = $("#temp_house_number").val() || null;
+
+    // Fix radios manually
+    const radioNames = ["marital_status", "gender", "is_pep", "is_aml"];
+    radioNames.forEach(name => {
+      const selected = $(`input[name='${name}']:checked`).val();
+      if (selected !== undefined) {
+        previewData[name] = selected;
+      }
+    });
+
+    // Helper function to extract URL from background-image CSS
+    function extractBackgroundImageUrl(elementId) {
+      const bgImage = $(elementId).css('background-image');
+      if (bgImage && bgImage !== 'none') {
+        // Extract URL from url("...") or url('...')
+        const match = bgImage.match(/url\(['"]?(.*?)['"]?\)/);
+        return match ? match[1] : null;
+      }
+      return null;
+    }
+    // Capture document URLs from background-image styles
+    previewData["photo_url"] = $("#photoPreview").attr("src") || null;
+    previewData["citizenship_front_url"] = extractBackgroundImageUrl("#citizenship_front") || null;
+    previewData["citizenship_back_url"] = extractBackgroundImageUrl("#citizenship_back") || null;
+    previewData["signature_url"] = extractBackgroundImageUrl("#signature") || null;
+    previewData["passport_doc_url"] = extractBackgroundImageUrl("#passport_doc") || null;
+    previewData["nid_url"] = extractBackgroundImageUrl("#nid_doc") || null;
+     // Show the preview modal
+    showPreviewModal(previewData);
+
+    // Remove any existing event handlers to prevent duplicates
+    $('#previewModal .btn-success').off('click');
+
+    // Handle Close button click - directly call submission function
+    $('#previewModal .btn-success').on('click', function() {
+        // Close the modal first
+        $('#previewModal').modal('hide');
+        
+        // Wait for modal to fully close, then show confirmation
+        setTimeout(function() {
+            proceedWithSubmission();
+        }, 100); // Small delay to ensure modal is closed
+    });
 
     return false;
-  });
+});
 
 
   // ======================================================================
@@ -327,16 +529,16 @@ $(document).ready(function () {
         fd.append(item.name, el.files[0], el.files[0].name);
       }
     });
-// Additional dynamic docs
-$(".additional-doc-item").each(function () {
-    const fileInput = $(this).find('input[type="file"]')[0];
-    const nameInput = $(this).find('input[type="text"]');
+    // Additional dynamic docs
+    $(".additional-doc-item").each(function () {
+      const fileInput = $(this).find('input[type="file"]')[0];
+      const nameInput = $(this).find('input[type="text"]');
 
-    if (fileInput && fileInput.files.length > 0) {
+      if (fileInput && fileInput.files.length > 0) {
         fd.append("additional_docs", fileInput.files[0]);
         fd.append("additional_doc_names[]", nameInput.val() || "");
-    }
-});
+      }
+    });
 
 
     // Show loading

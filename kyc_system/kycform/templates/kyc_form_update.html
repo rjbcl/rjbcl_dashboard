@@ -825,18 +825,15 @@
                 <button type="button" class="btn btn-primary" id="saveContinueBtn">
                   Save & Continue
                 </button>
-
                 <!-- <button type="button" class="btn btn-primary" id="nextBtn">
                 Continue
               </button>
              -->
-
-
-                <button type="button" class="btn btn-dark" id="previewBtn" style="display:none;">
+                <!-- <button type="button" class="btn btn-dark" id="previewBtn" style="display:none;">
                   Preview
-                </button>
+                </button> -->
                 <button type="submit" class="btn btn-success" id="submitBtn" style="display:none;">
-                  पेश गर्नुहोस् / Submit
+                 Preview & Submit
                 </button>
               </div>
             </div>
@@ -850,6 +847,64 @@
       <p>© RJBCL</p>
     </footer>
   </div>
+  <!-- Modal -->
+  <div class="modal fade" id="previewModal" tabindex="-1" aria-labelledby="previewModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable">
+      <div class="modal-content">
+        <div class="modal-header bg-dark text-white">
+          <h5 class="modal-title" id="previewModalLabel">Please Review Your Information</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <div class="row">
+            <!-- Personal Information -->
+            <div class="col-12 mb-4">
+              <h6 class="preview-title border-bottom pb-2">Personal Information</h6>
+              <div class="row" id="personalInfo"></div>
+            </div>
+
+            <!-- Address Information -->
+            <div class="col-12 mb-4">
+              <h6 class="preview-title border-bottom pb-2">Permanent Address</h6>
+              <div class="row" id="permAddress"></div>
+            </div>
+
+            <div class="col-12 mb-4">
+              <h6 class="preview-title border-bottom pb-2">Temporary Address</h6>
+              <div class="row" id="tempAddress"></div>
+            </div>
+
+            <!-- Bank Information -->
+            <div class="col-12 mb-4">
+              <h6 class="preview-title border-bottom pb-2">Bank Information</h6>
+              <div class="row" id="bankInfo"></div>
+            </div>
+
+            <!-- Occupation Information -->
+            <div class="col-12 mb-4">
+              <h6 class="preview-title border-bottom pb-2">Occupation & Income</h6>
+              <div class="row" id="occupationInfo"></div>
+            </div>
+
+            <!-- Nominee Information -->
+            <div class="col-12 mb-4">
+              <h6 class="preview-title border-bottom pb-2">Nominee Information</h6>
+              <div class="row" id="nomineeInfo"></div>
+            </div>
+
+            <!-- Documents -->
+            <div class="col-12 mb-4">
+              <h6 class="preview-title border-bottom pb-2">Documents</h6>
+              <div class="row" id="documents"></div>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-success" data-bs-dismiss="modal">Proceed</button>
+        </div>
+      </div>
+    </div>
+  </div>
 
   <script src="{% static 'js/jquery-3.6.0.min.js' %}"></script>
   <script src="{% static 'js/nepali.datepicker.v5.0.6.min.js' %}"></script>
@@ -860,7 +915,8 @@
 
   <!-- Nepali core converter (must load BEFORE date-conversion.js) -->
   <script src="{% static 'js/nepaliFunctions.js' %}"></script>
-
+  <!-- Preview data function -->
+  <script src="{% static 'js/preview.data.js' %}"></script>
   <!-- LOAD JSON DATA -->
   <script src="{% static 'js/json-reader.js' %}"></script>
 
