@@ -4,3 +4,4 @@
 /Frontend/
 __pycache__/
 *.pyc
+media/*
