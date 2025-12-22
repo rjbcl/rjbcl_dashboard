@@ -24,7 +24,7 @@ from django.core.exceptions import ValidationError
 from django.core.files.base import ContentFile
 from django.core.files.storage import default_storage
 from django.forms.models import model_to_dict
-from django.http import HttpResponse, JsonResponse
+from django.http import HttpResponse, HttpResponseForbidden, JsonResponse
 from django.shortcuts import render, redirect
 from django.urls import reverse
 from django.db import transaction, connection
@@ -42,8 +42,10 @@ from django.shortcuts import get_object_or_404
 from django.views.decorators.cache import never_cache
 from kycform.utils import log_kyc_change
 from django.db import models
+from django.db import transaction
 
 
+from kycform.services.policy_identity import resolve_policy_identity
 from django.conf import settings
 
 import logging
@@ -52,7 +54,7 @@ from django.apps import apps
 from .utils import generate_user_id  # from kycform/utils.py
 
 from .models import (
-    KycUserInfo, KycAgentInfo, KycPolicy, KycAdmin,
+    KycChangeLog, KycUserInfo, KycAgentInfo, KycPolicy, KycAdmin,
     KycSubmission, KycDocument, KYCTemporary
 )
 from .storage_utils import save_uploaded_file_to_storage 
@@ -69,6 +71,17 @@ IGNORED_USER_AUDIT_FIELDS = {
     "additional_docs",
 }
 
+# --------------------------------------------------
+# Fields that must NEVER be auto-populated by loops
+# --------------------------------------------------
+EXCLUDED_FIELDS = {
+    "id",
+    "user",
+    "submitted_at",
+    "version",
+    "is_lock",
+}
+
 
 def get_fastapi_token():
     url = f"{FASTAPI_BASE}/auth/login"
@@ -81,6 +94,18 @@ def get_fastapi_token():
 # -----------------------------------------------------------------------------
 MAX_UPLOAD_BYTES = 2 * 1024 * 1024  # 2 MB default per-file check
 
+def resolve_session_policy_no(request):
+    """
+    Returns the authoritative policy number from session.
+    Never trust GET/POST for authorization.
+    """
+    if request.session.get("authenticated"):
+        return request.session.get("policy_no")
+
+    if request.session.get("kyc_access_mode") == "DIRECT_KYC":
+        return request.session.get("kyc_policy_no")
+
+    return None
 
 def normalize_status(value):
     """Normalize KYC status."""
@@ -192,11 +217,10 @@ def policyholder_login(request):
     if not check_password(password, user.password):
         messages.error(request, "Incorrect password!")
         return redirect_login_tab("policy")
-    # --------------------------
     # SUCCESSFUL LOGIN → SET SESSION
-    # --------------------------
+    request.session.flush()          # prevent cross-flow contamination
     request.session["authenticated"] = True
-    request.session["policy_no"] = policy_no    
+    request.session["policy_no"] = policy_no
     # --------------------------------------
     # KYC routing logic remains same
     # --------------------------------------
@@ -238,16 +262,39 @@ def agent_login(request):
 # Simple render views
 # -----------------------------------------------------------------------------
 def dashboard_view(request):
+
+    # 🚫 HARD BLOCK: Direct KYC never allowed
+    if request.session.get("kyc_access_mode") == "DIRECT_KYC":
+        return HttpResponseForbidden("Direct KYC users cannot access dashboard")
+
+    # ✅ Only policy-login users allowed
     if not request.session.get("authenticated"):
         return redirect("/auth/policy/?tab=policy")
 
-    session_policy = request.session.get("policy_no")
-    request_policy = request.GET.get("policy_no")
+    policy_no = request.session.get("policy_no")
+    if not policy_no:
+        return redirect("/auth/policy/?tab=policy")
 
-    if session_policy != request_policy:
-        return HttpResponse("Unauthorized access", status=403)
+    try:
+        policy = KycPolicy.objects.get(policy_number=policy_no)
+        user = KycUserInfo.objects.get(user_id=policy.user_id)
+    except Exception:
+        return redirect("/auth/policy/?tab=policy")
 
-    return render(request, "dashboard.html", {"policy_no": request_policy})
+    # 🔒 KYC submitted → dashboard is final
+    if user.kyc_status in ["PENDING", "VERIFIED"]:
+        return render(request, "dashboard.html", {
+            "policy_no": policy_no,
+            "user": user,
+        })
+    # Editable states → form
+    return redirect("/kyc-form/")
+
+    # ✅ PENDING / VERIFIED → dashboard
+    return render(request, "dashboard.html", {
+        "policy_no": policy_no,
+        "user": user,
+    })
 
 
 def agent_dashboard_view(request):
@@ -568,51 +615,40 @@ def reset_password(request):
 def kyc_form_view(request):
 
     # -------------------------
-    # AUTH CHECK (add this)
+    # AUTH & POLICY RESOLUTION
     # -------------------------
-    if not request.session.get("authenticated"):
+    is_login_flow = request.session.get("authenticated") is True
+    is_direct_kyc = request.session.get("kyc_access_mode") == "DIRECT_KYC"
+
+    if is_login_flow:
+        policy_no = request.session.get("policy_no")
+
+    elif is_direct_kyc:
+        policy_no = request.session.get("kyc_policy_no")
+
+    else:
         return redirect("/auth/policy/?tab=policy")
 
-    session_policy = request.session.get("policy_no")
-    request_policy = request.GET.get("policy_no")
-
-    # Prevent accessing another user’s policy
-    if session_policy != request_policy:
-        return HttpResponse("Unauthorized access", status=403)
-    
-    """
-    Loads KYC update form with full prefill data.
-    Priority:
-        1) KYCTemporary (Save & Continue)
-        2) KycSubmission (Final saved submission)
-        3) KycUserInfo (Base info)
-
-    This version:
-        - Fixes marital_status wiping issues
-        - Normalizes married/unmarried
-        - Ensures correct file URLs
-        - Adds rejection_message for frontend
-        - Prevents empty values overwriting valid ones
-    """
-
-    policy_no = request.GET.get("policy_no")
     if not policy_no:
-        messages.error(request, "Missing policy number.")
-        return redirect("/")
+        return HttpResponse("Unauthorized access", status=403)
 
-    # Load policy
+    # -------------------------
+    # POLICY OWNERSHIP CHECK
+    # -------------------------
     try:
         policy = KycPolicy.objects.get(policy_number=policy_no)
-    except KycPolicy.DoesNotExist:
-        messages.error(request, "Invalid policy number.")
-        return redirect("/")
-
-    # Load Base User
-    try:
         user = KycUserInfo.objects.get(user_id=policy.user_id)
+    except KycPolicy.DoesNotExist:
+        return HttpResponse("Invalid policy", status=403)
     except KycUserInfo.DoesNotExist:
-        messages.error(request, "User not found.")
-        return redirect("/")
+        return HttpResponse("Invalid user", status=403)
+    
+    # -------------------------
+    # STOP ACCESS AFTER SUBMIT
+    # -------------------------
+    if user.kyc_status in ["PENDING", "VERIFIED"]:
+        return redirect(f"/dashboard/?policy_no={policy_no}")
+
 
     # Stop verified or pending
     if user.kyc_status in ["PENDING", "VERIFIED"]:
@@ -786,70 +822,79 @@ def kyc_form_view(request):
 # -----------------------------------------------------------------------------
 @csrf_exempt
 def kyc_form_submit(request):
-    """
-    Handles final POST submission of the KYC form.
-    Before processing:
-       - Checks if KYCSubmission exists
-       - Checks if it is locked
-       - Allows override only for superusers
-    """
+    print(">>> ENTERED kyc_form_submit <<<")
+
+    print("SUBMIT SESSION:", dict(request.session))
+    print("POST policy_no:", request.POST.get("policy_no"))
+
 
     if request.method != "POST":
         messages.error(request, "Invalid request method!")
         return redirect("/")
-    
-    policy_no = request.POST.get("policy_no")
+
     # -------------------------
-    # AUTH CHECK (session)
+    # AUTH CHECK (LOGIN + DIRECT KYC)
     # -------------------------
-    if not request.session.get("authenticated"):
-        return redirect("/auth/policy/?tab=policy")
+    is_login_flow = request.session.get("authenticated") is True
 
-    session_policy = request.session.get("policy_no")
-    request_policy = request.POST.get("policy_no")
-    if session_policy != request_policy:
-        return HttpResponse("Unauthorized access", status=403)
+    is_direct_kyc = (
+        request.session.get("kyc_access_mode") == "DIRECT_KYC"
+        and request.session.get("kyc_user_id")
+        and request.session.get("kyc_policy_no")
+    )
+
+    if not (is_login_flow or is_direct_kyc):
+        return HttpResponseForbidden("Unauthorized access")
 
 
-    
+    # Resolve policy_no
+    if is_login_flow:
+        policy_no = request.session.get("policy_no")
+
+    else:
+        policy_no = request.session.get("kyc_policy_no")
+
     if not policy_no:
-        messages.error(request, "Policy number missing.")
+        messages.error(request, "Missing policy number.")
         return redirect("/")
 
-    # Get policy + user
-    try:
-        policy = KycPolicy.objects.get(policy_number=policy_no)
-        user_info = KycUserInfo.objects.get(user_id=policy.user_id)
-    except Exception:
-        messages.error(request, "Invalid policy/user.")
-        return redirect("/")
+    # ... (unchanged logic above)
 
-    # Check if a submission already exists (locked cases)
-    existing_sub = KycSubmission.objects.filter(user=user_info).first()
+    # POLICY BINDING CHECK (DIRECT KYC ONLY)
+    if request.session.get("kyc_access_mode") == "DIRECT_KYC":
+        session_policy = request.session.get("kyc_policy_no")
+        if session_policy != policy_no:
+            return HttpResponse("Unauthorized access", status=403)
 
-    if existing_sub and existing_sub.is_lock:
-        # Allow only superusers to override locked KYC
-        if not request.user.is_superuser:
-            messages.error(
-                request,
-                "This KYC form is locked after verification and cannot be modified."
-            )
-            return redirect(f"/dashboard/?policy_no={policy_no}")
-
-    # Safe submission handling
     try:
         process_kyc_submission(request)
         messages.success(request, "Your KYC form has been successfully submitted.")
-        return redirect(f"/dashboard/?policy_no={policy_no}")
+
+        # -------------------------
+        # REDIRECT BASED ON ACCESS MODE
+        # -------------------------
+        if request.session.get("authenticated"):
+            return redirect("/dashboard/")
+
+        if request.session.get("kyc_access_mode") == "DIRECT_KYC":
+            request.session.flush()
+            return redirect("/kyc-submitted/")
+
+        return redirect("/")
 
     except Exception as e:
         traceback.print_exc()
         messages.error(request, f"KYC submission failed: {e}")
+
+        if request.session.get("authenticated"):
+            return redirect(f"/dashboard/?policy_no={policy_no}")
+
+
         return redirect(f"/kyc-form/?policy_no={policy_no}")
 
-# ------------------------------------------------------------------
-# Helper: save files and create KycDocument audit rows (single source)
-# ------------------------------------------------------------------
+    # ------------------------------------------------------------------
+    # Helper: save files and create KycDocument audit rows (single source)
+    # ------------------------------------------------------------------
 
 # Adjust these according to policy/regulator requirements
 MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024  # 10 MB
@@ -1221,38 +1266,36 @@ def _save_files_and_submission(request, user, submission=None, actor=None):
 def process_kyc_submission(request):
 
     # -------------------------
-    # AUTH CHECK
+    # AUTH CHECK (LOGIN + DIRECT KYC)
     # -------------------------
-    if not request.session.get("authenticated"):
+    if request.session.get("authenticated") is True:
+        policy_no = request.POST.get("policy_no") or request.session.get("policy_no")
+
+    elif request.session.get("kyc_access_mode") == "DIRECT_KYC":
+        policy_no = request.session.get("kyc_policy_no")
+
+    else:
         raise Exception("Not authenticated")
-
-    session_policy = request.session.get("policy_no")
-    request_policy = request.POST.get("policy_no")
-    if session_policy != request_policy:
-        raise Exception("Unauthorized access")
-
-    """
-    Final KYC submission handler (uses single helper for file handling).
-    """
-    raw_json = request.POST.get("kyc_data")
-    policy_no = request.POST.get("policy_no")
-
     if not policy_no:
         raise Exception("Missing policy number.")
+
+    raw_json = request.POST.get("kyc_data")
 
     try:
         parsed = json.loads(raw_json) if raw_json else {}
     except Exception:
         parsed = {}
     
-    # ✅ Track ONLY user-intended changes
-    user_changed_fields = set(parsed.keys())
+    # 🔧 CRITICAL FIX
+    if not parsed.get("branch_name"):
+        parsed["branch_name"] = request.POST.get("branch_name")
 
-    # Add file-based changes explicitly
+    # Track only user-intended changes
+    user_changed_fields = set(parsed.keys())
     if "photo" in request.FILES:
         user_changed_fields.add("photo")
 
-    # Load draft
+    # Load draft (Save & Continue)
     try:
         temp = KYCTemporary.objects.get(policy_no=policy_no)
         temp_data = temp.data_json or {}
@@ -1260,205 +1303,155 @@ def process_kyc_submission(request):
         temp = None
         temp_data = {}
 
-    # Merge priority: temp (highest) > parsed
+    # 🔒 REMOVE ALIAS FIELDS FROM TEMP DATA
+    temp_data.pop("bank_branch", None)
+    temp_data.pop("branch_name", None)
+
+    # Merge priority: temp > parsed
     merged = {**parsed}
     for k, v in temp_data.items():
-        # preserve temp values when non-empty
         if v not in [None, "", [], {}]:
             merged[k] = v
 
-    # Load user & policy
-    try:
-        policy = KycPolicy.objects.get(policy_number=policy_no)
-        user = KycUserInfo.objects.get(user_id=policy.user_id)
-    except Exception:
-        raise Exception("User or policy not found.")
+    # --------------------------------------------------
+    # ATOMIC BLOCK (THIS IS THE FIX)
+    # --------------------------------------------------
+    with transaction.atomic():
 
-    # Update base user fields (only if provided)
-    if merged.get("first_name"):
-        user.first_name = merged.get("first_name")
-    if "middle_name" in parsed:
-        user.middle_name = parsed.get("middle_name")
-
-    if merged.get("last_name"):
-        user.last_name = merged.get("last_name")
-    if merged.get("full_name_nep"):
-        user.full_name_nep = merged.get("full_name_nep")
-    if merged.get("email"):
-        user.email = merged.get("email")
-    if merged.get("mobile"):
-        user.phone_number = merged.get("mobile")
-    if merged.get("dob_ad"):
+        # Load user & policy
         try:
-            user.dob = datetime.strptime(merged["dob_ad"], "%Y-%m-%d").date()
+            policy = KycPolicy.objects.get(policy_number=policy_no)
+            user = KycUserInfo.objects.get(user_id=policy.user_id)
         except Exception:
-            pass
+            raise Exception("User or policy not found.")
 
-    # Mark as pending (resubmission)
-    user.kyc_status = "PENDING"
-    user.save()
+        # Load or create submission FIRST
+        submission, created = KycSubmission.objects.get_or_create(user=user)
+        is_first_submission = created or submission.version == 1
 
-    # Load or create submission
-    submission, _ = KycSubmission.objects.get_or_create(user=user)
 
-    for field in submission._meta.fields:
-        name = field.name
-
-        if name in ["id", "user", "submitted_at", "version", "is_lock"]:
-            continue
-
-        # priority: temp_data > parsed
-        if name in temp_data:
-            value = temp_data.get(name)
-        elif name in parsed:
-            value = parsed.get(name)
-        else:
-            continue
-
-        if value in [None, "", []]:
-            continue
-
-        if isinstance(field, models.DateField):
-            try:
-                value = datetime.strptime(value, "%Y-%m-%d").date()
-            except Exception:
-                continue
-        setattr(submission, name, value)
-
-    # -------------------------
-    # AUDIT: capture old values before modification
-    # -------------------------
-    old_values = {}
-
-    if submission.pk:
+        # -------------------------
+        # CAPTURE OLD VALUES (BEFORE CHANGE)
+        # -------------------------
+        old_values = {}
         for f in submission._meta.fields:
             old_values[f.name] = getattr(submission, f.name)
 
-
-    # Copy simple mapped fields (only if present in merged)
-    mapped_fields = [
-        "salutation","first_name","middle_name","last_name","full_name_nep",
-        "gender","marital_status","nationality","dob_ad","dob_bs","email","mobile",
-        "spouse_name","father_name","mother_name","grand_father_name",
-        "father_in_law_name","son_name","daughter_name","daughter_in_law_name",
-        "citizenship_no","citizen_bs","citizen_ad","citizenship_place",
-        "passport_no","nid_no","perm_province","perm_district","perm_municipality",
-        "perm_ward","perm_address","perm_house_number",
-        "temp_province","temp_district","temp_municipality","temp_ward","temp_address","temp_house_number",
-        "bank_name","bank_branch","account_number","account_type","branch_name",
-        "occupation","occupation_description","income_mode","annual_income","income_source",
-        "pan_number","qualification","employer_name","office_address",
-        "nominee_name","nominee_relation","nominee_dob_ad","nominee_dob_bs","nominee_contact",
-        "guardian_name","guardian_relation",
-    ]
-    for f in mapped_fields:
-        if f in parsed:   # 🔒 ONLY what user sent in THIS submit
-            if f == "branch_name":
-                submission.bank_branch = parsed[f]
-            else:
-                setattr(submission, f, parsed[f])
-
-
-    # Normalize AD dates for submission
-    for df in ("dob_ad", "citizen_ad", "nominee_dob_ad"):
-        if merged.get(df):
+        # -------------------------
+        # Update base user fields
+        # -------------------------
+        if merged.get("first_name"):
+            user.first_name = merged.get("first_name")
+        if "middle_name" in parsed:
+            user.middle_name = parsed.get("middle_name")
+        if merged.get("last_name"):
+            user.last_name = merged.get("last_name")
+        if merged.get("full_name_nep"):
+            user.full_name_nep = merged.get("full_name_nep")
+        if merged.get("email"):
+            user.email = merged.get("email")
+        if merged.get("mobile"):
+            user.phone_number = merged.get("mobile")
+        if merged.get("dob_ad"):
             try:
-                setattr(submission, df, datetime.strptime(merged[df], "%Y-%m-%d").date())
+                user.dob = datetime.strptime(merged["dob_ad"], "%Y-%m-%d").date()
             except Exception:
                 pass
 
-    # Normalize boolean flags
-    def _norm_bool(v):
-        if v is None:
-            return False
-        return str(v).strip().lower() in ("1", "true", "yes", "y")
+        user.kyc_status = "PENDING"
+        user.save()
 
-    if "is_pep" in parsed:
-        submission.is_pep = _norm_bool(parsed.get("is_pep"))
+        # -------------------------
+        # Populate submission fields
+        # -------------------------
+        for field in submission._meta.fields:
+            name = field.name
 
-    if "is_aml" in parsed:
-        submission.is_aml = _norm_bool(parsed.get("is_aml"))
+            if name in EXCLUDED_FIELDS:
+                continue
 
+            if name in temp_data:
+                value = temp_data.get(name)
+            elif name in parsed:
+                value = parsed.get(name)
+            else:
+                continue
 
-    # If frontend passes marital_status via POST (radio) prefer POST, then merged
-    if "marital_status" in parsed:
-        submission.marital_status = parsed.get("marital_status")
+            if value in [None, "", [], {}]:
+                continue
 
+            if isinstance(field, models.DateField):
+                try:
+                    value = datetime.strptime(value, "%Y-%m-%d").date()
+                except Exception:
+                    continue
 
-    # --------------------
-    # FILE HANDLING (single place)
-    # --------------------
-    # Call helper - it attaches files to submission (but helper does NOT call submission.save())
-    submission, urls, additional_struct = _save_files_and_submission(request, user, submission=submission)
-
-    # After file fields have been attached to submission, update URL keys using submission state
-    # Some storage backends expose .url only after model.save(); try direct attribute if available
-    final_urls = {
-        "photo_url": urls.get("photo_url") or (submission.photo.url if getattr(submission, "photo", None) else None),
-        "citizenship_front_url": urls.get("citizenship_front_url") or (submission.citizenship_front.url if getattr(submission, "citizenship_front", None) else None),
-        "citizenship_back_url": urls.get("citizenship_back_url") or (submission.citizenship_back.url if getattr(submission, "citizenship_back", None) else None),
-        "signature_url": urls.get("signature_url") or (submission.signature.url if getattr(submission, "signature", None) else None),
-        "passport_doc_url": urls.get("passport_doc_url") or (submission.passport_doc.url if getattr(submission, "passport_doc", None) else None),
-        "nid_url": urls.get("nid_url") or merged.get("nid_url") or None,
-    }
-
-    # ensure additional_struct is what helper produced
-    submission.additional_docs = additional_struct
-
-    # Write back merged JSON for frontend prefill and audit
-    merged.update(final_urls)
-    merged["additional_docs"] = additional_struct
-
-    submission.data_json = merged
-    submission.version = (submission.version or 1) + 1
-    submission.submitted_at = timezone.now()
-    submission.save()
+            setattr(submission, name, value)
 
 
-    # Explicit document change logging
-    if old_values.get("photo") != submission.photo:
-        log_kyc_change(
-            submission=submission,
-            action="DOCUMENT_CHANGE",
-            actor_type="USER",
-            actor_identifier=user.user_id,
-            field_name="photo",
-            old_value=str(old_values.get("photo")),
-            new_value=str(submission.photo),
+        # Explicit mapped fields (ONLY current submit)
+        mapped_fields = [
+            "salutation","first_name","middle_name","last_name","full_name_nep",
+            "gender","marital_status","nationality","dob_ad","dob_bs","email","mobile",
+            "spouse_name","father_name","mother_name","grand_father_name",
+            "father_in_law_name","son_name","daughter_name","daughter_in_law_name",
+            "citizenship_no","citizen_bs","citizen_ad","citizenship_place",
+            "passport_no","nid_no","perm_province","perm_district","perm_municipality",
+            "perm_ward","perm_address","perm_house_number",
+            "temp_province","temp_district","temp_municipality","temp_ward","temp_address","temp_house_number",
+            "bank_name","account_number","account_type",
+            "occupation","occupation_description","income_mode","annual_income","income_source",
+            "pan_number","qualification","employer_name","office_address",
+            "nominee_name","nominee_relation","nominee_dob_ad","nominee_dob_bs","nominee_contact",
+            "guardian_name","guardian_relation",
+        ]
+
+        for f in mapped_fields:
+            if f in parsed:
+                setattr(submission, f, parsed[f])
+
+        # Boolean normalization
+        def _norm_bool(v):
+            return str(v).strip().lower() in ("1", "true", "yes", "y")
+
+        if "is_pep" in parsed:
+            submission.is_pep = _norm_bool(parsed.get("is_pep"))
+
+        if "is_aml" in parsed:
+            submission.is_aml = _norm_bool(parsed.get("is_aml"))
+
+        # -------------------------
+        # FILE HANDLING (single place)
+        # -------------------------
+        submission, urls, additional_struct = _save_files_and_submission(
+            request, user, submission=submission
         )
 
+        submission.additional_docs = additional_struct
 
-    # -------------------------
-    # AUDIT: log meaningful USER changes only
-    # -------------------------
-    for field_name in user_changed_fields:
-        
-        # Only audit actual model fields
-        if field_name not in old_values:
-            continue
+        merged.update(urls)
+        merged["additional_docs"] = additional_struct
 
-        if field_name in IGNORED_USER_AUDIT_FIELDS:
-            continue
+        submission.data_json = merged
+        submission.version = (submission.version or 1) + 1
+        submission.submitted_at = timezone.now()
 
-        old_val = old_values.get(field_name)
-        new_val = getattr(submission, field_name, None)
+        # 🔒 RE-APPLY branch AFTER helper (helper overwrites fields)
+        if parsed.get("branch_name"):
+            submission.bank_branch = parsed["branch_name"]
 
-        # skip empty → empty
-        if old_val in [None, "", []] and new_val in [None, "", []]:
-            continue
+        print(
+        "DEBUG FINAL bank_branch:",
+            submission.bank_branch,
+            "JSON:",
+            submission.data_json.get("branch_name")
+        )
+        submission.save()
 
-        if old_val != new_val:
-            log_kyc_change(
-                submission=submission,
-                action="USER_UPDATE",
-                actor_type="USER",
-                actor_identifier=user.user_id,
-                field_name=field_name,
-                old_value=str(old_val),
-                new_value=str(new_val),
-            )
-    if temp:
-        temp.delete()
+        # Cleanup temp
+        if temp:
+            temp.delete()
+
 
 # -----------------------------------------------------------------------------
 # Admin views
@@ -1534,22 +1527,38 @@ def policy_logout(request):
 # Save KYC progress endpoint (AJAX multipart)
 # -----------------------------------------------------------------------------
 @csrf_exempt
-@require_POST
 def save_kyc_progress(request):
 
-    policy_no = request.POST.get("policy_no")
-
-
     # -------------------------
-    # AUTH CHECK
+    # AUTH CHECK (LOGIN OR DIRECT KYC)
     # -------------------------
-    if not request.session.get("authenticated"):
+    is_login_flow = request.session.get("authenticated") is True
+
+    is_direct_kyc = (
+        request.session.get("kyc_access_mode") == "DIRECT_KYC"
+        and request.session.get("kyc_user_id")
+        and request.session.get("kyc_policy_no")
+    )
+
+    if not (is_login_flow or is_direct_kyc):
         return JsonResponse({"error": "Not authenticated"}, status=403)
 
-    session_policy = request.session.get("policy_no")
-    if session_policy != policy_no:
-        return JsonResponse({"error": "Unauthorized access"}, status=403)
-    
+    # -------------------------
+    # POLICY RESOLUTION
+    # -------------------------
+    if is_login_flow:
+        policy_no = request.POST.get("policy_no")
+
+    elif is_direct_kyc:
+        policy_no = request.session.get("kyc_policy_no")
+
+    else:
+        return JsonResponse({"error": "Not authenticated"}, status=403)
+
+    if not policy_no:
+        return JsonResponse({"error": "Missing policy number"}, status=400)
+
+
     """
     Endpoint for Save & Continue (AJAX).
     Accepts multipart/form-data and returns JSON with saved file URLs and counts.
@@ -1699,3 +1708,60 @@ def view_additional_doc(request, doc_id):
         as_attachment=False,
         filename=doc.file_name
     )
+# -----------------------------------------------------------------------------
+# Direct KYC entry view (no login)
+
+def direct_kyc_entry_view(request):
+    """
+    Direct KYC entry without login.
+    Inputs:
+      - policy_no
+      - dob_ad
+    """
+
+    if request.method == "GET":
+        return render(request, "kyc/direct_entry.html")
+
+    policy_no = (request.POST.get("policy_no") or "").strip()
+    dob_ad = (request.POST.get("dob_ad") or "").strip()
+
+    if not policy_no or not dob_ad:
+        messages.error(request, "Policy number and DOB are required.")
+        return redirect("kyc:direct_kyc_entry")
+
+    try:
+        user, user_id = resolve_policy_identity(
+            policy_no=policy_no,
+            dob_ad=dob_ad,
+        )
+    except ValidationError as e:
+        messages.error(request, str(e))
+        return redirect("kyc:direct_kyc_entry")
+    
+    # -------------------------------------------------
+    # AUDIT LOG: DIRECT KYC ENTRY
+    # -------------------------------------------------
+    submission = KycSubmission.objects.filter(user=user).first()
+
+    if submission:
+        KycChangeLog.objects.create(
+            submission=submission,
+            action="CREATE",
+            actor_type="SYSTEM",
+            actor_identifier="DIRECT_KYC",
+            comment=f"Direct KYC access granted for policy {policy_no}",
+        )
+
+    # -------------------------------------------------
+    # SESSION (short-lived, no password, safe)
+    # -------------------------------------------------
+    request.session.cycle_key()  # 🔐 prevent fixation (safe)
+
+    request.session["kyc_user_id"] = user_id
+    request.session["kyc_policy_no"] = policy_no
+    request.session["kyc_access_mode"] = "DIRECT_KYC"
+
+    return redirect(f"/kyc-form/?policy_no={policy_no}")
+
+def kyc_submitted_view(request):
+    return render(request, "kyc/kyc_submitted.html")

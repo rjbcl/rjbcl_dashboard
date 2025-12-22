@@ -100,7 +100,7 @@
           <form id="kycForm" method="POST" action="{% url 'kyc:kyc_submit' %}" enctype="multipart/form-data">
             {% csrf_token %}
             <input type="hidden" name="kyc_data" id="kyc_data">
-            <input type="hidden" name="policy_no" id="policyField">
+            <input type="hidden" name="policy_no" id="policyField" value="{{ policy_no }}">
 
             <!-- Step 1: Personal Details -->
             <div class="form-step active" data-step="1">

@@ -244,6 +244,12 @@ $(document).ready(function () {
     formData["temp_address"] = $("#temp_address").val() || null;
     formData["temp_house_number"] = $("#temp_house_number").val() || null;
 
+    // Explicitly force branch_name
+  const branchInput = document.querySelector('input[name="branch_name"]');
+  if (branchInput) {
+    formData["branch_name"] = branchInput.value || null;
+  }
+
     // Fix radio buttons manually
     const radioNames = ["marital_status", "gender", "is_pep", "is_aml"];
     radioNames.forEach(name => {

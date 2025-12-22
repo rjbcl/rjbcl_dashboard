@@ -61,5 +61,13 @@ urlpatterns = [
         views.view_additional_doc,
         name="view_additional_doc"
     ),
+    # -------------------------------
+    # DIRECT KYC ENTRY (NO LOGIN)
+    path("direct-kyc/", views.direct_kyc_entry_view, name="direct_kyc_entry"),
+
+    # -------------------------------
+    # KYC SUBMITTED CONFIRMATION
+    path("kyc-submitted/", views.kyc_submitted_view, name="kyc_submitted")
+
 
 ]

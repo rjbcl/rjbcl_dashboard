@@ -131,3 +131,7 @@ FASTAPI_BASE_URL = "http://127.0.0.1:9000"
 # ------------------------------
 API_BASE_URL = config("API_BASE_URL", default="http://127.0.0.1:9000")
 API_TOKEN = config("API_TOKEN", default="super-secret-backend-token-123456")
+
+# SESSION SETTINGS
+SESSION_COOKIE_AGE = 20 * 60  # 20 minutes
+SESSION_SAVE_EVERY_REQUEST = True
