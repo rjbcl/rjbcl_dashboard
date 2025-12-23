@@ -56,8 +56,11 @@
 
                     <!-- Django Messages (hidden, will be shown via SweetAlert) -->
                     {% if messages %}
-                    {% for msg in messages %}
-                    <div class="d-none js-msg" data-tags="{{ msg.tags }}" data-text="{{ msg|escapejs }}"></div>
+                    {% for message in messages %}
+                    <div class="message-box {% if 'success' in message.tags %}success-box{% else %}error-box{% endif %}"
+                        style="display: block;">
+                        {{ message }}
+                    </div>
                     {% endfor %}
                     {% endif %}
 
@@ -88,9 +91,7 @@
                             </div>
 
                             <div class="form-footer mb-2">
-                                <div>    
-                                    <span class="error-message text-danger"><i class="bi "></i> </span>
-                                </div>
+                                <div></div>
                                 <a href="/forgot-password/?type=policy" class="forgot-link">
                                     Forgot password?
                                 </a>
@@ -106,9 +107,12 @@
 
                             <div class="form-links">
                                 <p class="register-link">
-                                    New User : <a href="{% url 'kyc:policy_register' %}">Register</a>
+                                    <a href="{% url 'kyc:direct_kyc_entry' %}">Continue Without Login</a>
+                                    <br>
+
                                 </p>
                             </div>
+
                         </form>
                     </div>
 

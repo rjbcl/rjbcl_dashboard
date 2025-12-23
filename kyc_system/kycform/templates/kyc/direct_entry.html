@@ -1,61 +1,116 @@
 {% load static %}
+<!doctype html>
+<html lang="en">
 
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Register | राष्ट्रिय जीवन बीमा कम्पनी लिमिटेड</title>
 
-<div class="container" style="max-width: 420px; margin-top: 60px;">
-  <div class="card shadow-sm p-4">
+  <!-- Bootstrap -->
+  <link href="{% static 'bootstrap/css/bootstrap.min.css' %}" rel="stylesheet">
+  <link rel="icon" href="{% static 'images/favicon-logo.png' %}" type="image/png">
 
-    <h4 class="text-center mb-3">Start KYC Process</h4>
+  <!-- Bootstrap Icons -->
+  <link rel="stylesheet" href="{% static 'bootstrap/css/bootstrap-icons.min.css' %}">
 
-    <p class="text-muted text-center" style="font-size: 14px;">
-      Enter your Policy Number and Date of Birth to continue.
-    </p>
+  <!-- Custom CSS -->
+  <link rel="stylesheet" href="{% static 'css/colors.css' %}">
+  <link rel="stylesheet" href="{% static 'css/login.css' %}">
+  <link rel="stylesheet" href="{% static 'css/nepali.datepicker.v5.0.6.min.css' %}">
+</head>
 
-    <form method="post" novalidate>
-      {% csrf_token %}
-
-      <!-- Policy Number -->
-      <div class="mb-3">
-        <label class="form-label">Policy Number</label>
-        <input
-          type="text"
-          name="policy_no"
-          class="form-control"
-          placeholder="e.g. POL012345"
-          required
-        >
+<body>
+  <div class="hero-8">
+    <div class="login-wrapper">
+      <!-- Left Hero Section -->
+      <div class="hero-section">
+        <div class="hero-content">
+          <h1 class="hero-title">Welcome to<br> Rastriya Jeewan Beema</h1>
+          <p class="hero-description">
+            Rastriya Jeewan Beema Company Limited is the first life insurance
+            company in Nepal which was established as its previous Name
+            Rastriya Beema Sansthan. Established by the Government of Nepal.
+          </p>
+          <a href="https://rbs.gov.np/" class="btn-explore">Explore</a>
+        </div>
+        <div class="hero-overlay"></div>
       </div>
 
-      <!-- DOB -->
-      <div class="mb-3">
-        <label class="form-label">Date of Birth (AD)</label>
-        <input
-          type="date"
-          name="dob_ad"
-          class="form-control"
-          required
-        >
-      </div>
-
-      <!-- Submit -->
-      <div class="d-grid mt-4">
-        <button type="submit" class="btn btn-primary">
-          Continue to KYC
-        </button>
-      </div>
-
-    </form>
-
-    <!-- Messages -->
-    {% if messages %}
-      <div class="mt-3">
-        {% for message in messages %}
-          <div class="alert alert-{{ message.tags }} py-2">
-            {{ message }}
+      <!-- Right Registration Section -->
+      <div class="login-section col-sm-12">
+        <div class="login-card">
+          <!-- Logo and Company Name -->
+          <div class="login-header">
+            <img src="{% static 'images/rjbclogo.png' %}" alt="RJBCL Logo" class="company-logo">
           </div>
-        {% endfor %}
+
+          {% if messages %}
+          {% for message in messages %}
+          <div class="message-box {% if 'success' in message.tags %}success-box{% else %}error-box{% endif %}"
+            style="display: block;">
+            {{ message|cut:"["|cut:"]"|cut:"'" }}
+          </div>
+          {% endfor %}
+          {% endif %}
+
+          <!-- POLICY HOLDER REGISTRATION FORM -->
+          <div class="form-container active" id="policyFormWrapper">
+            <form method="POST" autocomplete="off">
+              {% csrf_token %}
+              <div class="form-group">
+                <label class="form-label">Policy Number</label>
+                <input class="form-control" name="policy_no" id="policy-number" placeholder="POL123" autocomplete="off"
+                  required>
+              </div>
+
+              <div class="row g-2 mb-3">
+                <div class="col-md-6">
+                  <div class="form-group">
+                    <label class="form-label">DOB (BS)</label>
+                    <input class="form-control" name="dob_bs" type="text" id="user_dob_bs" placeholder="MM/DD/YYYY"
+                      autocomplete="bday" required>
+                  </div>
+                </div>
+                <div class="col-md-6">
+                  <div class="form-group">
+                    <label class="form-label">DOB (AD)</label>
+                    <input class="form-control" name="dob_ad" type="date" id="user_dob_ad" required>
+                  </div>
+                </div>
+              </div>
+              <button type="submit" class="btn-signin">
+                Continue Without Login
+              </button>
+
+              <div class="divider">
+                <span>OR</span>
+              </div>
+
+              <div class="form-links">
+                <p class="register-link">
+                  Already have an account? <a href="/auth/policy/?tab=policy">Login</a>
+                </p>
+              </div>
+            </form>
+          </div>
+          <!-- Footer -->
+          <div class="login-footer">
+            <p>© 2025 RJBCL. All rights reserved.</p>
+          </div>
+        </div>
       </div>
-    {% endif %}
-
+    </div>
   </div>
-</div>
 
+  <!-- jQuery -->
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+
+  <!-- Custom JS -->
+  <script src="{% static 'js/login.js' %}"></script>
+  <script src="{% static 'js/nepali.datepicker.v5.0.6.min.js' %}"></script>
+  <script src="{% static 'js/date-conversion.js' %}"></script>
+
+</body>
+
+</html>
