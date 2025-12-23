@@ -1745,8 +1745,11 @@ def direct_kyc_entry_view(request):
             policy_no=policy_no,
             dob_ad=dob_ad,
         )
-    except ValidationError as e:
-        messages.error(request, str(e))
+    except ValidationError:
+        messages.error(
+            request,
+            "Invalid policy number or date of birth. Please check and try again."
+        )
         return redirect("kyc:direct_kyc_entry")
 
     # -------------------------------------------------
@@ -1790,4 +1793,4 @@ def direct_kyc_entry_view(request):
 
 
 def kyc_submitted_view(request):
-    return render(request, "kyc/kyc_submitted.html")
+   return redirect("/auth/policy/?tab=policy")
