@@ -16,28 +16,32 @@ def resolve_policy_identity(*, policy_no, dob_ad, mobile=None):
 
     Responsibilities:
     - Validate policy against CORE (via FastAPI)
-    - Verify DOB (+ mobile if provided)
+    - STRICTLY verify DOB (+ mobile if provided)
     - Resolve or generate deterministic user_id
     - Link all related policies to same user_id
     - Create KycUserInfo if missing
 
-    This function DOES NOT:
-    - Handle sessions
-    - Handle passwords
-    - Redirect users
+    SECURITY GUARANTEES:
+    - DOB is ALWAYS validated (even for locally registered policies)
+    - Direct KYC cannot bypass identity verification
+    - No session, redirect, or UI logic here (pure identity layer)
     """
 
+    # ------------------------------------------------------
+    # 0) BASIC INPUT VALIDATION
+    # ------------------------------------------------------
     if not policy_no or not dob_ad:
         raise ValidationError("Policy number and DOB are required.")
 
     policy_no = policy_no.strip()
+    dob_ad = dob_ad.strip()
 
     headers = {
         "Authorization": f"Bearer {settings.API_TOKEN}"
     }
 
     # ------------------------------------------------------
-    # 1) FAST PATH: already registered locally
+    # 1) FAST PATH — LOCALLY REGISTERED POLICY (WITH DOB CHECK)
     # ------------------------------------------------------
     existing_policy = (
         KycPolicy.objects
@@ -48,16 +52,40 @@ def resolve_policy_identity(*, policy_no, dob_ad, mobile=None):
     )
 
     if existing_policy:
-        user = KycUserInfo.objects.get(user_id=existing_policy.user_id)
+        try:
+            user = KycUserInfo.objects.get(user_id=existing_policy.user_id)
+        except KycUserInfo.DoesNotExist:
+            raise ValidationError("User record not found.")
+
+        # 🔒 STRICT DOB VALIDATION (NO BYPASS)
+        if not user.dob:
+            raise ValidationError("DOB not available for verification.")
+
+        if str(user.dob) != dob_ad:
+            raise ValidationError("DOB does not match our records.")
+
+        # Optional mobile validation (if passed)
+        if mobile and user.phone_number:
+            if mobile.strip() != user.phone_number.strip():
+                raise ValidationError("Mobile number does not match our records.")
+
+        # 🚫 OPTIONAL BUSINESS RULE (recommended)
+        # Prevent Direct KYC re-entry after submission
+        if user.kyc_status in ["PENDING", "VERIFIED"]:
+            raise ValidationError("KYC already submitted. Please contact branch.")
+
         return user, user.user_id
 
     # ------------------------------------------------------
-    # 2) LOOKUP POLICY IN CORE (FastAPI → MSSQL)
+    # 2) LOOKUP POLICY IN CORE SYSTEM (FastAPI → MSSQL)
     # ------------------------------------------------------
     try:
         response = requests.get(
             f"{settings.API_BASE_URL}/mssql/newpolicies",
-            params={"policy_no": policy_no, "dob": dob_ad},
+            params={
+                "policy_no": policy_no,
+                "dob": dob_ad,
+            },
             headers=headers,
             timeout=10,
         )
@@ -76,22 +104,23 @@ def resolve_policy_identity(*, policy_no, dob_ad, mobile=None):
 
     data = payload[0]
 
-    core_first = data["FirstName"]
-    core_last = data["LastName"]
-    core_dob = str(data["DOB"])
+    core_first = data.get("FirstName")
+    core_last = data.get("LastName")
+    core_dob = str(data.get("DOB"))
     core_mobile = str(data.get("Mobile", "")).strip()
 
     # ------------------------------------------------------
-    # 3) VALIDATE DOB + MOBILE
+    # 3) CORE DATA VALIDATION (MANDATORY)
     # ------------------------------------------------------
     if str(dob_ad) != core_dob:
         raise ValidationError("DOB does not match our records.")
 
-    if mobile and core_mobile and mobile.strip() != core_mobile:
-        raise ValidationError("Mobile number does not match our records.")
+    if mobile and core_mobile:
+        if mobile.strip() != core_mobile:
+            raise ValidationError("Mobile number does not match our records.")
 
     # ------------------------------------------------------
-    # 4) FETCH ALL RELATED POLICIES
+    # 4) FETCH RELATED POLICIES (CORE)
     # ------------------------------------------------------
     try:
         response = requests.get(
@@ -134,7 +163,7 @@ def resolve_policy_identity(*, policy_no, dob_ad, mobile=None):
         )
 
     # ------------------------------------------------------
-    # 6) PERSIST ATOMICALLY
+    # 6) PERSIST ATOMICALLY (LOCAL DB)
     # ------------------------------------------------------
     with transaction.atomic():
 

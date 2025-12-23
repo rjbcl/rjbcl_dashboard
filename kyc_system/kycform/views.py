@@ -263,9 +263,8 @@ def agent_login(request):
 # -----------------------------------------------------------------------------
 def dashboard_view(request):
 
-    # 🚫 HARD BLOCK: Direct KYC never allowed
     if request.session.get("kyc_access_mode") == "DIRECT_KYC":
-        return HttpResponseForbidden("Direct KYC users cannot access dashboard")
+        return HttpResponse("Unauthorized dashboard access", status=403)
 
     # ✅ Only policy-login users allowed
     if not request.session.get("authenticated"):
@@ -643,16 +642,25 @@ def kyc_form_view(request):
     except KycUserInfo.DoesNotExist:
         return HttpResponse("Invalid user", status=403)
     
+    # 🔒 Direct KYC policy binding check
+    if request.session.get("kyc_access_mode") == "DIRECT_KYC":
+        if request.session.get("kyc_policy_no") != policy.policy_number:
+            return HttpResponse("Unauthorized access", status=403)
+
     # -------------------------
     # STOP ACCESS AFTER SUBMIT
     # -------------------------
     if user.kyc_status in ["PENDING", "VERIFIED"]:
+
+        # 🚫 Direct KYC must NOT see dashboard
+        if request.session.get("kyc_access_mode") == "DIRECT_KYC":
+            return HttpResponse(
+                "KYC already submitted. Please contact your branch.",
+                status=403
+            )
+        # ✅ Normal login → dashboard
         return redirect(f"/dashboard/?policy_no={policy_no}")
 
-
-    # Stop verified or pending
-    if user.kyc_status in ["PENDING", "VERIFIED"]:
-        return redirect(f"/dashboard/?policy_no={policy_no}")
 
     # ---------------------------------
     # REJECTION MESSAGE FOR FRONTEND
@@ -1729,6 +1737,9 @@ def direct_kyc_entry_view(request):
         messages.error(request, "Policy number and DOB are required.")
         return redirect("kyc:direct_kyc_entry")
 
+    # -------------------------------------------------
+    # VALIDATE POLICY + DOB (single source of truth)
+    # -------------------------------------------------
     try:
         user, user_id = resolve_policy_identity(
             policy_no=policy_no,
@@ -1737,12 +1748,35 @@ def direct_kyc_entry_view(request):
     except ValidationError as e:
         messages.error(request, str(e))
         return redirect("kyc:direct_kyc_entry")
-    
+
     # -------------------------------------------------
-    # AUDIT LOG: DIRECT KYC ENTRY
+    # 🚫 BLOCK DIRECT KYC FOR NON-EDITABLE STATUS
+    # -------------------------------------------------
+    if user.kyc_status in ["PENDING", "VERIFIED"]:
+        messages.error(
+            request,
+            "KYC already submitted. Please contact your branch for further assistance."
+        )
+        return redirect("/auth/policy/?tab=policy")
+
+    # -------------------------------------------------
+    # 🔐 CLEAN SESSION (CRITICAL)
+    # -------------------------------------------------
+    request.session.flush()      # remove any old login session
+    request.session.cycle_key()  # prevent fixation
+
+    # -------------------------------------------------
+    # SESSION BINDING (STRICT)
+    # -------------------------------------------------
+    request.session["kyc_access_mode"] = "DIRECT_KYC"
+    request.session["kyc_policy_no"] = policy_no
+    request.session["kyc_user_id"] = user_id
+    request.session["kyc_dob"] = user.dob.isoformat()
+
+    # -------------------------------------------------
+    # AUDIT LOG (OPTIONAL BUT GOOD)
     # -------------------------------------------------
     submission = KycSubmission.objects.filter(user=user).first()
-
     if submission:
         KycChangeLog.objects.create(
             submission=submission,
@@ -1752,16 +1786,8 @@ def direct_kyc_entry_view(request):
             comment=f"Direct KYC access granted for policy {policy_no}",
         )
 
-    # -------------------------------------------------
-    # SESSION (short-lived, no password, safe)
-    # -------------------------------------------------
-    request.session.cycle_key()  # 🔐 prevent fixation (safe)
+    return redirect("/kyc-form/")
 
-    request.session["kyc_user_id"] = user_id
-    request.session["kyc_policy_no"] = policy_no
-    request.session["kyc_access_mode"] = "DIRECT_KYC"
-
-    return redirect(f"/kyc-form/?policy_no={policy_no}")
 
 def kyc_submitted_view(request):
     return render(request, "kyc/kyc_submitted.html")
