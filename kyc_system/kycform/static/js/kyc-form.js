@@ -811,7 +811,17 @@ $(document).ready(function () {
         return;
       }
 
-      const val = String(data[name]).trim().toLowerCase();
+      let val = String(data[name]).trim().toLowerCase();
+
+      // Convert boolean/numeric values to yes/no for is_aml and is_pep
+      if (name === 'is_aml' || name === 'is_pep') {
+        if (val === 'true' || val === '1') {
+          val = 'yes';
+        } else if (val === 'false' || val === '0') {
+          val = 'no';
+        }
+      }
+
       const $radio = $(`input[name="${name}"]`);
 
       $radio.each(function () {
