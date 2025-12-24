@@ -85,7 +85,7 @@ function LoginForm() {
 
                 <div className="form-links mb-2 text-center">
                     <p className="register-link m-0">
-                        New Agent: <Link to="/register">Register</Link>
+                        <Link to="/direct">Continue Without Login</Link>
                     </p>
                 </div>
             </form>

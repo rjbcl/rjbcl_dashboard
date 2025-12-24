@@ -1,7 +1,7 @@
 // import { useState } from 'react';
 
 
-function RegisterForm() {
+function DirectForm() {
 
     return (
         <>
@@ -74,4 +74,4 @@ function RegisterForm() {
 }
 
 
-export default RegisterForm;
+export default DirectForm;

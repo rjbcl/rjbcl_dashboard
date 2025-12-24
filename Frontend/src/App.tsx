@@ -2,7 +2,7 @@
 import { Navigate, Routes, Route } from 'react-router-dom';
 import Login from './Login';
 import LoginForm from './Forms/LoginForm';
-import RegisterForm from './Forms/RegisterForm';
+import DirectForm from './Forms/DirectForm';
 import ForgotPasswordForm from './Forms/ForgotPwForm';
 
 function App() {
@@ -19,9 +19,9 @@ function App() {
       } />
 
       {/* Register Route */}
-      <Route path="/register" element={
+      <Route path="/direct" element={
         <Login>
-          <RegisterForm />
+          <DirectForm />
         </Login>
       } />
 
