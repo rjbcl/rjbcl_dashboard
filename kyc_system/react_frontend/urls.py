@@ -1,0 +1,11 @@
+from django.urls import path
+from .views import PolicyHolderLoginView, LogoutView, GetCSRFToken, CheckAuthView
+
+app_name = 'react_frontend'
+
+urlpatterns = [
+    path('csrf/', GetCSRFToken.as_view(), name='csrf'),
+    path('policyholder/login/', PolicyHolderLoginView.as_view(), name='policyholder-login'),
+    path('logout/', LogoutView.as_view(), name='logout'),
+    path('check-auth/', CheckAuthView.as_view(), name='check-auth'),
+]
