@@ -1,15 +1,45 @@
 # kycform/services/policy_identity.py
 
 import requests
+from datetime import datetime, date
+
 from django.conf import settings
 from django.db import transaction
 from django.core.exceptions import ValidationError
 from django.utils import timezone
+from django.contrib.auth.hashers import make_password
 
 from kycform.models import KycUserInfo, KycPolicy
 from kycform.utils import generate_user_id
 
 
+# ------------------------------------------------------
+# INTERNAL: Normalize DOB to python date
+# ------------------------------------------------------
+def _normalize_dob(value):
+    """
+    CORE may return DOB as:
+    - datetime.date
+    - datetime.datetime
+    - string (YYYY-MM-DD)
+
+    Always normalize to datetime.date
+    """
+    if not value:
+        return None
+
+    if isinstance(value, date):
+        return value
+
+    try:
+        return datetime.strptime(str(value), "%Y-%m-%d").date()
+    except Exception:
+        raise ValidationError("Invalid DOB format received from core system.")
+
+
+# ------------------------------------------------------
+# MAIN IDENTITY RESOLVER
+# ------------------------------------------------------
 def resolve_policy_identity(*, policy_no, dob_ad, mobile=None):
     """
     Core policy identity resolver.
@@ -21,10 +51,10 @@ def resolve_policy_identity(*, policy_no, dob_ad, mobile=None):
     - Link all related policies to same user_id
     - Create KycUserInfo if missing
 
-    SECURITY GUARANTEES:
-    - DOB is ALWAYS validated (even for locally registered policies)
-    - Direct KYC cannot bypass identity verification
-    - No session, redirect, or UI logic here (pure identity layer)
+    IMPORTANT:
+    - DOB is ALWAYS validated (no bypass)
+    - DOB is stored as DATE (not string)
+    - DOB is used as DEFAULT PASSWORD (hashed)
     """
 
     # ------------------------------------------------------
@@ -34,7 +64,7 @@ def resolve_policy_identity(*, policy_no, dob_ad, mobile=None):
         raise ValidationError("Policy number and DOB are required.")
 
     policy_no = policy_no.strip()
-    dob_ad = dob_ad.strip()
+    input_dob = _normalize_dob(dob_ad)
 
     headers = {
         "Authorization": f"Bearer {settings.API_TOKEN}"
@@ -57,22 +87,17 @@ def resolve_policy_identity(*, policy_no, dob_ad, mobile=None):
         except KycUserInfo.DoesNotExist:
             raise ValidationError("User record not found.")
 
-        # 🔒 STRICT DOB VALIDATION (NO BYPASS)
         if not user.dob:
             raise ValidationError("DOB not available for verification.")
 
-        if str(user.dob) != dob_ad:
+        # 🔒 STRICT DOB VALIDATION
+        if user.dob != input_dob:
             raise ValidationError("DOB does not match our records.")
 
-        # Optional mobile validation (if passed)
+        # Optional mobile validation
         if mobile and user.phone_number:
             if mobile.strip() != user.phone_number.strip():
                 raise ValidationError("Mobile number does not match our records.")
-
-        # 🚫 OPTIONAL BUSINESS RULE (recommended)
-        # Prevent Direct KYC re-entry after submission
-        if user.kyc_status in ["PENDING", "VERIFIED"]:
-            raise ValidationError("KYC already submitted. Please contact branch.")
 
         return user, user.user_id
 
@@ -84,7 +109,7 @@ def resolve_policy_identity(*, policy_no, dob_ad, mobile=None):
             f"{settings.API_BASE_URL}/mssql/newpolicies",
             params={
                 "policy_no": policy_no,
-                "dob": dob_ad,
+                "dob": input_dob.isoformat(),
             },
             headers=headers,
             timeout=10,
@@ -106,13 +131,13 @@ def resolve_policy_identity(*, policy_no, dob_ad, mobile=None):
 
     core_first = data.get("FirstName")
     core_last = data.get("LastName")
-    core_dob = str(data.get("DOB"))
+    core_dob = _normalize_dob(data.get("DOB"))
     core_mobile = str(data.get("Mobile", "")).strip()
 
     # ------------------------------------------------------
     # 3) CORE DATA VALIDATION (MANDATORY)
     # ------------------------------------------------------
-    if str(dob_ad) != core_dob:
+    if input_dob != core_dob:
         raise ValidationError("DOB does not match our records.")
 
     if mobile and core_mobile:
@@ -128,7 +153,7 @@ def resolve_policy_identity(*, policy_no, dob_ad, mobile=None):
             params={
                 "firstname": core_first,
                 "lastname": core_last,
-                "dob": core_dob,
+                "dob": core_dob.isoformat(),
                 "mobile": core_mobile,
             },
             headers=headers,
@@ -158,7 +183,7 @@ def resolve_policy_identity(*, policy_no, dob_ad, mobile=None):
         user_id = generate_user_id(
             core_first,
             core_last,
-            core_dob,
+            core_dob.isoformat(),
             core_mobile
         )
 
@@ -167,13 +192,16 @@ def resolve_policy_identity(*, policy_no, dob_ad, mobile=None):
     # ------------------------------------------------------
     with transaction.atomic():
 
-        user, _ = KycUserInfo.objects.get_or_create(
+        user, created = KycUserInfo.objects.get_or_create(
             user_id=user_id,
             defaults={
                 "first_name": core_first,
                 "last_name": core_last,
-                "dob": core_dob,
+                "dob": core_dob,  # ✅ ALWAYS date
                 "phone_number": core_mobile,
+                # 🔐 RESTORE ORIGINAL BEHAVIOR
+                # Default password = DOB (YYYYMMDD), hashed
+                "password": make_password(core_dob.strftime("%Y%m%d")),
             }
         )
 
