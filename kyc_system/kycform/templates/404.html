@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -11,7 +12,7 @@
             background-color: #f5f5f5;
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
         }
-        
+
         .error-container {
             min-height: 100vh;
             display: flex;
@@ -20,23 +21,29 @@
             position: relative;
             overflow: hidden;
         }
-        
+
         .error-background {
             position: absolute;
-            font-size: 20rem;
+            inset: 0;
+            /* stretch to all edges */
+            font-size: clamp(8rem, 20vw, 20rem);
             font-weight: 700;
             color: rgba(0, 0, 0, 0.03);
             user-select: none;
             z-index: 0;
-            letter-spacing: 2rem;
+            display: grid;
+            place-content: center;
+            grid-template-columns: repeat(auto-fit, minmax(10ch, 1fr));
+            gap: 2vw;
+            overflow: hidden;
         }
-        
+
         .error-content {
             text-align: center;
             position: relative;
             z-index: 1;
         }
-        
+
         .error-label {
             font-size: 0.875rem;
             color: #6c757d;
@@ -44,14 +51,14 @@
             letter-spacing: 0.1em;
             margin-bottom: 1rem;
         }
-        
+
         .error-title {
             font-size: 2.5rem;
             font-weight: 600;
             color: #212529;
             margin-bottom: 1.5rem;
         }
-        
+
         .error-description {
             color: #6c757d;
             font-size: 1rem;
@@ -60,7 +67,7 @@
             margin-left: auto;
             margin-right: auto;
         }
-        
+
         .btn-home {
             background-color: #212529;
             color: white;
@@ -70,16 +77,33 @@
             display: inline-block;
             transition: background-color 0.3s ease;
         }
-        
+
         .btn-home:hover {
             background-color: #000;
             color: white;
         }
     </style>
 </head>
+
 <body>
     <div class="error-container">
-        <div class="error-background">404 404 404</div>
+        <div class="error-background" id="bg"></div>
+        <script>
+            const bg = document.getElementById('bg');
+            const rows = Math.ceil(window.innerHeight / 120); // tune size
+            const cols = Math.ceil(window.innerWidth / 220);
+            bg.style.display = 'grid';
+            bg.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
+            bg.style.gridTemplateRows = `repeat(${rows}, 1fr)`;
+            for (let r = 0; r < rows; r++) {
+                for (let c = 0; c < cols; c++) {
+                    const span = document.createElement('span');
+                    span.textContent = '404';
+                    span.style.placeSelf = 'center';
+                    bg.appendChild(span);
+                }
+            }
+        </script>
         <div class="error-content">
             <div class="error-label">404 Not Found</div>
             <h1 class="error-title">Oops! Page Not Found</h1>
@@ -91,4 +115,5 @@
     </div>
 
 </body>
+
 </html>
