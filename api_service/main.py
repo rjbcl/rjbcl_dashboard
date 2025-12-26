@@ -4,9 +4,13 @@ from fastapi.middleware.cors import CORSMiddleware
 from auth import router as auth_router
 from mssql_routes import router as mssql_router
 from middleware import jwt_middleware
+from otp.routes import router as otp_router
+
 
 app = FastAPI(title="Policy KYC API")
 
+# Register OTP routes
+app.include_router(otp_router)
 # -----------------------------
 # CORS CONFIG
 # -----------------------------

@@ -20,6 +20,7 @@ import requests
 from datetime import datetime, date
 
 from django.conf import settings
+from datetime import timedelta
 from django.core.exceptions import ValidationError
 from django.core.files.base import ContentFile
 from django.core.files.storage import default_storage
@@ -43,6 +44,10 @@ from django.views.decorators.cache import never_cache
 from kycform.utils import log_kyc_change
 from django.db import models
 from django.db import transaction
+from django.views.decorators.http import require_POST
+from .models import KycMobileOTP
+from .utils import hash_otp
+
 
 
 from kycform.services.policy_identity import resolve_policy_identity
@@ -1286,6 +1291,7 @@ def process_kyc_submission(request):
         raise Exception("Not authenticated")
     if not policy_no:
         raise Exception("Missing policy number.")
+        
 
     raw_json = request.POST.get("kyc_data")
 
@@ -1794,3 +1800,176 @@ def direct_kyc_entry_view(request):
 
 def kyc_submitted_view(request):
    return redirect("/auth/policy/?tab=policy")
+
+
+@require_POST
+def send_mobile_otp(request):
+    """
+    Sends OTP to policyholder mobile number via FastAPI gateway.
+    Works for BOTH:
+      - Normal login
+      - Direct KYC
+    """
+
+    mobile = request.POST.get("mobile")
+
+    if not mobile or len(mobile) != 10:
+        return JsonResponse({"error": "Invalid mobile number"}, status=400)
+
+    # -------------------------------------------------
+    # 🔐 RESOLVE KYC USER (LOGIN OR DIRECT KYC)
+    # -------------------------------------------------
+    user = None
+
+    # Case 1: Normal login
+    if request.session.get("authenticated"):
+        policy_no = request.session.get("policy_no")
+        try:
+            policy = KycPolicy.objects.get(policy_number=policy_no)
+            user = KycUserInfo.objects.get(user_id=policy.user_id)
+        except Exception:
+            return JsonResponse({"error": "User not found"}, status=403)
+
+    # Case 2: Direct KYC
+    elif request.session.get("kyc_access_mode") == "DIRECT_KYC":
+        user_id = request.session.get("kyc_user_id")
+        if not user_id:
+            return JsonResponse({"error": "Unauthorized"}, status=403)
+        try:
+            user = KycUserInfo.objects.get(user_id=user_id)
+        except KycUserInfo.DoesNotExist:
+            return JsonResponse({"error": "User not found"}, status=403)
+
+    else:
+        return JsonResponse({"error": "Unauthorized"}, status=403)
+
+    # -------------------------------------------------
+    # 📡 CALL FASTAPI OTP GATEWAY
+    # -------------------------------------------------
+    try:
+        resp = requests.post(
+            f"{settings.FASTAPI_BASE_URL}/otp/send",
+            params={"mobile": mobile},
+            timeout=10
+        )
+    except requests.RequestException:
+        return JsonResponse({"error": "OTP service unavailable"}, status=503)
+
+    if resp.status_code != 200:
+        return JsonResponse({"error": "Failed to send OTP"}, status=400)
+
+    data = resp.json()
+    otp = data.get("otp")
+
+    if not otp:
+        return JsonResponse({"error": "OTP generation failed"}, status=500)
+
+    # -------------------------------------------------
+    # 🔁 OTP DB HANDLING
+    # -------------------------------------------------
+    KycMobileOTP.objects.filter(
+        kyc_user=user,
+        is_verified=False
+    ).delete()
+
+    KycMobileOTP.objects.create(
+        kyc_user=user,
+        mobile=mobile,
+        otp_hash=hash_otp(otp),
+        expires_at=timezone.now() + timedelta(minutes=2)
+    )
+
+    return JsonResponse({
+        "success": True,
+        "message": "OTP sent successfully"
+    })
+
+@require_POST
+def verify_mobile_otp(request):
+
+    print("OTP VERIFY | POST:", request.POST)
+    print("OTP VERIFY | SESSION:", dict(request.session))
+
+    """
+    Verifies OTP for both:
+      - Normal login KYC
+      - Direct KYC
+    """
+
+    otp_input = (request.POST.get("otp") or "").strip()
+
+    if not otp_input or len(otp_input) != 6:
+        return JsonResponse(
+            {"error": "Invalid OTP format"},
+            status=400
+        )
+
+    # -------------------------------------------------
+    # 🔐 Resolve KYC user (same logic as send OTP)
+    # -------------------------------------------------
+    user = None
+
+    if request.session.get("authenticated"):
+        policy_no = request.session.get("policy_no")
+        try:
+            policy = KycPolicy.objects.get(policy_number=policy_no)
+            user = KycUserInfo.objects.get(user_id=policy.user_id)
+        except Exception:
+            return JsonResponse({"error": "User not found"}, status=403)
+
+    elif request.session.get("kyc_access_mode") == "DIRECT_KYC":
+        user_id = request.session.get("kyc_user_id")
+        if not user_id:
+            return JsonResponse({"error": "Unauthorized"}, status=403)
+        try:
+            user = KycUserInfo.objects.get(user_id=user_id)
+        except KycUserInfo.DoesNotExist:
+            return JsonResponse({"error": "User not found"}, status=403)
+
+    else:
+        return JsonResponse({"error": "Unauthorized"}, status=403)
+
+    # -------------------------------------------------
+    # 🔍 Fetch latest valid OTP
+    # -------------------------------------------------
+    otp_obj = (
+        KycMobileOTP.objects
+        .filter(
+            kyc_user=user,
+            is_verified=False,
+            expires_at__gt=timezone.now()
+        )
+        .order_by("-created_at")
+        .first()
+    )
+
+    if not otp_obj:
+        return JsonResponse(
+            {"error": "OTP expired or not found"},
+            status=400
+        )
+
+    # -------------------------------------------------
+    # 🔐 Verify OTP
+    # -------------------------------------------------
+    if not check_password(otp_input, otp_obj.otp_hash):
+        return JsonResponse(
+            {"error": "Incorrect OTP"},
+            status=400
+        )
+
+    # -------------------------------------------------
+    # ✅ Mark OTP verified
+    # -------------------------------------------------
+    otp_obj.is_verified = True
+    otp_obj.save(update_fields=["is_verified"])
+
+    # -------------------------------------------------
+    # 🔓 Allow KYC submission
+    # -------------------------------------------------
+    request.session["mobile_otp_verified"] = True
+
+    return JsonResponse({
+        "success": True,
+        "message": "Mobile number verified successfully"
+    })

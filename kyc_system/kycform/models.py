@@ -6,6 +6,7 @@ from django.contrib.auth.models import User
 from django.contrib.auth.hashers import make_password, check_password
 from django.contrib.auth import get_user_model
 
+
 User = get_user_model()
 
 # ================================================================
@@ -425,3 +426,30 @@ class KycChangeLog(models.Model):
 
     def __str__(self):
         return f"{self.submission.user.user_id} | {self.action} | {self.field_name}"
+
+# ================================================================
+# KYC MOBILE OTP MODEL
+
+class KycMobileOTP(models.Model):
+    kyc_user = models.ForeignKey(
+        "KycUserInfo",
+        on_delete=models.CASCADE,
+        related_name="mobile_otps",
+        db_index=True
+    )
+    mobile = models.CharField(max_length=10)
+    otp_hash = models.CharField(max_length=128)
+    expires_at = models.DateTimeField()
+    is_verified = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=["kyc_user", "mobile"]),
+        ]
+
+    def is_expired(self):
+        return timezone.now() > self.expires_at
+
+    def __str__(self):
+        return f"OTP for {self.kyc_user.user_id} ({self.mobile})"

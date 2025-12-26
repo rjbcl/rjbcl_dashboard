@@ -9,6 +9,8 @@ from django import forms
 from django.core.exceptions import PermissionDenied
 from django.forms import ValidationError as FormValidationError
 from .models import KycChangeLog, KycUserInfo
+from .models import KycMobileOTP
+
 
 from .models import KycSubmission, KycDocument
 from .forms import KycSubmissionAdminForm
@@ -640,3 +642,22 @@ class KycChangeLogAdmin(admin.ModelAdmin):
     def has_delete_permission(self, request, obj=None):
         return False
     
+# -------------------------------------------------------
+# KycMobileOTP Admin
+
+@admin.register(KycMobileOTP)
+class KycMobileOTPAdmin(admin.ModelAdmin):
+    list_display = (
+        "kyc_user",
+        "mobile",
+        "is_verified",
+        "expires_at",
+        "created_at",
+    )
+
+    list_filter = ("is_verified",)
+    search_fields = (
+        "kyc_user__user_id",
+        "mobile",
+    )
+    ordering = ("-created_at",)
