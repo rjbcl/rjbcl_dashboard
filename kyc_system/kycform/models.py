@@ -39,7 +39,7 @@ class KycUserInfo(models.Model):
     kyc_status = models.CharField(
         max_length=20, choices=KYC_STATUS_CHOICES, default="NOT_INITIATED"
     )
-
+    mobile_verified = models.BooleanField(default=False)
     class Meta:
         db_table = "kyc_user_info"
 

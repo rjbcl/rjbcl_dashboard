@@ -91,8 +91,11 @@ def resolve_policy_identity(*, policy_no, dob_ad, mobile=None):
             raise ValidationError("DOB not available for verification.")
 
         # 🔒 STRICT DOB VALIDATION
-        if user.dob != input_dob:
+        stored_dob = _normalize_dob(user.dob)
+
+        if stored_dob != input_dob:
             raise ValidationError("DOB does not match our records.")
+
 
         # Optional mobile validation
         if mobile and user.phone_number:

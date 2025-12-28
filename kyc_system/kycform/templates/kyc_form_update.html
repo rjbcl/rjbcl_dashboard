@@ -101,7 +101,8 @@
             {% csrf_token %}
             <input type="hidden" name="kyc_data" id="kyc_data">
             <input type="hidden" name="policy_no" id="policyField" value="{{ policy_no }}">
-
+            <!-- OTP verification state from server -->
+            <input type="hidden" id="mobileOtpServerVerified" value="{{ mobile_otp_verified|yesno:'1,0' }}">
             <!-- Step 1: Personal Details -->
             <div class="form-step active" data-step="1">
               <h4 class="form-step-title">Personal Details</h4>
@@ -243,7 +244,10 @@
                 </div>
                 <div class="col-md-4 mb-3">
                   <label class="form-label">Mobile No. <span class="text-danger">*</span></label>
-                  <input type="text" id="mobile" name="mobile" class="form-control" required autocomplete="off">
+                 <div class="input-group mobile-input-wrapper">
+                    <input type="text" id="mobile" name="mobile" class="form-control" required autocomplete="off">
+                    <button class="btn verify-btn-grey py-0" type="button" id="verifyBtn" disabled>Verify</button>
+                  </div>
                 </div>
                 <div class="col-md-4 mb-3">
                   <label class="form-label">Telephone No. </label>
@@ -905,6 +909,9 @@
       </div>
     </div>
   </div>
+<script>
+  window.mobileOtpVerified = JSON.parse('{{ request.session.mobile_otp_verified|default:False|yesno:"true,false" }}');
+</script>
 
   <script src="{% static 'js/jquery-3.6.0.min.js' %}"></script>
   <script src="{% static 'js/nepali.datepicker.v5.0.6.min.js' %}"></script>
@@ -964,6 +971,7 @@
     bindFileName('NidUpload', 'nidFileName');
     bindFileName('signatureUpload', 'signatureFileName');
   </script>
+  
 
 </body>
 
