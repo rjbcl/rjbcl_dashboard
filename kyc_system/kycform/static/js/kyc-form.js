@@ -245,10 +245,11 @@ $(document).ready(function () {
     formData["temp_house_number"] = $("#temp_house_number").val() || null;
 
     // Explicitly force branch_name
-  const branchInput = document.querySelector('input[name="branch_name"]');
-  if (branchInput) {
-    formData["branch_name"] = branchInput.value || null;
-  }
+    const branchInput = document.querySelector('input[name="branch_name"]');
+    if (branchInput) {
+      formData["branch_name"] = branchInput.value || null;
+
+    }
 
     // Fix radio buttons manually
     const radioNames = ["marital_status", "gender", "is_pep", "is_aml"];
@@ -342,8 +343,74 @@ $(document).ready(function () {
   // ---------------------------
   // 8.1 — Final Submit  preview model
   // ---------------------------
+  // Add this helper function to collect additional documents info
+  function collectAdditionalDocsForPreview() {
+    const additionalDocs = [];
+
+    console.log('🔍 Collecting additional docs for preview...');
+    console.log('Total additional-doc-item elements:', $('.additional-doc-item').length);
+
+    $('.additional-doc-item').each(function (index) {
+      const $item = $(this);
+      const docIndex = $item.data('doc-index');
+      const isExisting = $item.hasClass('existing-doc');
+
+      console.log(`Document ${index + 1}: docIndex=${docIndex}, isExisting=${isExisting}`);
+
+      if (isExisting) {
+        // Existing document
+        const docName = $item.find(`input[name="additional_doc_name_${docIndex}"]`).val();
+        const docUrl = $item.find(`input[name="existing_doc_url_${docIndex}"]`).val();
+        const fileName = $item.find('.file-name-inline').text().trim();
+
+        console.log('  Existing doc:', { docName, docUrl, fileName });
+
+        if (docName && docUrl) {
+          additionalDocs.push({
+            name: docName,
+            url: docUrl,
+            fileName: fileName,
+            isExisting: true
+          });
+        }
+      } else {
+        // New document upload
+        const docName = $item.find(`input[name="additional_doc_name_${docIndex}"]`).val();
+        const fileInput = $(`#additionalDoc${docIndex}Upload`)[0];
+
+        console.log('  New doc:', {
+          docName,
+          fileInputExists: !!fileInput,
+          hasFiles: fileInput ? fileInput.files.length : 0
+        });
+
+        if (fileInput && fileInput.files.length > 0) {
+          const file = fileInput.files[0];
+
+          // Create a temporary URL for preview
+          const fileUrl = URL.createObjectURL(file);
+
+          console.log('  Creating preview URL for:', file.name);
+
+          additionalDocs.push({
+            name: docName || 'Unnamed Document',
+            fileName: file.name,
+            url: fileUrl,
+            isExisting: false,
+            fileType: file.type
+          });
+        }
+      }
+    });
+
+    console.log('✅ Collected', additionalDocs.length, 'additional documents');
+    return additionalDocs;
+  }
+
+  // Updated showPreviewModal function - replace the existing one
   function showPreviewModal(data) {
     console.log(data);
+
     function formatLabel(key) {
       return key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
     }
@@ -353,21 +420,51 @@ $(document).ready(function () {
         value = '---';
       }
       return `
-                    <div class="col-md-6 col-lg-4 mb-3">
-                        <strong class="text-muted small">${label}: </strong>
-                        <span>${value}</span>
-                    </div>
-                `;
+      <div class="col-md-6 col-lg-4 mb-3">
+        <strong class="text-muted small">${label}: </strong>
+        <span>${value}</span>
+      </div>
+    `;
     }
 
     function createImageField(label, url) {
       if (!url) return '';
       return `
-                    <div class="col-md-6 col-lg-4 mb-3">
-                        <strong class="text-muted d-block small">${label} </strong>
-                        <img src="${url}" class="img-thumbnail mt-2" style="max-width: 200px; max-height: 200px;" alt="${label}">
-                    </div>
-                `;
+      <div class="col-md-6 col-lg-4 mb-3">
+        <strong class="text-muted d-block small">${label} </strong>
+        <img src="${url}" class="img-thumbnail mt-2" style="max-width: 200px; max-height: 200px;" alt="${label}">
+      </div>
+    `;
+    }
+
+    // NEW: Function to create additional document preview
+    function createAdditionalDocField(doc) {
+      const isPdf = doc.fileName && doc.fileName.toLowerCase().endsWith('.pdf');
+
+      if (isPdf) {
+        // For PDF files, show a link/button instead of image
+        return `
+        <div class="col-md-6 col-lg-4 mb-3">
+          <strong class="text-muted d-block small">${doc.name}</strong>
+          <div class="mt-2">
+            <button type="button" class="btn btn-outline-primary btn-sm view-doc-preview" data-url="${doc.url}">
+              <span>📄</span> ${doc.fileName}
+            </button>
+          </div>
+        </div>
+      `;
+      } else {
+        // For images, show thumbnail
+        return `
+        <div class="col-md-6 col-lg-4 mb-3">
+          <strong class="text-muted d-block small">${doc.name}</strong>
+          <img src="${doc.url}" class="img-thumbnail mt-2" style="max-width: 200px; max-height: 200px;" alt="${doc.name}">
+          <div class="mt-1">
+            <small class="text-muted">${doc.fileName}</small>
+          </div>
+        </div>
+      `;
+      }
     }
 
     // Personal Information
@@ -454,7 +551,7 @@ $(document).ready(function () {
       createField('Guardian Relation', data.guardian_relation)
     );
 
-    // Documents
+    // Main Documents
     $('#documents').html(
       createImageField('Photo', data.photo_url) +
       createImageField('Citizenship Front', data.citizenship_front_url) +
@@ -464,10 +561,33 @@ $(document).ready(function () {
       createImageField('NID', data.nid_url)
     );
 
+    // NEW: Additional Documents
+    const additionalDocs = collectAdditionalDocsForPreview();
+
+    if (additionalDocs.length > 0) {
+      let additionalDocsHtml = '';
+      additionalDocs.forEach(doc => {
+        additionalDocsHtml += createAdditionalDocField(doc);
+      });
+      $('#additional_documents').html(additionalDocsHtml);
+    } else {
+      $('#additional_documents').html('<p class="text-muted">No additional documents uploaded</p>');
+    }
+
     // Show modal
     $('#previewModal').modal('show');
+
+    // NEW: Setup click handlers for PDF preview buttons
+    setTimeout(() => {
+      $('.view-doc-preview').off('click').on('click', function () {
+        const url = $(this).data('url');
+        window.open(url, '_blank');
+      });
+    }, 100);
   }
 
+  // Make sure to expose the function globally
+  window.showPreviewModal = showPreviewModal;
   // Function to handle final submission confirmation
   function proceedWithSubmission() {
     Swal.fire({
@@ -620,32 +740,233 @@ $(document).ready(function () {
       } else $el.addClass('is-valid');
     });
 
-    // phone
+    // phone - regular validation (for contact_mobile)
     function setupMobileValidation(selector) {
       const $inp = $(selector);
+
+      // Nepali mobile number regex: (+977)?[9][6-9]\d{8}
+      const nepaliMobileRegex = /^(\+977)?[9][6-9]\d{8}$/;
+
       $inp.on('keypress', function (e) {
         const char = String.fromCharCode(e.which);
         const allowed = /[0-9+]/;
         if (e.which === 8 || e.which === 0 || e.which === 9) return true;
         if (!allowed.test(char)) { e.preventDefault(); return false; }
       });
+
       $inp.on('paste', function () {
         setTimeout(() => {
-          let val = $(this).val(); $(this).val(val.replace(/[^0-9+]/g, ''));
+          let val = $(this).val();
+          $(this).val(val.replace(/[^0-9+]/g, ''));
         }, 0);
       });
+
       $inp.on('blur input', function () {
-        const $el = $(this); $el.next('.invalid-feedback').remove(); $el.removeClass('is-invalid is-valid');
-        const v = $el.val().trim(); if (!v) return;
+        const $el = $(this);
+        $el.next('.invalid-feedback').remove();
+        $el.removeClass('is-invalid is-valid');
+        const v = $el.val().trim();
+        if (!v) return;
+
         const digits = v.replace(/[^0-9]/g, '').length;
+
+        // First check if it has at least 10 digits
         if (digits < 10) {
           $el.addClass('is-invalid');
           $el.after('<div class="invalid-feedback d-block">Mobile number must have at least 10 digits</div>');
-        } else $el.addClass('is-valid');
+        }
+        // Then check if it matches Nepali mobile format
+        else if (!nepaliMobileRegex.test(v)) {
+          $el.addClass('is-invalid');
+          $el.after('<div class="invalid-feedback d-block">Invalid Nepali mobile number format. Must start with 96-99 (e.g., 9841234567 or +9779841234567)</div>');
+        }
+        else {
+          $el.addClass('is-valid');
+        }
       });
     }
-    setupMobileValidation('#mobile'); setupMobileValidation('#contact_mobile');
+
+    // Mobile validation with OTP for #mobile field only
+    // Mobile validation with OTP for #mobile field only
+    function setupMobileValidationWithOTP(inputSelector, buttonSelector) {
+      const $inp = $(inputSelector);
+      const $btn = $(buttonSelector);
+      let isVerified = false;
+
+      // Nepali mobile number regex: (+977)?[9][6-9]\d{8}
+      const nepaliMobileRegex = /^(\+977)?[9][6-9]\d{8}$/;
+
+      // Keypress validation
+      $inp.on('keypress', function (e) {
+        const char = String.fromCharCode(e.which);
+        const allowed = /[0-9+]/;
+        if (e.which === 8 || e.which === 0 || e.which === 9) return true;
+        if (!allowed.test(char)) {
+          e.preventDefault();
+          return false;
+        }
+      });
+
+      // Paste validation
+      $inp.on('paste', function () {
+        setTimeout(() => {
+          let val = $(this).val();
+          $(this).val(val.replace(/[^0-9+]/g, ''));
+        }, 0);
+      });
+
+      // Blur/input validation with button state management and regex check
+      $inp.on('blur input', function () {
+        // Don't validate if already verified
+        if (isVerified) return;
+
+        const $el = $(this);
+        $el.next('.invalid-feedback').remove();
+        $el.removeClass('is-invalid is-valid');
+
+        const v = $el.val().trim();
+
+        if (!v) {
+          $btn.removeClass('verify-btn-green').addClass('verify-btn-grey').prop('disabled', true);
+          return;
+        }
+
+        const digits = v.replace(/[^0-9]/g, '').length;
+
+        // Then check if it matches Nepali mobile format
+        if (!nepaliMobileRegex.test(v)) {
+          $el.addClass('is-invalid');
+          $el.after('<div class="invalid-feedback d-block">Incomplete Digits or Invalid Nepali mobile number format.</div>');
+          $btn.removeClass('verify-btn-green').addClass('verify-btn-grey').prop('disabled', true);
+        }
+        else {
+          $el.addClass('is-valid');
+          $btn.removeClass('verify-btn-grey').addClass('verify-btn-green').prop('disabled', false);
+        }
+      });
+
+      // Verify button click handler
+      $btn.on('click', async function () {
+        if ($(this).prop('disabled') || isVerified) return;
+
+        const mobileNumber = $inp.val().trim();
+
+        // Step 1: Confirm sending OTP
+        const confirmResult = await swalOTPConfirm(mobileNumber);
+
+        if (confirmResult.isConfirmed) {
+          // Simulate sending OTP (replace with actual API call)
+          Swal.fire({
+            title: 'Sending OTP...',
+            html: 'Please wait',
+            allowOutsideClick: false,
+            didOpen: () => {
+              Swal.showLoading();
+            }
+          });
+
+          // Simulate API delay (replace with actual API call)
+          setTimeout(async () => {
+            Swal.close();
+
+            // Step 2: Get OTP from user - loop until valid or cancelled
+            let otpVerified = false;
+            let previousError = ''; // Store error message between popups
+
+            while (!otpVerified) {
+              const otpResult = await swalOTPInput(mobileNumber, previousError);
+
+              // If user clicked cancel, break out of loop
+              if (otpResult.isDismissed) {
+                break;
+              }
+
+              if (otpResult.isConfirmed) {
+                const enteredOTP = otpResult.value;
+
+                // Show verifying loader
+                Swal.fire({
+                  title: 'Verifying OTP...',
+                  html: 'Please wait',
+                  allowOutsideClick: false,
+                  allowEscapeKey: false,
+                  didOpen: () => {
+                    Swal.showLoading();
+                  }
+                });
+
+                // Simulate OTP verification API call (replace with actual API call)
+                await new Promise(resolve => setTimeout(resolve, 1500));
+
+                // For demo purposes, accept "123456" as valid OTP
+                if (enteredOTP === '123456') {
+                  // Success!
+                  isVerified = true;
+                  otpVerified = true;
+
+                  Swal.fire({
+                    icon: 'success',
+                    title: 'Verified!',
+                    text: 'Mobile number verified successfully',
+                    confirmButtonColor: '#28a745',
+                    timer: 2000,
+                    showConfirmButton: false
+                  });
+
+                  // Update UI
+                  $inp.prop('readonly', true).prop('disabled', true);
+                  $inp.removeClass('is-valid').addClass('is-valid');
+                  $btn.prop('disabled', true).removeClass('verify-btn-green').addClass('verify-btn-grey').text('Verified ✓');
+                } else {
+                  // Invalid OTP - store error and loop back
+                  previousError = 'Invalid OTP. Please try again.';
+                  // Loop continues, popup will reopen with error message
+                }
+              }
+            }
+          }, 1500);
+        }
+      });
+
+      return {
+        isVerified: () => isVerified,
+        reset: () => {
+          isVerified = false;
+          $inp.prop('readonly', false).prop('disabled', false).val('');
+          $inp.removeClass('is-valid is-invalid');
+          $btn.prop('disabled', true).removeClass('verify-btn-green').addClass('verify-btn-grey').text('Verify');
+          $inp.siblings('.verified-badge').remove();
+          $inp.siblings('.invalid-feedback').remove();
+        }
+      };
+    }
+
+    // Apply regular validation to contact_mobile
+    setupMobileValidation('#nominee_contact');
+
+    // Apply OTP validation to mobile field
+    window.mobileValidation = setupMobileValidationWithOTP('#mobile', '#verifyBtn');
   })();
+
+
+  // Form submission example
+  $(document).ready(function () {
+    $('form').on('submit', function (e) {
+      e.preventDefault();
+
+      if (!window.mobileValidation.isVerified()) {
+        swalError('Verification Required', 'Please verify your mobile number before submitting.');
+        return false;
+      }
+
+      Swal.fire({
+        icon: 'success',
+        title: 'Form Submitted!',
+        text: 'Mobile number verified successfully',
+        confirmButtonColor: '#28a745'
+      });
+    });
+  });
 
 
   // ---------------------------

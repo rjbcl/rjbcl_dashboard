@@ -243,7 +243,10 @@
                 </div>
                 <div class="col-md-4 mb-3">
                   <label class="form-label">Mobile No. <span class="text-danger">*</span></label>
-                  <input type="text" id="mobile" name="mobile" class="form-control" required autocomplete="off">
+                  <div class="input-group mobile-input-wrapper">
+                    <input type="text" id="mobile" name="mobile" class="form-control" required autocomplete="off">
+                    <button class="btn verify-btn-grey py-0" type="button" id="verifyBtn" disabled>Verify</button>
+                  </div>
                 </div>
                 <div class="col-md-4 mb-3">
                   <label class="form-label">Telephone No. </label>
@@ -663,7 +666,7 @@
                 </div>
                 <div class="col-md-6 mb-3">
                   <label class="form-label">Nominee Contact Number <span class="text-danger">*</span></label>
-                  <input type="tel" id="nominee_mobile" name="nominee_contact" class="form-control" required
+                  <input type="tel" id="nominee_mobile" name="nominee_contact" class="form-control" id="nominee_contact" required
                     autocomplete="off">
                 </div>
               </div>
@@ -745,30 +748,6 @@
                 <p class="form-text text-muted small mb-3">
                   You can attach up to 5 additional documents (e.g., passport, driving license, bank statement, etc.)
                 </p>
-
-                <!-- <div id="additionalDocsContainer">
-                  <div class="additional-doc-item" data-doc-index="1">
-                    <div class="row align-items-end mb-3">
-                      <div class="col-md-6">
-                        <label class="form-label">Document Name</label>
-                        <input type="text" class="form-control" autocomplete="off"
-                          placeholder="e.g., Passport, License, etc.">
-                      </div>
-                      <div class="col-md-6">
-                        <label class="form-label">Attach Document</label>
-                        <div class="document-upload-inline" id="additionalDoc1Container">
-                          <input type="file" id="additionalDoc1Upload" class="addDoc" name="additional_docs"
-                            accept="image/*,application/pdf" style="display:none;">
-                          <button type="button" class="btn btn-outline-secondary btn-sm"
-                            onclick="document.getElementById('additionalDoc1Upload').click()">
-                            <span class="upload-icon-btn">📎</span> Choose File
-                          </button>
-                          <span class="file-name-inline" id="additionalDoc1FileName">No file chosen</span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div> -->
                 <div id="additionalDocsContainer">
 
                 </div>
@@ -891,7 +870,7 @@
               <h6 class="preview-title border-bottom pb-2">Documents</h6>
               <div class="row" id="documents"></div>
             </div>
-            
+
             <!-- Additional Documents -->
             <div class="col-12 mb-4">
               <h6 class="preview-title border-bottom pb-2">Additional Documents</h6>
