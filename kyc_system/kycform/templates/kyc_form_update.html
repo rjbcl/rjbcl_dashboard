@@ -888,7 +888,7 @@
 <script>
   window.mobileOtpVerified = JSON.parse('{{ request.session.mobile_otp_verified|default:False|yesno:"true,false" }}');
 </script>
-
+<script>window.POLICY_NO = "{{ policy_no|escapejs }}";</script>
   <script src="{% static 'js/jquery-3.6.0.min.js' %}"></script>
   <script src="{% static 'js/nepali.datepicker.v5.0.6.min.js' %}"></script>
   <script src="{% static 'js/nepalify.production.min.js' %}"></script>

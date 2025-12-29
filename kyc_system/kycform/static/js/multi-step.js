@@ -114,8 +114,8 @@ $(document).ready(function () {
         // Check if mobile number (#mobile) is verified via OTP
         const $mobileField = $current.find('#mobile');
         if ($mobileField.length > 0 && $mobileField.attr('required')) {
-            // Check if the mobile validation object exists and if it's verified
-            if (window.mobileValidation && !window.mobileValidation.isVerified()) {
+            // Check global verification state
+            if (!window.mobileOtpVerified) {
                 valid = false;
                 const mobileLabel = getFieldLabel($mobileField) || 'Mobile Number';
                 if (!missingFields.includes(mobileLabel + ' (Not Verified)')) {
@@ -123,6 +123,15 @@ $(document).ready(function () {
                 }
                 // Add visual indicator
                 $mobileField.addClass('is-invalid');
+
+                // Also highlight the verify button
+                const $verifyBtn = $('#verifyBtn');
+                if ($verifyBtn.length) {
+                    $verifyBtn.addClass('btn-pulse'); // Optional: add a pulse animation class
+                }
+            } else {
+                // If verified, ensure no invalid styling
+                $mobileField.removeClass('is-invalid');
             }
         }
 
@@ -157,7 +166,7 @@ $(document).ready(function () {
         return valid;
     }
 
-    
+
     $('#saveContinueBtn').off('click').on('click', async function (e) {
         e.preventDefault();
         if (!validateStep(currentStep, true)) return;

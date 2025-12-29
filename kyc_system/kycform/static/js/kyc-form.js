@@ -38,7 +38,7 @@ $(document).ready(function () {
 
   const log = (...args) => console.debug.apply(console, args);
   var params = new URLSearchParams(window.location.search);
-  $('#Pol_number').text(policy);
+  $('#Pol_number').text(POLICY_NO);
 
 
   //GET NAME FROM PREFILL DATA
@@ -641,45 +641,45 @@ $(document).ready(function () {
         didOpen: () => Swal.showLoading()
       });
 
-    document.getElementById('kycForm').submit();
+      document.getElementById('kycForm').submit();
     });
   }
 
   // Make function globally accessible
   window.showPreviewModal = showPreviewModal;
   $('#submitBtn')
-  .off('click') // ⛔ remove all previous bindings
-  .on('click', async function (e) {
+    .off('click') // ⛔ remove all previous bindings
+    .on('click', async function (e) {
 
-    e.preventDefault();
-    e.stopImmediatePropagation();
+      e.preventDefault();
+      e.stopImmediatePropagation();
 
-    console.log('[OTP STATE]', window.mobileOtpVerified);
+      console.log('[OTP STATE]', window.mobileOtpVerified);
 
-    if (!window.mobileOtpVerified) {
-      Swal.fire({
-        icon: 'warning',
-        title: 'Mobile Not Verified',
-        text: 'Please verify your mobile number before submitting.',
-        confirmButtonText: 'OK'
-      });
-      return false;
-    }
+      if (!window.mobileOtpVerified) {
+        Swal.fire({
+          icon: 'warning',
+          title: 'Mobile Not Verified',
+          text: 'Please verify your mobile number before submitting.',
+          confirmButtonText: 'OK'
+        });
+        return false;
+      }
 
-    if (!validateStep(totalSteps)) return false;
+      if (!validateStep(totalSteps)) return false;
 
-    const saved = await ajaxSaveKycProgress();
-    if (!saved) return false;
+      const saved = await ajaxSaveKycProgress();
+      if (!saved) return false;
 
-    const previewData = window.collectFormData();
-    Object.assign(previewData, window.collectDocumentUrls());
+      const previewData = window.collectFormData();
+      Object.assign(previewData, window.collectDocumentUrls());
 
-    showPreviewModal(previewData);
+      showPreviewModal(previewData);
 
-    $('#previewModal .btn-success')
-      .off('click')
-      .on('click', proceedWithSubmission);
-  });
+      $('#previewModal .btn-success')
+        .off('click')
+        .on('click', proceedWithSubmission);
+    });
 
 
 
@@ -808,38 +808,78 @@ $(document).ready(function () {
         } else $el.addClass('is-valid');
       });
     }
-     setupMobileValidation('#contact_mobile');
+    setupMobileValidation('#contact_mobile');
 
     // ===============================
-    // MOBILE VALIDATION WITH REAL OTP
+    // MOBILE VALIDATION WITH REAL OTP - ENHANCED UI
     // ===============================
-
     function setupMobileValidationWithOTP(inputSelector, buttonSelector) {
       const $inp = $(inputSelector);
       const $btn = $(buttonSelector);
-
       const nepaliMobileRegex = /^(\+977)?[9][6-9]\d{8}$/;
 
-      // Input restriction
+      // Check initial verification state (from prefill or previous session)
+      if (window.mobileOtpVerified) {
+        console.log('[OTP] Already verified - locking field');
+        lockMobileField();
+        return; // Exit early if already verified
+      }
+
+      // Function to lock the mobile field
+      function lockMobileField() {
+        $inp.prop('readonly', true).prop('disabled', true);
+        $inp.removeClass('is-invalid').addClass('is-valid');
+        $btn.prop('disabled', true)
+          .removeClass('verify-btn-green')
+          .addClass('verify-btn-grey')
+          .text('Verified ✓');
+      }
+
+      // Input restriction (only if not verified)
       $inp.on('keypress', function (e) {
+        if (window.mobileOtpVerified) {
+          e.preventDefault();
+          return false;
+        }
         const char = String.fromCharCode(e.which);
         if (!/[0-9+]/.test(char) && e.which !== 8 && e.which !== 9) {
           e.preventDefault();
         }
       });
 
+      $inp.on('paste', function (e) {
+        if (window.mobileOtpVerified) {
+          e.preventDefault();
+          return false;
+        }
+        setTimeout(() => {
+          let val = $(this).val();
+          $(this).val(val.replace(/[^0-9+]/g, ''));
+        }, 0);
+      });
+
       // Validate + enable button
       $inp.on('blur input', function () {
         if (window.mobileOtpVerified) return;
-
 
         const val = $inp.val().trim();
         $inp.removeClass('is-valid is-invalid');
         $inp.next('.invalid-feedback').remove();
 
-        if (!nepaliMobileRegex.test(val)) {
+        if (!val) {
+          $btn.prop('disabled', true).removeClass('verify-btn-green').addClass('verify-btn-grey');
+          return;
+        }
+
+        const digits = val.replace(/[^0-9]/g, '').length;
+
+        if (digits < 10) {
           $inp.addClass('is-invalid')
-            .after('<div class="invalid-feedback d-block">Invalid Nepali mobile number</div>');
+            .after('<div class="invalid-feedback d-block">Mobile number must have at least 10 digits</div>');
+          $btn.prop('disabled', true).removeClass('verify-btn-green').addClass('verify-btn-grey');
+        } else if (!nepaliMobileRegex.test(val)) {
+          $inp.addClass('is-invalid')
+            .after('<div class="invalid-feedback d-block">Invalid Nepali mobile number format. Must start with 96-99</div>');
           $btn.prop('disabled', true).removeClass('verify-btn-green').addClass('verify-btn-grey');
         } else {
           $inp.addClass('is-valid');
@@ -847,102 +887,181 @@ $(document).ready(function () {
         }
       });
 
-      // Verify button click
-      $btn.on('click', async function () {
-        if ($btn.prop('disabled') || mobileOtpVerified) return;
+      // Handle resend OTP event
+      document.addEventListener('otp-resend-requested', async function (e) {
+        const mobile = e.detail.mobile;
 
-        const mobile = $inp.val().trim();
-
-        const confirm = await Swal.fire({
-          title: 'Verify Mobile',
-          text: `Send OTP to ${mobile}?`,
-          icon: 'question',
-          showCancelButton: true,
-          confirmButtonText: 'Send OTP'
+        Swal.fire({
+          title: 'Resending OTP...',
+          didOpen: () => Swal.showLoading(),
+          allowOutsideClick: false
         });
 
-        if (!confirm.isConfirmed) return;
-
-        // Send OTP
-        Swal.fire({ title: 'Sending OTP...', didOpen: () => Swal.showLoading(), allowOutsideClick: false });
-
-        const sendResp = await fetch('/otp/send/', {
-          method: 'POST',
-          headers: {
-            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
-            'Content-Type': 'application/x-www-form-urlencoded'
-          },
-          body: 'mobile=' + encodeURIComponent(mobile)
-        });
-
-        const sendData = await sendResp.json();
-        Swal.close();
-
-        if (!sendData.success) {
-          Swal.fire('Error', sendData.error || 'OTP send failed', 'error');
-          return;
-        }
-
-        // OTP input loop
-        let verified = false;
-        let errorMsg = '';
-
-        while (!verified) {
-          const otpInput = await Swal.fire({
-            title: 'Enter OTP',
-            html: errorMsg ? `<div class="text-danger">${errorMsg}</div>` : '',
-            input: 'text',
-            inputAttributes: { maxlength: 6 },
-            showCancelButton: true,
-            confirmButtonText: 'Verify'
-          });
-
-          if (otpInput.isDismissed) return;
-
-          Swal.fire({ title: 'Verifying...', didOpen: () => Swal.showLoading(), allowOutsideClick: false });
-
-          const verifyResp = await fetch('/otp/verify/', {
+        try {
+          const sendResp = await fetch('/otp/send/', {
             method: 'POST',
             headers: {
               'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
               'Content-Type': 'application/x-www-form-urlencoded'
             },
-            body: 'otp=' + encodeURIComponent(otpInput.value)
+            body: 'mobile=' + encodeURIComponent(mobile)
           });
 
-          const verifyData = await verifyResp.json();
+          const sendData = await sendResp.json();
           Swal.close();
 
-          if (verifyData.success) {
+          if (!sendData.success) {
+            Swal.fire('Error', sendData.error || 'OTP resend failed', 'error');
+            return;
+          }
 
-            // 🔐 GLOBAL STATE
-            window.mobileOtpVerified = true;
+          // Show new OTP input with fresh timer
+          startOTPVerificationLoop(mobile);
 
-            // 🔐 PERSIST IN DOM (survives step resets & reload)
-            const otpStateEl = document.getElementById('mobileOtpServerVerified');
-            if (otpStateEl) otpStateEl.value = "1";
+        } catch (error) {
+          Swal.close();
+          Swal.fire('Error', 'Network error. Please try again.', 'error');
+        }
+      });
 
-            // 🔒 HARD LOCK MOBILE FIELD
-            $inp.prop('readonly', true);
-            $btn.prop('disabled', true).text('Verified ✓');
+      // OTP verification loop function
+      async function startOTPVerificationLoop(mobile, initialError = '') {
+        let verified = false;
+        let errorMsg = initialError;
 
-            await Swal.fire({
-              icon: 'success',
-              title: 'Verified',
-              text: 'Mobile number verified successfully',
-              timer: 1500,
-              showConfirmButton: false
+        while (!verified) {
+          const otpInput = await swalOTPInput(mobile, errorMsg);
+
+          if (otpInput.isDismissed) {
+            return; // User cancelled
+          }
+
+          if (otpInput.isConfirmed) {
+            const enteredOTP = otpInput.value;
+
+            // Show verifying loader
+            Swal.fire({
+              title: 'Verifying OTP...',
+              html: 'Please wait',
+              didOpen: () => Swal.showLoading(),
+              allowOutsideClick: false,
+              allowEscapeKey: false
             });
 
-            return; // ⛔ EXIT OTP FLOW COMPLETELY
+            try {
+              const verifyResp = await fetch('/otp/verify/', {
+                method: 'POST',
+                headers: {
+                  'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+                  'Content-Type': 'application/x-www-form-urlencoded'
+                },
+                body: 'otp=' + encodeURIComponent(enteredOTP)
+              });
+
+              const verifyData = await verifyResp.json();
+              Swal.close();
+
+              if (verifyData.success) {
+                // SUCCESS!
+                window.mobileOtpVerified = true;
+
+                // Persist state for reloads
+                const otpStateEl = document.getElementById('mobileOtpServerVerified');
+                if (otpStateEl) otpStateEl.value = "1";
+
+                await Swal.fire({
+                  icon: 'success',
+                  title: 'Verified!',
+                  text: 'Mobile number verified successfully',
+                  confirmButtonColor: '#28a745',
+                  timer: 2000,
+                  showConfirmButton: false
+                });
+
+                // Lock the mobile field
+                lockMobileField();
+
+                verified = true;
+                return; // Exit completely
+
+              } else {
+                // Invalid OTP - show error and loop back
+                errorMsg = 'Invalid OTP. Please try again.';
+                // Loop continues with error message
+              }
+            } catch (error) {
+              Swal.close();
+              Swal.fire('Error', 'Network error. Please try again.', 'error');
+              return; // Exit on network error
+            }
           }
         }
-  });
-}
+      }
 
-// Apply
-setupMobileValidationWithOTP('#mobile', '#verifyBtn');
+      // Verify button click handler
+      $btn.on('click', async function () {
+        if ($btn.prop('disabled') || window.mobileOtpVerified) return;
 
+        const mobile = $inp.val().trim();
+
+        // Step 1: Confirm sending OTP
+        const confirm = await swalOTPConfirm(mobile);
+
+        if (!confirm.isConfirmed) return;
+
+        // Step 2: Send OTP to backend
+        Swal.fire({
+          title: 'Sending OTP...',
+          html: 'Please wait',
+          didOpen: () => Swal.showLoading(),
+          allowOutsideClick: false
+        });
+
+        try {
+          const sendResp = await fetch('/otp/send/', {
+            method: 'POST',
+            headers: {
+              'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+              'Content-Type': 'application/x-www-form-urlencoded'
+            },
+            body: 'mobile=' + encodeURIComponent(mobile)
+          });
+
+          const sendData = await sendResp.json();
+          Swal.close();
+
+          if (!sendData.success) {
+            Swal.fire('Error', sendData.error || 'OTP send failed', 'error');
+            return;
+          }
+
+          // Step 3: Start OTP verification loop
+          startOTPVerificationLoop(mobile);
+
+        } catch (error) {
+          Swal.close();
+          Swal.fire('Error', 'Network error. Please try again.', 'error');
+        }
+      });
+
+      // Expose reset function globally (for testing/debugging)
+      window.resetMobileVerification = function () {
+        window.mobileOtpVerified = false;
+        const otpStateEl = document.getElementById('mobileOtpServerVerified');
+        if (otpStateEl) otpStateEl.value = "0";
+
+        $inp.prop('readonly', false).prop('disabled', false).val('');
+        $inp.removeClass('is-valid is-invalid');
+        $btn.prop('disabled', true).removeClass('verify-btn-green').addClass('verify-btn-grey').text('Verify');
+        $inp.siblings('.verified-badge').remove();
+        $inp.siblings('.invalid-feedback').remove();
+
+        console.log('[OTP] Verification reset');
+      };
+    }
+
+    // Apply OTP validation to mobile field
+    setupMobileValidationWithOTP('#mobile', '#verifyBtn');
   })();
 
   // ---------------------------
