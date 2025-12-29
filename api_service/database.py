@@ -54,11 +54,12 @@ def get_mssql_conn():
 
     try:
         conn_str = (
-            f"DRIVER={{ODBC Driver 17 for SQL Server}};"
-            f"SERVER={DB_SERVER},{DB_PORT};"
+            "DRIVER={ODBC Driver 18 for SQL Server};"
+            f"SERVER={DB_SERVER};"
             f"DATABASE={DB_NAME};"
             f"UID={DB_USER};"
             f"PWD={DB_PASSWORD};"
+            "Encrypt=yes;"
             "TrustServerCertificate=yes;"
         )
         return pyodbc.connect(conn_str, timeout=5)
