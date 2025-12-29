@@ -2,14 +2,28 @@
 $(document).ready(function () {
   "use strict";
 
-   // ======================================
-  // GLOBAL OTP STATE (SINGLE SOURCE OF TRUTH)
   // ======================================
-  const otpEl = document.getElementById('mobileOtpServerVerified');
+  // GLOBAL OTP STATE — SINGLE SOURCE OF TRUTH
+  // ======================================
+  (function initOtpState() {
+    const el = document.getElementById('mobileOtpServerVerified');
+    window.mobileOtpVerified = el && el.value === "1";
+    console.log('[OTP INIT]', window.mobileOtpVerified);
+  })();
 
-  window.mobileOtpVerified = otpEl && otpEl.value === "1";
+  (function applyOtpLockIfVerified() {
+    if (window.mobileOtpVerified === true) {
+      $('#mobile')
+        .prop('readonly', true)
+        .addClass('is-valid');
 
-  console.log('[OTP INIT]', window.mobileOtpVerified);
+      $('#verifyBtn')
+        .prop('disabled', true)
+        .text('Verified ✓');
+
+      console.log('[OTP LOCK APPLIED]');
+    }
+  })();
 
 
   // =============================
@@ -627,7 +641,7 @@ $(document).ready(function () {
         didOpen: () => Swal.showLoading()
       });
 
-      $('#kycForm').submit();
+    document.getElementById('kycForm').submit();
     });
   }
 
@@ -816,7 +830,8 @@ $(document).ready(function () {
 
       // Validate + enable button
       $inp.on('blur input', function () {
-        if (mobileOtpVerified) return;
+        if (window.mobileOtpVerified) return;
+
 
         const val = $inp.val().trim();
         $inp.removeClass('is-valid is-invalid');
@@ -899,11 +914,17 @@ $(document).ready(function () {
           Swal.close();
 
           if (verifyData.success) {
+
+            // 🔐 GLOBAL STATE
             window.mobileOtpVerified = true;
 
-            // persist state for reloads
+            // 🔐 PERSIST IN DOM (survives step resets & reload)
             const otpStateEl = document.getElementById('mobileOtpServerVerified');
             if (otpStateEl) otpStateEl.value = "1";
+
+            // 🔒 HARD LOCK MOBILE FIELD
+            $inp.prop('readonly', true);
+            $btn.prop('disabled', true).text('Verified ✓');
 
             await Swal.fire({
               icon: 'success',
@@ -913,13 +934,8 @@ $(document).ready(function () {
               showConfirmButton: false
             });
 
-            $inp.prop('readonly', true);
-            $btn.prop('disabled', true).text('Verified ✓');
-
             return; // ⛔ EXIT OTP FLOW COMPLETELY
           }
-
-
         }
   });
 }
@@ -928,27 +944,6 @@ $(document).ready(function () {
 setupMobileValidationWithOTP('#mobile', '#verifyBtn');
 
   })();
-
-
-  // Form submission example
-  $(document).ready(function () {
-    $('form').on('submit', function (e) {
-      e.preventDefault();
-
-      if (!window.mobileValidation.isVerified()) {
-        swalError('Verification Required', 'Please verify your mobile number before submitting.');
-        return false;
-      }
-
-      Swal.fire({
-        icon: 'success',
-        title: 'Form Submitted!',
-        text: 'Mobile number verified successfully',
-        confirmButtonColor: '#28a745'
-      });
-    });
-  });
-
 
   // ---------------------------
   // Section 10 — Prefill Pipeline with Loading State
