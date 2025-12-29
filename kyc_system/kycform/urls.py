@@ -67,7 +67,12 @@ urlpatterns = [
 
     # -------------------------------
     # KYC SUBMITTED CONFIRMATION
-    path("kyc-submitted/", views.kyc_submitted_view, name="kyc_submitted")
+    path("kyc-submitted/", views.kyc_submitted_view, name="kyc_submitted"),
+
+    # -------------------------------
+    # MOBILE OTP SENDING
+    path("otp/send/", views.send_mobile_otp, name="send_mobile_otp"),
+    path("otp/verify/", views.verify_mobile_otp, name="verify_mobile_otp"),
 
 
 ]

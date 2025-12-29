@@ -48,3 +48,6 @@ def log_kyc_change(
         new_value=str(new_value) if new_value is not None else None,
         comment=comment,
     )
+
+def hash_otp(otp: str) -> str:
+    return hashlib.sha256(otp.encode("utf-8")).hexdigest()
