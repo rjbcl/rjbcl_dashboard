@@ -716,7 +716,7 @@ def kyc_form_view(request):
         additional_docs = []
 
     try:
-        temp = KYCTemporary.objects.get(policy_no=policy_no)
+        temp = KYCTemporary.objects.get(user=user)
         temp_data = safe_model_dict(temp.data_json)
     except KYCTemporary.DoesNotExist:
         temp_data = {}
@@ -1717,10 +1717,17 @@ def save_kyc_progress(request):
         parsed["_current_step"] = parsed.get("_current_step", 1)
 
     # Persist or update KYCTemporary
+    policy = KycPolicy.objects.get(policy_number=policy_no)
+    user = KycUserInfo.objects.get(user_id=policy.user_id)
+
     KYCTemporary.objects.update_or_create(
-        policy_no=policy_no,
-        defaults={"data_json": parsed}
+        user=user,
+        defaults={
+            "policy_no": policy_no,
+            "data_json": parsed
+        }
     )
+
 
     return JsonResponse({
         "status": "saved",
