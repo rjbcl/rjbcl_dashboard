@@ -511,9 +511,29 @@ def reset_password(request):
 # -----------------------------------------------------------------------------
 # KYC Form view (prefill) — single endpoint returning the template + prefill JSON
 # -----------------------------------------------------------------------------
+
+from django.core.cache import cache
+
 @csrf_exempt
 def kyc_form_view(request):
-
+    # -------------------------
+    # CHECK FOR ONE-TIME TOKEN (for React login redirect)
+    # -------------------------
+    token = request.GET.get('token')
+    if token:
+        token_data = cache.get(f'login_token_{token}')
+        if token_data:
+            # Set session from token
+            request.session['authenticated'] = token_data['authenticated']
+            request.session['policy_no'] = token_data['policy_no']
+            request.session.save()
+            
+            # Delete the token (one-time use)
+            cache.delete(f'login_token_{token}')
+            
+            # Redirect without token to clean URL
+            policy_no = token_data['policy_no']
+            return redirect(f"/kyc-form/?policy_no={policy_no}")
     # -------------------------
     # AUTH CHECK (add this)
     # -------------------------

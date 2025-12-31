@@ -12,22 +12,44 @@ function LoginForm() {
     const [password, setPassword] = useState('');
     const [errorMessage, setErrorMessage] = useState('');
     const [isLoading, setIsLoading] = useState(false);
-    const [csrfToken, setCsrfToken] = useState('');
+    const [_csrfToken, setCsrfToken] = useState('');
     
     const navigate = useNavigate();
     const API_BASE_URL = 'http://localhost:8000/api/auth';
 
     // Get CSRF token on component mount
     useEffect(() => {
-        fetch(`${API_BASE_URL}/csrf/`, {
-            credentials: 'include',
-        })
-        .then(res => res.json())
-        .then(() => {
-            const token = getCookie('csrftoken');
-            setCsrfToken(token);
-        })
-        .catch(err => console.error('Error fetching CSRF token:', err));
+        const fetchCSRFToken = async () => {
+            try {
+                const response = await fetch(`${API_BASE_URL}/csrf/`, {
+                    method: 'GET',
+                    credentials: 'include',
+                    headers: {
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/json',
+                    },
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    console.log('CSRF response:', data);
+                    
+                    // Try to get token from cookie
+                    const tokenFromCookie = getCookie('csrftoken');
+                    console.log('CSRF token from cookie:', tokenFromCookie);
+                    
+                    if (tokenFromCookie) {
+                        setCsrfToken(tokenFromCookie);
+                    } else if (data.csrfToken) {
+                        setCsrfToken(data.csrfToken);
+                    }
+                }
+            } catch (err) {
+                console.error('Error fetching CSRF token:', err);
+            }
+        };
+        
+        fetchCSRFToken();
     }, []);
 
     // Helper function to get cookie
@@ -81,14 +103,24 @@ function LoginForm() {
             return;
         }
 
+        // Get fresh CSRF token before login
+        const currentCsrfToken = getCookie('csrftoken');
+        console.log('Using CSRF token:', currentCsrfToken);
+
+        if (!currentCsrfToken) {
+            setErrorMessage('Security token missing. Please refresh the page.');
+            return;
+        }
+
         setIsLoading(true);
 
         try {
             const response = await fetch(`${API_BASE_URL}/policyholder/login/`, {
                 method: 'POST',
                 headers: {
+                    'Accept': 'application/json',
                     'Content-Type': 'application/json',
-                    'X-CSRFToken': csrfToken,
+                    'X-CSRFToken': currentCsrfToken,
                 },
                 credentials: 'include',
                 body: JSON.stringify({
@@ -98,14 +130,26 @@ function LoginForm() {
             });
 
             const data = await response.json();
+            console.log('Full response data:', data);
 
             if (response.ok) {
                 // Login successful
                 console.log('Login successful:', data);
-                // Redirect to dashboard or appropriate page
-                navigate('/dashboard'); // Change this to your desired route
+                console.log('Redirect URL:', data.redirect_url);
+                
+                // Use the redirect URL from backend
+                if (data.redirect_url) {
+                    console.log('Redirecting to:', data.redirect_url);
+                    // Full page redirect to Django pages
+                    window.location.href = data.redirect_url;
+                } else {
+                    console.log('No redirect_url, using fallback');
+                    // Fallback: navigate within React app
+                    navigate('/dashboard');
+                }
             } else {
                 // Login failed
+                console.log('Login failed:', data);
                 setErrorMessage(data.error || 'Login failed. Please try again.');
                 setIsInvalidUser(true);
             }

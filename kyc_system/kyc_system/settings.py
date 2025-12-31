@@ -18,7 +18,7 @@ config = Config(RepositoryEnv(ENV_PATH))
 SECRET_KEY = config("SECRET_KEY", default="unsafe-secret-key")
 DEBUG = config("DEBUG", default=True, cast=bool)
 
-ALLOWED_HOSTS = ['10.91.1.29','127.0.0.1']
+ALLOWED_HOSTS = ['*','localhost','127.0.0.1',]
 
 
 # APPLICATIONS
@@ -37,22 +37,65 @@ INSTALLED_APPS = [
     'kycform',
 ]
 
-# CORS Settings
+# CSRF Settings
+CSRF_COOKIE_NAME = 'csrftoken'
+CSRF_COOKIE_HTTPONLY = False  # Important: Must be False so JavaScript can read it
+CSRF_COOKIE_SAMESITE = 'Lax'
+CSRF_COOKIE_SECURE = False  # Set to True only in production with HTTPS
+CSRF_USE_SESSIONS = False
+CSRF_COOKIE_PATH = '/'
+
+# Trusted origins for CSRF
+CSRF_TRUSTED_ORIGINS = [
+    'http://localhost:3000',
+    'http://localhost:5173',
+    'http://127.0.0.1:3000',
+    'http://127.0.0.1:5173',
+]
+
+# Session Configuration for React Integration
+SESSION_COOKIE_SAMESITE = 'Lax'
+SESSION_COOKIE_HTTPONLY = True
+SESSION_COOKIE_SECURE = False  # Set to True in production with HTTPS
+SESSION_COOKIE_DOMAIN = None  # Important: allows localhost subdomains
+SESSION_COOKIE_NAME = 'sessionid'
+SESSION_COOKIE_PATH = '/'
+
+# Important: This allows the session to work across localhost:3000 and localhost:8000
+SESSION_COOKIE_SAMESITE = None  # Change from 'Lax' to None for cross-origin
+SESSION_COOKIE_SECURE = False   # Must be False for localhost (True for production HTTPS)
+
+# CSRF Configuration
+CSRF_COOKIE_SAMESITE = None  # Change from 'Lax' to None
+CSRF_COOKIE_HTTPONLY = False
+CSRF_COOKIE_SECURE = False
+CSRF_TRUSTED_ORIGINS = [
+    'http://localhost:3000',
+    'http://localhost:5173',
+    'http://127.0.0.1:3000',
+    'http://127.0.0.1:5173',
+]
+
+# CORS Configuration
 CORS_ALLOWED_ORIGINS = [
-    "http://localhost:3000",  # React dev server
-    "http://localhost:5173",  # Vite dev server
+    "http://localhost:3000",
+    "http://localhost:5173",
+    "http://127.0.0.1:3000",
+    "http://127.0.0.1:5173",
 ]
 
 CORS_ALLOW_CREDENTIALS = True
-
-# Session settings
-SESSION_COOKIE_SAMESITE = 'Lax'
-SESSION_COOKIE_HTTPONLY = True
-CSRF_COOKIE_SAMESITE = 'Lax'
-CSRF_COOKIE_HTTPONLY = False
-
-
-
+CORS_ALLOW_HEADERS = [
+    'accept',
+    'accept-encoding',
+    'authorization',
+    'content-type',
+    'dnt',
+    'origin',
+    'user-agent',
+    'x-csrftoken',
+    'x-requested-with',
+]
 # REST Framework Settings
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
@@ -142,6 +185,7 @@ USE_TZ = True
 
 # STATIC FILES
 STATIC_URL = '/static/'
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 STATICFILES_DIRS = [
     os.path.join(BASE_DIR, 'kycform', 'static'),
 ]
