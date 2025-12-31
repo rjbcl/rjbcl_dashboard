@@ -14,9 +14,6 @@
     <!-- Bootstrap Icons -->
     <link rel="stylesheet" href="{% static 'bootstrap/css/bootstrap-icons.min.css' %}">
 
-    <!-- SweetAlert2 -->
-    <link href="{% static 'js/sweetalert2.all.min.js' %}" rel="stylesheet">
-
     <!-- Custom CSS -->
     <link rel="stylesheet" href="{% static 'css/colors.css' %}">
     <link rel="stylesheet" href="{% static 'css/login.css' %}">
@@ -34,7 +31,7 @@
                         company in Nepal which was established as its previous Name
                         Rastriya Beema Sansthan. Established by the Government of Nepal.
                     </p>
-                    <a href="https://rbs.gov.np/" class="btn-explore">Explore</button></a>
+                    <a href="https://rbs.gov.np/introduction#explore" class="btn-explore">Explore</button></a>
                 </div>
                 <div class="hero-overlay"></div>
             </div>
@@ -59,8 +56,11 @@
 
                     <!-- Django Messages (hidden, will be shown via SweetAlert) -->
                     {% if messages %}
-                    {% for msg in messages %}
-                    <div class="d-none js-msg" data-tags="{{ msg.tags }}" data-text="{{ msg|escapejs }}"></div>
+                    {% for message in messages %}
+                    <div class="message-box {% if 'success' in message.tags %}success-box{% else %}error-box{% endif %}"
+                        style="display: block;">
+                        {{ message }}
+                    </div>
                     {% endfor %}
                     {% endif %}
 
@@ -91,9 +91,7 @@
                             </div>
 
                             <div class="form-footer mb-2">
-                                <div>    
-                                    <span class="error-message text-danger"><i class="bi "></i> </span>
-                                </div>
+                                <div></div>
                                 <a href="/forgot-password/?type=policy" class="forgot-link">
                                     Forgot password?
                                 </a>
@@ -109,9 +107,12 @@
 
                             <div class="form-links">
                                 <p class="register-link">
-                                    New User : <a href="{% url 'kyc:policy_register' %}">Register</a>
+                                    <a href="{% url 'kyc:direct_kyc_entry' %}">Continue Without Login</a>
+                                    <br>
+
                                 </p>
                             </div>
+
                         </form>
                     </div>
 
@@ -182,6 +183,7 @@
 
     <!-- jQuery -->
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="{% static 'js/nepali.datepicker.v5.0.6.min.js' %}"></script>
 
     <!-- Custom JS -->
     <script src="{% static 'js/login.js' %}"></script>

@@ -1,5 +1,5 @@
 $(document).ready(function () {
-    let currentStep = 1;
+    window.currentStep = 1;
     const totalSteps = 5;
     let highestStepReached = 1;
 
@@ -42,9 +42,12 @@ $(document).ready(function () {
         if (step === totalSteps) {
             $('#saveContinueBtn').hide();
             $('#submitBtn').show();
+            $('#previewBtn').show();
+
         } else {
             $('#saveContinueBtn').show();
             $('#submitBtn').hide();
+            $('#previewBtn').hide();
         }
 
         // Scroll to top
@@ -55,7 +58,7 @@ $(document).ready(function () {
         let valid = true;
         const $current = $(`.form-step[data-step="${step}"]`);
         const missingFields = [];
-        
+
         $current.find('[required]').each(function () {
             const $field = $(this);
             // friendly label extraction
@@ -108,6 +111,30 @@ $(document).ready(function () {
             }
         });
 
+        // Check if mobile number (#mobile) is verified via OTP
+        const $mobileField = $current.find('#mobile');
+        if ($mobileField.length > 0 && $mobileField.attr('required')) {
+            // Check global verification state
+            if (!window.mobileOtpVerified) {
+                valid = false;
+                const mobileLabel = getFieldLabel($mobileField) || 'Mobile Number';
+                if (!missingFields.includes(mobileLabel + ' (Not Verified)')) {
+                    missingFields.push(mobileLabel + ' (Not Verified)');
+                }
+                // Add visual indicator
+                $mobileField.addClass('is-invalid');
+
+                // Also highlight the verify button
+                const $verifyBtn = $('#verifyBtn');
+                if ($verifyBtn.length) {
+                    $verifyBtn.addClass('btn-pulse'); // Optional: add a pulse animation class
+                }
+            } else {
+                // If verified, ensure no invalid styling
+                $mobileField.removeClass('is-invalid');
+            }
+        }
+
         if (!valid) {
             let errorMessage = 'कृपया सबै आवश्यक विवरण भर्नुहोस्।<br><small>Please fill all required fields.</small>';
             highestStepReached = step;  //anush
@@ -119,26 +146,26 @@ $(document).ready(function () {
                 errorMessage += '</div>';
             }
             swalError('Incomplete Form', errorMessage);
-            
+
             // Remove completed class from this step and all steps ahead
             for (var i = totalSteps; i >= step; i--) {
                 $(`.nav-step[data-step="${i}"]`).removeClass('completed');
             }
         }
-        
+
         // Only update highestStepReached when explicitly told to (when moving forward)
         if (updateHighest && valid && step > highestStepReached) {
             highestStepReached = step;
-            console.log("highestStepReached updated to:", highestStepReached);
         }
-        
+
         // Mark as completed only if valid and we're updating
         if (valid && updateHighest) {
             $(`.nav-step[data-step="${step}"]`).addClass('completed');
         }
-        
+
         return valid;
     }
+
 
     $('#saveContinueBtn').off('click').on('click', async function (e) {
         e.preventDefault();

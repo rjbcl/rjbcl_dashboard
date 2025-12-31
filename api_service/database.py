@@ -1,7 +1,17 @@
 import os
 import pyodbc
 import psycopg2
+from pathlib import Path
 from dotenv import load_dotenv
+
+BASE_DIR = Path(__file__).resolve().parent
+ENV_PATH = BASE_DIR / ".env"
+
+print("Loading env from:", ENV_PATH)
+load_dotenv(dotenv_path=ENV_PATH)
+
+print("DB_SERVER =", os.getenv("DB_SERVER"))
+print("DB_NAME =", os.getenv("DB_NAME"))
 
 load_dotenv()
 
@@ -29,23 +39,34 @@ PG_SSL = os.getenv("PGSSL", "require")
 # -------------------------------------------------
 def get_mssql_conn():
     """
-    Returns MSSQL Database Connection  
-    Uses ODBC Driver 17 or 18 depending on system.
+    Returns MSSQL Database Connection
     """
+    DB_PORT = os.getenv("DB_PORT", "1433")
+
+    for v, n in [
+        (DB_SERVER, "DB_SERVER"),
+        (DB_NAME, "DB_NAME"),
+        (DB_USER, "DB_USER"),
+        (DB_PASSWORD, "DB_PASSWORD"),
+    ]:
+        if not v:
+            raise RuntimeError(f"Missing required env variable: {n}")
+
     try:
         conn_str = (
-            f"DRIVER={{ODBC Driver 17 for SQL Server}};"
+            "DRIVER={ODBC Driver 18 for SQL Server};"
             f"SERVER={DB_SERVER};"
             f"DATABASE={DB_NAME};"
             f"UID={DB_USER};"
             f"PWD={DB_PASSWORD};"
+            "Encrypt=yes;"
             "TrustServerCertificate=yes;"
         )
-        conn = pyodbc.connect(conn_str)
-        return conn
+        return pyodbc.connect(conn_str, timeout=5)
 
     except Exception as e:
         raise Exception(f"Failed to connect MSSQL: {e}")
+
 
 
 # -------------------------------------------------

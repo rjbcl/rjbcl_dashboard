@@ -53,4 +53,26 @@ urlpatterns = [
     # -------------------------------
     path("save-progress/", views.save_kyc_progress, name="save_kyc_progress"),
 
+    # -------------------------------
+    # DOCUMENT VIEWING (SECURE)
+    # -------------------------------
+    path(
+        "kyc/additional-doc/<int:doc_id>/",
+        views.view_additional_doc,
+        name="view_additional_doc"
+    ),
+    # -------------------------------
+    # DIRECT KYC ENTRY (NO LOGIN)
+    path("direct-kyc/", views.direct_kyc_entry_view, name="direct_kyc_entry"),
+
+    # -------------------------------
+    # KYC SUBMITTED CONFIRMATION
+    path("kyc-submitted/", views.kyc_submitted_view, name="kyc_submitted"),
+
+    # -------------------------------
+    # MOBILE OTP SENDING
+    path("otp/send/", views.send_mobile_otp, name="send_mobile_otp"),
+    path("otp/verify/", views.verify_mobile_otp, name="verify_mobile_otp"),
+
+
 ]

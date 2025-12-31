@@ -17,8 +17,9 @@ config = Config(RepositoryEnv(ENV_PATH))
 # SECURITY
 SECRET_KEY = config("SECRET_KEY", default="unsafe-secret-key")
 DEBUG = config("DEBUG", default=True, cast=bool)
+# DEBUG = False
 
-ALLOWED_HOSTS = ['*','localhost','127.0.0.1',]
+ALLOWED_HOSTS = ['*']
 
 
 # APPLICATIONS
@@ -121,6 +122,7 @@ SIMPLE_JWT = {
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware', 
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -178,17 +180,20 @@ AUTH_PASSWORD_VALIDATORS = [
 
 # INTERNATIONALIZATION
 LANGUAGE_CODE = 'en-us'
-TIME_ZONE = 'UTC'
+TIME_ZONE = "Asia/Kathmandu"
 USE_I18N = True
 USE_TZ = True
 
 
 # STATIC FILES
 STATIC_URL = '/static/'
-STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+STATIC_ROOT = BASE_DIR / 'staticfiles'
 STATICFILES_DIRS = [
-    os.path.join(BASE_DIR, 'kycform', 'static'),
+    BASE_DIR / 'kycform' / 'static',
 ]
+
+# STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+STATICFILES_STORAGE = 'django.contrib.staticfiles.storage.StaticFilesStorage'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
@@ -197,5 +202,19 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 # ✅ MEDIA FILE SETTINGS (REQUIRED for File Upload Preview)
 # -----------------------------------------------------------
 MEDIA_URL = '/media/'
-MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+MEDIA_ROOT = BASE_DIR / 'media'
 # -----------------------------------------------------------
+
+
+API_BACKEND_TOKEN = "super-secret-backend-token-123456"
+FASTAPI_BASE_URL = "http://127.0.0.1:9000"
+
+# ------------------------------
+# FASTAPI INTEGRATION SETTINGS
+# ------------------------------
+API_BASE_URL = config("API_BASE_URL", default="http://127.0.0.1:9000")
+API_TOKEN = config("API_TOKEN", default="super-secret-backend-token-123456")
+
+# SESSION SETTINGS
+SESSION_COOKIE_AGE = 20 * 60  # 20 minutes
+SESSION_SAVE_EVERY_REQUEST = True

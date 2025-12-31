@@ -10,6 +10,7 @@
 
   <!-- Bootstrap (Local) -->
   <link href="{% static 'bootstrap/css/bootstrap.min.css' %}" rel="stylesheet">
+  <link rel="stylesheet" href="{% static 'bootstrap/css/bootstrap-icons.min.css' %}">
 
   <!-- Nepali Datepicker -->
   <link href="{% static 'css/nepali.datepicker.v5.0.6.min.css' %}" rel="stylesheet">
@@ -28,12 +29,30 @@
       <!-- Left Sidebar -->
       <div class="col-md-3 sidebar">
         <div class="logo-section">
-          <img src="{% static 'images/rjbclogo.png' %}" alt="RJBC Logo" class="logo">
+          <a href="{% url 'kyc:policy_logout' %}?tab=policy">
+            <img src="{% static 'images/rjbclogo.png' %}" alt="RJBC Logo" class="logo" style="cursor:pointer;">
+          </a>
         </div>
 
         <div class="step-indicator">
-          <h6 class="step-title">KYC Form</h6>
-          <p class="step-subtitle">Step <span id="currentStep">1</span> of 5</p>
+          <div class="content  d-flex align-items-center justify-content-between">
+            <div>
+              <h6 class="step-title">KYC Form </h6>
+              <p class="step-subtitle small" id="Pol_number">POLXXX</p>
+            </div>
+
+            <div class="collapse-menu bg-info">
+              <i class="bi bi-caret-down-fill"></i>
+            </div>
+          </div>
+          <div class="nav-links">
+            <a href="#" class="nav-link" id="DashboardBtn">
+              <i class="bi bi-house-door"></i> Dashboard
+            </a>
+            <a href="{% url 'kyc:policy_logout' %}?tab=policy" class="nav-link">
+              <i class="bi bi-box-arrow-right"></i> Logout
+            </a>
+          </div>
         </div>
 
         <nav class="nav-steps">
@@ -81,8 +100,9 @@
           <form id="kycForm" method="POST" action="{% url 'kyc:kyc_submit' %}" enctype="multipart/form-data">
             {% csrf_token %}
             <input type="hidden" name="kyc_data" id="kyc_data">
-            <input type="hidden" name="policy_no" id="policyField">
-            
+            <input type="hidden" name="policy_no" id="policyField" value="{{ policy_no }}">
+            <!-- OTP verification state from server -->
+            <input type="hidden" id="mobileOtpServerVerified" value="{{ mobile_otp_verified|yesno:'1,0' }}">
             <!-- Step 1: Personal Details -->
             <div class="form-step active" data-step="1">
               <h4 class="form-step-title">Personal Details</h4>
@@ -93,23 +113,23 @@
                   <img id="photoPreview" src="{% static 'images/default-avatar.png' %}" alt="Photo">
                 </div>
                 <div class="photo-upload-controls">
-              
+
                   <label class="form-label">
                     Passport Size Photo <span class="text-danger">*</span>
                   </label>
                   <p class="form-text">Supports jpg, jpeg and png. 300KB max.</p>
-              
+
                   <!-- FILE INPUT (patched) -->
                   <label class="form-label d-none">Passport Photo</label>
                   <input type="file" id="photoUpload" name="photo" accept="image/*" data-preview="photo"
                     data-existing="{{ prefill_json.photo_url|default:'' }}" style="display:none;" required>
-              
+
                   <!-- UPLOAD BUTTON -->
                   <button id="photoBtn" type="button" class="btn btn-outline-primary btn-sm mb-1"
                     onclick="document.getElementById('photoUpload').click()">
                     Upload
                   </button>
-              
+
                   <!-- REMOVE BUTTON -->
                   <button type="button" class="btn btn-link btn-sm text-danger" id="removePhoto">
                     Remove
@@ -121,7 +141,7 @@
                     {% endif %}
                   </div>
                 </div>
-              
+
               </div>
 
               <!-- Name Fields -->
@@ -153,8 +173,8 @@
               <div class="row">
                 <div class="col-md-4 mb-3">
                   <label class="form-label">पूरा नाम (देवनागरीमा) <span class="text-danger">*</span></label>
-                  <input type="text" id="full_name_nep" name="full_name_nep" class="form-control" required
-                    autocomplete="off">
+                  <input type="text" id="full_name_nep" name="full_name_nep" class="form-control"
+                    pattern="[\u0900-\u097F\s।॥]+" lang="ne" required autocomplete="off">
                 </div>
 
                 <div class="col-md-4 mb-3">
@@ -224,7 +244,10 @@
                 </div>
                 <div class="col-md-4 mb-3">
                   <label class="form-label">Mobile No. <span class="text-danger">*</span></label>
-                  <input type="text" id="mobile" name="mobile" class="form-control" required autocomplete="off">
+                 <div class="input-group mobile-input-wrapper">
+                    <input type="text" id="mobile" name="mobile" class="form-control" required autocomplete="off">
+                    <button class="btn verify-btn-grey py-0" type="button" id="verifyBtn" disabled>Verify</button>
+                  </div>
                 </div>
                 <div class="col-md-4 mb-3">
                   <label class="form-label">Telephone No. </label>
@@ -243,14 +266,14 @@
 
                 <div class="col-md-4 mb-3">
                   <label class="form-label">Document Issued Date (BS) <span class="text-danger">*</span></label>
-                  <input type="text" id="citizen_bs" name="citizen_bs" class="form-control"
-                    placeholder="YYYY/MM/DD" required autocomplete="off">
+                  <input type="text" id="citizen_bs" name="citizen_bs" class="form-control" placeholder="YYYY/MM/DD"
+                    required autocomplete="off">
                 </div>
 
                 <div class="col-md-4 mb-3" onclick="document.getElementById('citizen_ad').showPicker()">
                   <label class="form-label">Document Issued Date (AD) <span class="text-danger">*</span></label>
-                  <input type="date" id="citizen_ad" name="citizen_ad" class="form-control"
-                    placeholder="YYYY-MM-DD" required autocomplete="off">
+                  <input type="date" id="citizen_ad" name="citizen_ad" class="form-control" placeholder="YYYY-MM-DD"
+                    required autocomplete="off">
                 </div>
               </div>
 
@@ -519,7 +542,8 @@
                 </div>
                 <div class="col-md-6 mb-3">
                   <label class="form-label">Branch <span class="text-danger">*</span></label>
-                  <input type="text" name="branch_name" class="form-control" required autocomplete="off">
+                  <input type="text" name="branch_name" id="branch_name" class="form-control" required
+                    autocomplete="off">
                 </div>
               </div>
 
@@ -634,7 +658,7 @@
                 <div class="col-md-3 mb-3">
                   <label class="form-label">Nominee DOB (BS) <span class="text-danger">*</span></label>
                   <input type="text" id="nominee_dob_bs" name="nominee_dob_bs" class="form-control"
-                    placeholder="YYYY/MM/DD" required >
+                    placeholder="YYYY/MM/DD" required>
                 </div>
                 <div class="col-md-3 mb-3" onclick="document.getElementById('nominee_dob_ad').showPicker()">
                   <label class="form-label">Nominee DOB (AD) <span class="text-danger">*</span></label>
@@ -643,7 +667,7 @@
                 </div>
                 <div class="col-md-6 mb-3">
                   <label class="form-label">Nominee Contact Number <span class="text-danger">*</span></label>
-                  <input type="tel" id="nominee_mobile" name="nominee_contact" class="form-control" required
+                  <input type="tel" id="nominee_mobile" name="nominee_contact" class="form-control" id="nominee_contact" required
                     autocomplete="off">
                 </div>
               </div>
@@ -725,31 +749,20 @@
                 <p class="form-text text-muted small mb-3">
                   You can attach up to 5 additional documents (e.g., passport, driving license, bank statement, etc.)
                 </p>
-
                 <div id="additionalDocsContainer">
-                  <!-- First document field (always visible) -->
-                  <div class="additional-doc-item" data-doc-index="1">
-                    <div class="row align-items-end mb-3">
-                      <div class="col-md-6">
-                        <label class="form-label">Document Name</label>
-                        <input type="text" name="additional_doc_name" class="form-control" autocomplete="off"
-                          placeholder="e.g., Passport, License, etc.">
-                      </div>
-                      <div class="col-md-6">
-                        <label class="form-label">Attach Document</label>
-                        <div class="document-upload-inline" id="additionalDoc1Container">
-                          <input type="file" id="additionalDoc1Upload" class="addDoc" name="additional_doc_1"
-                            accept="image/*,application/pdf" style="display:none;">
-                          <button type="button" class="btn btn-outline-secondary btn-sm"
-                            onclick="document.getElementById('additionalDoc1Upload').click()">
-                            <span class="upload-icon-btn">📎</span> Choose File
-                          </button>
-                          <span class="file-name-inline" id="additionalDoc1FileName">No file chosen</span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
+
                 </div>
+                {% if additional_docs %}
+                <div id="existingAdditionalDocs" style="display: none;">
+                  {% for doc in additional_docs %}
+                  <div class="existing-doc-data" data-doc-id="{{ doc.id }}"
+                    data-doc-name="{{ doc.metadata.display_name|default:doc.file_name }}"
+                    data-doc-url="{% url 'kyc:view_additional_doc' doc.id %}"
+                    data-uploaded-at="{{ doc.uploaded_at|date:'Y-m-d H:i' }}" data-file-name="{{ doc.file_name }}">
+                  </div>
+                  {% endfor %}
+                </div>
+                {% endif %}
 
                 <!-- Add More Button -->
                 <button type="button" class="btn btn-outline-success btn-sm" id="addMoreDocBtn">
@@ -774,26 +787,29 @@
             </div>
 
             <!-- Navigation Buttons -->
-            <div class="form-navigation d-flex gap-2">
+            <div class="form-navigation d-flex gap-2 justify-content-between">
               <button type="button" class="btn btn-outline-secondary" id="prevBtn" style="display:none;">
                 Previous
               </button>
-            
+
               <!-- <button type="button" class="btn btn-dark" id="saveBtn">
                 Save
               </button> -->
-            
-              <button type="button" class="btn btn-primary" id="saveContinueBtn">
-                Save & Continue
-              </button>
-            
-              <!-- <button type="button" class="btn btn-primary" id="nextBtn">
+              <div>
+                <button type="button" class="btn btn-primary" id="saveContinueBtn">
+                  Save & Continue
+                </button>
+                <!-- <button type="button" class="btn btn-primary" id="nextBtn">
                 Continue
               </button>
              -->
-              <button type="submit" class="btn btn-success" id="submitBtn" style="display:none;">
-                पेश गर्नुहोस् / Submit
-              </button>
+                <!-- <button type="button" class="btn btn-dark" id="previewBtn" style="display:none;">
+                  Preview
+                </button> -->
+                <button type="submit" class="btn btn-success" id="submitBtn" style="display:none;">
+                  Preview & Submit
+                </button>
+              </div>
             </div>
 
           </form>
@@ -802,41 +818,112 @@
     </div>
 
     <footer class="form-footer">
-      <p>© Rastriya Jeeewan Beema Company Limited</p>
+      <p>© RJBCL</p>
     </footer>
   </div>
+  <!-- Modal -->
+  <div class="modal fade" id="previewModal" tabindex="-1" aria-labelledby="previewModalLabel">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable">
+      <div class="modal-content">
+        <div class="modal-header bg-dark text-white">
+          <h5 class="modal-title" id="previewModalLabel">Please Review Your Information</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <div class="row">
+            <!-- Personal Information -->
+            <div class="col-12 mb-4">
+              <h6 class="preview-title border-bottom pb-2">Personal Information</h6>
+              <div class="row" id="personalInfo"></div>
+            </div>
 
-<script src="{% static 'js/jquery-3.6.0.min.js' %}"></script>
-<script src="{% static 'js/nepali.datepicker.v5.0.6.min.js' %}"></script>
-<script src="{% static 'js/nepalify.production.min.js' %}"></script>
-<script src="{% static 'bootstrap/js/bootstrap.bundle.min.js' %}"></script>
-<script src="{% static 'js/sweetalert2.all.min.js' %}"></script>
-<script src="{% static 'js/sweetalert-messages.js' %}"></script>
+            <!-- Address Information -->
+            <div class="col-12 mb-4">
+              <h6 class="preview-title border-bottom pb-2">Permanent Address</h6>
+              <div class="row" id="permAddress"></div>
+            </div>
 
-<!-- Nepali core converter (must load BEFORE date-conversion.js) -->
-<script src="{% static 'js/nepaliFunctions.js' %}"></script>
+            <div class="col-12 mb-4">
+              <h6 class="preview-title border-bottom pb-2">Temporary Address</h6>
+              <div class="row" id="tempAddress"></div>
+            </div>
 
-<!-- LOAD JSON DATA -->
-<script src="{% static 'js/json-reader.js' %}"></script>
+            <!-- Bank Information -->
+            <div class="col-12 mb-4">
+              <h6 class="preview-title border-bottom pb-2">Bank Information</h6>
+              <div class="row" id="bankInfo"></div>
+            </div>
 
-<!-- DOCUMENT AND PHOTO UPLOAD LOGIC -->
-<script src="{% static 'js/docs-upload.js' %}"></script>
+            <!-- Occupation Information -->
+            <div class="col-12 mb-4">
+              <h6 class="preview-title border-bottom pb-2">Occupation & Income</h6>
+              <div class="row" id="occupationInfo"></div>
+            </div>
+
+            <!-- Nominee Information -->
+            <div class="col-12 mb-4">
+              <h6 class="preview-title border-bottom pb-2">Nominee Information</h6>
+              <div class="row" id="nomineeInfo"></div>
+            </div>
+
+            <!-- Documents -->
+            <div class="col-12 mb-4">
+              <h6 class="preview-title border-bottom pb-2">Documents</h6>
+              <div class="row" id="documents"></div>
+            </div>
+
+            <!-- Additional Documents -->
+            <div class="col-12 mb-4">
+              <h6 class="preview-title border-bottom pb-2">Additional Documents</h6>
+              <div class="row" id="additional_documents"></div>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-success" data-bs-dismiss="modal">Proceed</button>
+        </div>
+      </div>
+    </div>
+  </div>
+<script>
+  window.mobileOtpVerified = JSON.parse('{{ request.session.mobile_otp_verified|default:False|yesno:"true,false" }}');
+</script>
+<script>window.POLICY_NO = "{{ policy_no|escapejs }}";</script>
+  <script src="{% static 'js/jquery-3.6.0.min.js' %}"></script>
+  <script src="{% static 'js/nepali.datepicker.v5.0.6.min.js' %}"></script>
+  <script src="{% static 'js/nepalify.production.min.js' %}"></script>
+  <script src="{% static 'bootstrap/js/bootstrap.bundle.min.js' %}"></script>
+  <script src="{% static 'js/sweetalert2.all.min.js' %}"></script>
+  <script src="{% static 'js/sweetalert-messages.js' %}"></script>
+
+  <!-- Nepali core converter (must load BEFORE date-conversion.js) -->
+  <script src="{% static 'js/nepaliFunctions.js' %}"></script>
+  <!-- Preview data function -->
+  <script src="{% static 'js/preview.data.js' %}"></script>
+  <!-- LOAD JSON DATA -->
+  <script src="{% static 'js/json-reader.js' %}"></script>
+
+  <!-- DOCUMENT AND PHOTO UPLOAD LOGIC -->
+  <script src="{% static 'js/docs-upload.js' %}"></script>
 
 
-<!-- Multi step navigation -->
-<script src="{% static 'js/multi-step.js' %}"></script>
+  <!-- Multi step navigation -->
+  <script src="{% static 'js/multi-step.js' %}"></script>
 
-<!-- Main UI logic -->
-<script src="{% static 'js/kyc-form.js' %}"></script>
-
-
+  <!-- Main UI logic -->
+  <script src="{% static 'js/kyc-form.js' %}"></script>
 
 
-<!-- IMPORTANT: load LAST so it overrides everything -->
-<script src="{% static 'js/date-conversion.js' %}"></script>
+
+
+  <!-- IMPORTANT: load LAST so it overrides everything -->
+  <script src="{% static 'js/date-conversion.js' %}"></script>
 
 
   <script>
+    window.prefill_data = JSON.parse(`{{ prefill_json|escapejs }}`);
+    window.user_name = `{{ user_name|escapejs }}`;
+
     // Get policy number from URL
     const params = new URLSearchParams(window.location.search);
     const policy = params.get("policy_no");
@@ -853,17 +940,14 @@
         span.textContent = inp.files && inp.files.length ? inp.files[0].name : 'No file chosen';
       });
     }
+
     bindFileName('additionalDoc1Upload', 'additionalDoc1FileName');
     bindFileName('citizenshipFrontUpload', 'citizenshipFrontFileName');
     bindFileName('citizenshipBackUpload', 'citizenshipBackFileName');
     bindFileName('NidUpload', 'nidFileName');
     bindFileName('signatureUpload', 'signatureFileName');
   </script>
-
-  <script>
-    window.prefill_data = JSON.parse(`{{ prefill_json|escapejs }}`);
-</script>
-
+  
 
 </body>
 
