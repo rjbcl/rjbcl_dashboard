@@ -1,19 +1,26 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 
+
+interface Message {
+    text: string;
+    type: 'success' | 'error';
+}
+
 function LoginForm() {
     const [activeTab, setActiveTab] = useState('policyholder');
     const [showPassword, setShowPassword] = useState(false);
     const [isInvalidUser, setIsInvalidUser] = useState(false);
     const [isInvalidAgent, setIsInvalidAgent] = useState(false);
-    
+    const [messages, setMessages] = useState<Message[]>([]);
+
     // Policy holder form states
     const [policyNumber, setPolicyNumber] = useState('');
     const [password, setPassword] = useState('');
     const [errorMessage, setErrorMessage] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const [_csrfToken, setCsrfToken] = useState('');
-    
+
     const navigate = useNavigate();
     const API_BASE_URL = 'http://localhost:8000/api/auth';
 
@@ -29,15 +36,15 @@ function LoginForm() {
                         'Content-Type': 'application/json',
                     },
                 });
-                
+
                 if (response.ok) {
                     const data = await response.json();
                     console.log('CSRF response:', data);
-                    
+
                     // Try to get token from cookie
                     const tokenFromCookie = getCookie('csrftoken');
                     console.log('CSRF token from cookie:', tokenFromCookie);
-                    
+
                     if (tokenFromCookie) {
                         setCsrfToken(tokenFromCookie);
                     } else if (data.csrfToken) {
@@ -48,7 +55,7 @@ function LoginForm() {
                 console.error('Error fetching CSRF token:', err);
             }
         };
-        
+
         fetchCSRFToken();
     }, []);
 
@@ -131,12 +138,16 @@ function LoginForm() {
 
             const data = await response.json();
             console.log('Full response data:', data);
-
+            if (data.messages) {
+                setMessages(data.messages);
+                // Auto-hide messages after 5 seconds
+                setTimeout(() => setMessages([]), 5000);
+            }
             if (response.ok) {
                 // Login successful
                 console.log('Login successful:', data);
                 console.log('Redirect URL:', data.redirect_url);
-                
+
                 // Use the redirect URL from backend
                 if (data.redirect_url) {
                     console.log('Redirecting to:', data.redirect_url);
@@ -148,9 +159,9 @@ function LoginForm() {
                     navigate('/dashboard');
                 }
             } else {
-                // Login failed
                 console.log('Login failed:', data);
                 setErrorMessage(data.error || 'Login failed. Please try again.');
+                setMessages([{ text: 'An error occurred', type: 'error' }]);
                 setIsInvalidUser(true);
             }
         } catch (error) {
@@ -178,9 +189,25 @@ function LoginForm() {
                     Agent
                 </button>
             </div>
+            {/* Messages Display */}
+            {messages.length > 0 && (
+                <div className="w-100 mb-2">
+                    {messages.map((message, index) => (
+                        <div
+                            key={index}
+                            className={`p-2 wx-100 rounded-lg  ${message.type === 'success'
+                                    ? 'bg-green text-green border border-green-300'
+                                    : 'bg-red text-red border rounded border-red'
+                                }`}
+                        >
+                            {message.text}
+                        </div>
+                    ))}
+                </div>
+            )}
 
             {/* ****************** POLICY HOLDER LOGIN *************************/}
-            <form 
+            <form
                 className={`user-login w-100 d-flex justify-content-center flex-column ${activeTab === "policyholder" ? "" : "d-none"}`}
                 onSubmit={handlePolicyHolderLogin}
             >
@@ -242,15 +269,15 @@ function LoginForm() {
                     </div>
                 </div>
 
-                <button 
-                    type='submit' 
+                <button
+                    type='submit'
                     className="btn-signin w-100 bg-primary rounded-3 small mb-3 p-2"
                     disabled={isLoading}
                 >
                     {isLoading ? 'Logging in...' : 'Login'}
                 </button>
 
-                <div className="divider d-flex w-100 justify-items-center align-items-center w-75">
+                <div className="divider d-flex w-100 justify-items-center align-items-center">
                     <span className='px-2'> OR </span>
                 </div>
 
