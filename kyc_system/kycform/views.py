@@ -621,41 +621,101 @@ from django.core.cache import cache
 @never_cache
 def kyc_form_view(request):
     # -------------------------
-    # CHECK FOR ONE-TIME TOKEN (for React login redirect)
+    # CHECK FOR ONE-TIME TOKEN (for React login/direct redirect)
     # -------------------------
     token = request.GET.get('token')
     if token:
+        # Try login token first
         token_data = cache.get(f'login_token_{token}')
+        
+        # If not login, try direct KYC token
+        if not token_data:
+            token_data = cache.get(f'direct_kyc_token_{token}')
+        
         if token_data:
             # Set session from token
-            request.session['authenticated'] = token_data['authenticated']
-            request.session['policy_no'] = token_data['policy_no']
+            for key, value in token_data.items():
+                request.session[key] = value
             request.session.save()
             
             # Delete the token (one-time use)
             cache.delete(f'login_token_{token}')
+            cache.delete(f'direct_kyc_token_{token}')
             
-            # Redirect without token to clean URL
-            policy_no = token_data['policy_no']
-            return redirect(f"/kyc-form/?policy_no={policy_no}")
+            # Determine policy_no from token data
+            policy_no = token_data.get('policy_no') or token_data.get('kyc_policy_no')
+            
+            # Redirect to clean URL
+            if policy_no:
+                return redirect(f"/kyc-form/?policy_no={policy_no}")
+            else:
+                return redirect("/kyc-form/")
+
     # -------------------------
-    # AUTH & POLICY RESOLUTION
+    # AUTH CHECK
     # -------------------------
-    is_login_flow = request.session.get("authenticated") is True
+    # Check for both authenticated login and direct KYC access
+    is_authenticated = request.session.get("authenticated")
     is_direct_kyc = request.session.get("kyc_access_mode") == "DIRECT_KYC"
-
-    if is_login_flow:
-        policy_no = request.session.get("policy_no")
-
-    elif is_direct_kyc:
-        policy_no = request.session.get("kyc_policy_no")
-
-    else:
+    
+    if not is_authenticated and not is_direct_kyc:
         return redirect("/auth/policy/?tab=policy")
 
-    if not policy_no:
-        return HttpResponse("Unauthorized access", status=403)
+    # Initialize policy_no variable (FIX FOR ERROR)
+    policy_no = None
 
+    # For authenticated users
+    if is_authenticated:
+        session_policy = request.session.get("policy_no")
+        request_policy = request.GET.get("policy_no")
+
+        # Prevent accessing another user's policy
+        if session_policy != request_policy:
+            return HttpResponse("Unauthorized access", status=403)
+        
+        policy_no = session_policy  # Set policy_no for authenticated users
+    
+    # For direct KYC users
+    elif is_direct_kyc:
+        session_policy = request.session.get("kyc_policy_no")
+        request_policy = request.GET.get("policy_no")
+        
+        # Validate direct KYC access
+        if session_policy and request_policy and session_policy != request_policy:
+            return HttpResponse("Unauthorized access", status=403)
+        
+        policy_no = session_policy  # Set policy_no for direct KYC users
+
+    # -------------------------
+    # POLICY NUMBER VALIDATION
+    # -------------------------
+    # Use the policy_no from session, or fall back to request parameter
+    if not policy_no:
+        policy_no = request.GET.get("policy_no")
+    
+    if not policy_no:
+        messages.error(request, "Missing policy number.")
+        return redirect("/")
+
+    # Load policy
+    try:
+        policy = KycPolicy.objects.get(policy_number=policy_no)
+    except KycPolicy.DoesNotExist:
+        messages.error(request, "Invalid policy number.")
+        return redirect("/")
+
+    # Load Base User
+    try:
+        user = KycUserInfo.objects.get(user_id=policy.user_id)
+    except KycUserInfo.DoesNotExist:
+        messages.error(request, "User not found.")
+        return redirect("/")
+
+    # Stop verified or pending
+    if user.kyc_status in ["PENDING", "VERIFIED"]:
+        return redirect(f"/dashboard/?policy_no={policy_no}")
+
+    # ... rest of your existing code continues unchanged
     # -------------------------
     # POLICY OWNERSHIP CHECK
     # -------------------------

@@ -132,6 +132,17 @@ body::before {
 .tab-btn:hover{
   color: black;
 }
+.alert-danger {
+  background-color: #fce8e8;
+  border-left: 4px solid #dc3545;
+  color: #721c24;
+}
+.alert-success {
+  background-color: #e6f4ea;
+  border-left: 4px solid var(--dark-green);
+  color: var(--light-green);
+}
+
 .login-footer p {
   font-size: 0.625rem;
 }
@@ -144,7 +155,18 @@ body::before {
   background-color: var(--primary-blue);
   color: whitesmoke;
 }
-
+input[type="date"]::-webkit-datetime-edit {
+  color: transparent;   /* hides placeholder */
+}
+input[type="date"]:focus::-webkit-datetime-edit {
+  color: inherit;       /* show text when user types */
+}
+.calender{
+  font-size: small!important;
+}
+thead {
+  display: none !important;
+}
 .form-footer{
   font-size: 0.75rem;
 }
@@ -153,7 +175,7 @@ body::before {
   color: var(--primary-blue);
 }
 
-.user-login, .agent-login{
+.user-login, .agent-login, .direct-form{
     animation: fadeIn 0.3s ease;
 }
 /* Sign In Button */
@@ -178,7 +200,7 @@ body::before {
 }
 
 .register-link{
-  font-size: small;
+  font-size: 12px;
 }
 .register-link a{
   color: var(--primary-blue);

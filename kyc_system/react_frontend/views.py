@@ -9,7 +9,9 @@ from rest_framework import status
 from django.middleware.csrf import get_token
 
 # Import your models (replace 'kycform' with your actual app name)
-from kycform.models import KycPolicy, KycUserInfo
+from kycform.models import KycPolicy, KycUserInfo, KycSubmission, KycChangeLog
+from kycform.views import resolve_policy_identity  # Import your existing function
+from django.core.exceptions import ValidationError
 
 
 def normalize_status(status_value):
@@ -157,3 +159,102 @@ class CheckAuthView(APIView):
                 return Response({'isAuthenticated': False})
         
         return Response({'isAuthenticated': False})
+    
+
+
+
+@method_decorator(csrf_protect, name='dispatch')
+class DirectKYCEntryView(APIView):
+    """
+    Direct KYC entry without login.
+    User provides policy number and DOB to access KYC form.
+    """
+    
+    def post(self, request):
+        policy_no = (request.data.get('policy_no') or '').strip()
+        dob_ad = (request.data.get('dob_ad') or '').strip()
+
+        # Validation
+        if not policy_no or not dob_ad:
+            return Response(
+                {'error': 'Policy number and date of birth are required.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # -------------------------------------------------
+        # VALIDATE POLICY + DOB (using your existing function)
+        # -------------------------------------------------
+        try:
+            user, user_id = resolve_policy_identity(
+                policy_no=policy_no,
+                dob_ad=dob_ad,
+            )
+        except ValidationError:
+            return Response(
+                {'error': 'Invalid policy number or date of birth. Please check and try again.'},
+                status=status.HTTP_401_UNAUTHORIZED
+            )
+        except Exception as e:
+            return Response(
+                {'error': 'An error occurred. Please try again.'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+        # -------------------------------------------------
+        # 🚫 BLOCK DIRECT KYC FOR NON-EDITABLE STATUS
+        # -------------------------------------------------
+        if user.kyc_status in ["PENDING", "VERIFIED"]:
+            return Response(
+                {'error': 'KYC already submitted. Please contact your branch for further assistance.'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        # -------------------------------------------------
+        # 🔐 CLEAN SESSION (CRITICAL)
+        # -------------------------------------------------
+        request.session.flush()
+        request.session.cycle_key()
+
+        # -------------------------------------------------
+        # SESSION BINDING (STRICT)
+        # -------------------------------------------------
+        request.session["kyc_access_mode"] = "DIRECT_KYC"
+        request.session["kyc_policy_no"] = policy_no
+        request.session["kyc_user_id"] = user_id
+        request.session["kyc_dob"] = user.dob.isoformat()
+        request.session.save()
+
+        # -------------------------------------------------
+        # AUDIT LOG
+        # -------------------------------------------------
+        submission = KycSubmission.objects.filter(user=user).first()
+        if submission:
+            KycChangeLog.objects.create(
+                submission=submission,
+                action="CREATE",
+                actor_type="SYSTEM",
+                actor_identifier="DIRECT_KYC",
+                comment=f"Direct KYC access granted for policy {policy_no}",
+            )
+
+        # Generate one-time token for redirect
+        token = secrets.token_urlsafe(32)
+        cache.set(f'direct_kyc_token_{token}', {
+            'kyc_access_mode': 'DIRECT_KYC',
+            'kyc_policy_no': policy_no,
+            'kyc_user_id': user_id,
+            'kyc_dob': user.dob.isoformat(),
+        }, timeout=60)
+
+        # Build redirect URL
+        redirect_url = f"http://localhost:8000/kyc-form/?token={token}"
+
+        return Response({
+            'detail': 'Access granted',
+            'success': True,
+            'user': {
+                'policy_number': policy_no,
+                'user_id': user_id,
+            },
+            'redirect_url': redirect_url
+        }, status=status.HTTP_200_OK)

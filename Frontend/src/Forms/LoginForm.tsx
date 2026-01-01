@@ -85,6 +85,7 @@ function LoginForm() {
         const agentCode = document.getElementById('agent-code') as HTMLInputElement;
         if (username) username.value = '';
         if (agentCode) agentCode.value = '';
+
         setIsInvalidAgent(false);
         setIsInvalidUser(false);
     };
@@ -177,13 +178,13 @@ function LoginForm() {
             <div className="tab-buttons d-flex bg-dark-subtle rounded-2 justify-content-center w-100 mb-3 mx-2">
                 <button
                     id="user_login"
-                    className={`user-btn tab-btn small w-50 p-2 rounded-2 me-1 ${activeTab === 'policyholder' ? 'active' : ''}`}
+                    className={`user-btn tab-btn small w-50 p-2 rounded-2 me-1 fw-semibold ${activeTab === 'policyholder' ? 'active' : ''}`}
                     onClick={() => ToggleActiveTab('policyholder')}
                 >
                     Policy Holder
                 </button>
                 <button
-                    className={`tab-btn small w-50 p-2 rounded-2 ms-1 ${activeTab === 'agent' ? 'active' : ''}`}
+                    className={`tab-btn small w-50 p-2 rounded-2 ms-1 fw-semibold ${activeTab === 'agent' ? 'active' : ''}`}
                     onClick={() => ToggleActiveTab('agent')}
                 >
                     Agent
@@ -195,12 +196,13 @@ function LoginForm() {
                     {messages.map((message, index) => (
                         <div
                             key={index}
-                            className={`p-2 wx-100 rounded-lg  ${message.type === 'success'
-                                    ? 'bg-green text-green border border-green-300'
-                                    : 'bg-red text-red border rounded border-red'
+                            className={`p-2 wx-100 rounded-lg alert ${message.type === 'success'
+                                    ? 'alert-success'
+                                    : 'alert-danger' 
                                 }`}
+                            role ='alert'
                         >
-                            {message.text}
+                            {errorMessage}
                         </div>
                     ))}
                 </div>
@@ -212,7 +214,7 @@ function LoginForm() {
                 onSubmit={handlePolicyHolderLogin}
             >
                 <div className="form-group w-100 mb-2">
-                    <label className="form-label small">
+                    <label className="form-label small fw-semibold">
                         Policy Number
                     </label>
                     <input
@@ -239,7 +241,7 @@ function LoginForm() {
                 </div>
 
                 <div className="form-group w-100 mb-2">
-                    <label className="form-label small">Password</label>
+                    <label className="form-label small fw-semibold">Password</label>
                     <input
                         type={showPassword ? "text" : "password"}
                         className="form-control"
@@ -261,8 +263,7 @@ function LoginForm() {
                 </div>
 
                 <div className="form-footer d-flex justify-content-between w-100 mb-2">
-                    <div className="error-message small text-danger">
-                        {errorMessage}
+                    <div>
                     </div>
                     <div className="forgot-link">
                         <Link to="/forgot-password">Forgot Password?</Link>
@@ -282,7 +283,7 @@ function LoginForm() {
                 </div>
 
                 <div className="form-links mb-2 text-center">
-                    <p className="register-link m-0">
+                    <p className="register-link my-1">
                         <Link to="/direct">Continue Without Login</Link>
                     </p>
                 </div>
@@ -290,8 +291,8 @@ function LoginForm() {
 
             {/* ******************AGENT LOGIN (NOT IMPLEMENTED YET) *************************/}
             <form className={`agent-login w-100 d-flex justify-content-center flex-column ${activeTab === "agent" ? "" : "d-none"}`}>
-                <div className="form-group agent-login w-100 mb-2">
-                    <label className="form-label small">
+                <div className="form-group w-100 mb-2">
+                    <label className="form-label small fw-semibold">
                         Agent Code
                     </label>
                     <input
@@ -309,7 +310,7 @@ function LoginForm() {
                 </div>
 
                 <div className="form-group w-100 mb-2">
-                    <label className="form-label small">Password</label>
+                    <label className="form-label small fw-semibold">Password</label>
                     <input
                         type={showPassword ? "text" : "password"}
                         className="form-control"
@@ -335,7 +336,7 @@ function LoginForm() {
                 </div>
 
                 <div className="form-links mb-2 text-center">
-                    <p className="register-link m-0">
+                    <p className="register-link my-1">
                         New Agent: <Link to="/register">Register</Link>
                     </p>
                 </div>
