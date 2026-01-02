@@ -140,10 +140,10 @@ $(document).ready(function() {
     // ===========================
     // CONSOLE INFO (Development)
     // ===========================
-    console.log('%c🔐 Forgot Password Page Loaded', 'color: #00146D; font-size: 14px; font-weight: bold;');
-    console.log('%cKeyboard Shortcuts:', 'color: #007A43; font-weight: bold;');
-    console.log('  Enter: Submit form');
-    console.log('  ESC: Go back to login');
+    // console.log('%c🔐 Forgot Password Page Loaded', 'color: #00146D; font-size: 14px; font-weight: bold;');
+    // console.log('%cKeyboard Shortcuts:', 'color: #007A43; font-weight: bold;');
+    // console.log('  Enter: Submit form');
+    // console.log('  ESC: Go back to login');
 
 });
 

@@ -18,7 +18,7 @@ const AdditionalDocs = {
     this.loadExistingDocuments();
     this.setupAddMoreButton();
     this.updateCounter();
-    console.log('✅ Additional documents handler initialized');
+    // console.log('✅ Additional documents handler initialized');
   },
 
   /**
@@ -26,7 +26,7 @@ const AdditionalDocs = {
    */
   getCurrentDocCount: function () {
     const count = $('.additional-doc-item').length;
-    console.log('📊 Current doc count:', count);
+    // console.log('📊 Current doc count:', count);
     return count;
   },
 
@@ -38,7 +38,7 @@ const AdditionalDocs = {
     const $existingDocs = $('#existingAdditionalDocs');
 
     if ($existingDocs.length && $existingDocs.children('.existing-doc-data').length > 0) {
-      console.log('📁 Loading', $existingDocs.children('.existing-doc-data').length, 'existing documents');
+      // console.log('📁 Loading', $existingDocs.children('.existing-doc-data').length, 'existing documents');
 
       $existingDocs.children('.existing-doc-data').each(function () {
         const docId = $(this).data('doc-id');
@@ -56,7 +56,7 @@ const AdditionalDocs = {
 
     // If no existing documents, add the first empty field
     if (this.getCurrentDocCount() === 0) {
-      console.log('➕ No existing docs, adding first empty field');
+      // console.log('➕ No existing docs, adding first empty field');
       this.addDocumentField();
     }
   },
@@ -67,7 +67,7 @@ const AdditionalDocs = {
   addExistingDocumentField: function (docId, docName, docUrl, uploadedAt, fileName) {
     const docIndex = this.nextDocIndex++;
 
-    console.log('➕ Adding existing doc:', docIndex, docName);
+    // console.log('➕ Adding existing doc:', docIndex, docName);
 
     const $docHTML = $(`
       <div class="additional-doc-item existing-doc" data-doc-index="${docIndex}" data-existing-doc-id="${docId}">
@@ -105,7 +105,7 @@ const AdditionalDocs = {
     // Append to container
     $('#additionalDocsContainer').append($docHTML);
 
-    console.log('✅ Existing doc added. Total docs now:', this.getCurrentDocCount());
+    // console.log('✅ Existing doc added. Total docs now:', this.getCurrentDocCount());
 
     this.updateCounter();
     this.updateAddButton();
@@ -120,7 +120,7 @@ const AdditionalDocs = {
     // Use event delegation for dynamically added remove buttons
     $(document).on('click', '[data-remove-doc]', function () {
       const docIndex = $(this).data('remove-doc');
-      console.log('🗑️ Remove button clicked for doc:', docIndex);
+      // console.log('🗑️ Remove button clicked for doc:', docIndex);
       self.removeDocumentField(docIndex);
     });
 
@@ -128,7 +128,7 @@ const AdditionalDocs = {
     $('#addMoreDocBtn').on('click', function () {
       const currentCount = self.getCurrentDocCount();
 
-      console.log('➕ Add More clicked. Current count:', currentCount);
+      // console.log('➕ Add More clicked. Current count:', currentCount);
 
       if (currentCount < self.maxDocuments) {
         self.addDocumentField();
@@ -154,7 +154,7 @@ const AdditionalDocs = {
     const self = this;
     const docIndex = this.nextDocIndex++;
 
-    console.log('➕ Adding new doc field:', docIndex);
+    // console.log('➕ Adding new doc field:', docIndex);
 
     const $docHTML = $(`
       <div class="additional-doc-item" data-doc-index="${docIndex}">
@@ -183,11 +183,11 @@ const AdditionalDocs = {
     // Append to container
     $('#additionalDocsContainer').append($docHTML);
 
-    console.log('✅ New doc field added. Total docs now:', this.getCurrentDocCount());
+    // console.log('✅ New doc field added. Total docs now:', this.getCurrentDocCount());
 
     // Setup click handler for choose file button
     $docHTML.find('.choose-file-btn').on('click', function () {
-      console.log('📎 Choose file clicked for doc:', docIndex);
+      // console.log('📎 Choose file clicked for doc:', docIndex);
       $(`#additionalDoc${docIndex}Upload`).trigger('click');
     });
 
@@ -218,7 +218,7 @@ const AdditionalDocs = {
       return;
     }
 
-    console.log('🗑️ Removing doc:', docIndex);
+    // console.log('🗑️ Removing doc:', docIndex);
 
     const isExisting = $docItem.hasClass('existing-doc');
     const existingDocId = $docItem.data('existing-doc-id');
@@ -241,7 +241,7 @@ const AdditionalDocs = {
       }
     }).then((result) => {
       if (result.isConfirmed) {
-        console.log('✅ User confirmed removal of doc:', docIndex);
+        // console.log('✅ User confirmed removal of doc:', docIndex);
 
         // Remove the document item
         $docItem.fadeOut(300, function () {
@@ -249,11 +249,11 @@ const AdditionalDocs = {
             // Add hidden input to track deletion
             const $hiddenInput = $(`<input type="hidden" name="delete_doc_id[]" value="${existingDocId}">`);
             $('#additionalDocsContainer').append($hiddenInput);
-            console.log('🗑️ Marked existing doc for deletion:', existingDocId);
+            // console.log('🗑️ Marked existing doc for deletion:', existingDocId);
           }
 
           $(this).remove();
-          console.log('✅ Doc removed from DOM. Total docs now:', self.getCurrentDocCount());
+          // console.log('✅ Doc removed from DOM. Total docs now:', self.getCurrentDocCount());
 
           // Update UI after removal
           self.updateCounter();
@@ -262,7 +262,7 @@ const AdditionalDocs = {
           // If all documents removed, add an empty field
           const remainingCount = self.getCurrentDocCount();
           if (remainingCount === 0) {
-            console.log('📝 No docs left, adding empty field');
+            // console.log('📝 No docs left, adding empty field');
             self.addDocumentField();
           }
         });
@@ -279,7 +279,7 @@ const AdditionalDocs = {
 
     $(`#additionalDoc${docIndex}Upload`).on('change', function (e) {
       const file = e.target.files[0];
-      console.log('📄 File selected for doc', docIndex, ':', file ? file.name : 'none');
+      // console.log('📄 File selected for doc', docIndex, ':', file ? file.name : 'none');
 
       if (file) {
         // Validate file
@@ -302,7 +302,7 @@ const AdditionalDocs = {
           return;
         }
 
-        console.log('✅ File validation passed for:', file.name);
+        // console.log('✅ File validation passed for:', file.name);
 
         // Update filename display
         $(`#additionalDoc${docIndex}FileName`)
@@ -341,7 +341,7 @@ const AdditionalDocs = {
       // Setup click handler
       $removeBtn.on('click', function () {
         const idx = $(this).data('doc-index');
-        console.log('🗑️ Remove file clicked for doc:', idx);
+        // console.log('🗑️ Remove file clicked for doc:', idx);
 
         $(`#additionalDoc${idx}Upload`).val('');
         $(`#additionalDoc${idx}FileName`)
@@ -354,7 +354,7 @@ const AdditionalDocs = {
 
         $(this).remove();
 
-        console.log('✅ File removed from doc:', idx);
+        // console.log('✅ File removed from doc:', idx);
       });
     }
   },
@@ -388,7 +388,7 @@ const AdditionalDocs = {
   updateCounter: function () {
     const currentCount = this.getCurrentDocCount();
     $('#docCounter').text(`(${currentCount}/${this.maxDocuments} documents)`);
-    console.log('🔄 Counter updated:', currentCount, '/', this.maxDocuments);
+    // console.log('🔄 Counter updated:', currentCount, '/', this.maxDocuments);
   },
 
   /**
@@ -402,13 +402,13 @@ const AdditionalDocs = {
         .prop('disabled', true)
         .removeClass('btn-outline-success')
         .addClass('btn-secondary');
-      console.log('🔒 Add More button disabled (max reached)');
+      // console.log('🔒 Add More button disabled (max reached)');
     } else {
       $('#addMoreDocBtn')
         .prop('disabled', false)
         .removeClass('btn-secondary')
         .addClass('btn-outline-success');
-      console.log('✅ Add More button enabled');
+      // console.log('✅ Add More button enabled');
     }
   },
 
@@ -478,7 +478,7 @@ const AdditionalDocs = {
    * Reset all additional documents
    */
   resetAll: function () {
-    console.log('🔄 Resetting all additional documents');
+    // console.log('🔄 Resetting all additional documents');
 
     // Remove all document items
     $('.additional-doc-item').remove();
@@ -491,7 +491,7 @@ const AdditionalDocs = {
     // Add one empty field
     this.addDocumentField();
 
-    console.log('✅ Reset complete');
+    // console.log('✅ Reset complete');
   }
 };
 

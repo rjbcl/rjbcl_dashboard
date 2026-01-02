@@ -48,6 +48,34 @@ $(document).ready(function () {
     }
 
     /**************************************************
+     * Validate AD Date String
+     **************************************************/
+    function isValidAdDate(adRaw) {
+        if (!adRaw || typeof adRaw !== 'string') return false;
+        
+        // Check format YYYY-MM-DD
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(adRaw)) return false;
+        
+        const parts = adRaw.split("-");
+        if (parts.length !== 3) return false;
+        
+        const [y, m, d] = parts.map(Number);
+        
+        // Basic range validation
+        if (y < 1900 || y > 2100) return false;
+        if (m < 1 || m > 12) return false;
+        if (d < 1 || d > 31) return false;
+        
+        // Check if it's a valid date
+        const date = new Date(y, m - 1, d);
+        if (date.getFullYear() !== y || date.getMonth() !== (m - 1) || date.getDate() !== d) {
+            return false;
+        }
+        
+        return true;
+    }
+
+    /**************************************************
      * BS → AD
      **************************************************/
     function bsToAd(bsInput) {
@@ -80,13 +108,26 @@ $(document).ready(function () {
     function adToBs(adRaw) {
         try {
             if (!adRaw) return "";
+            
+            // Validate AD date format before processing
+            if (!isValidAdDate(adRaw)) {
+                console.warn("Invalid AD date format:", adRaw);
+                return "";
+            }
 
             const [y, m, d] = adRaw.split("-").map(Number);
+            
+            // Additional validation after parsing
+            if (isNaN(y) || isNaN(m) || isNaN(d)) {
+                console.warn("Invalid AD date values:", { y, m, d });
+                return "";
+            }
+            
             const bs = NepaliFunctions.AD2BS({ year: y, month: m, day: d });
 
             return `${bs.year}-${String(bs.month).padStart(2, "0")}-${String(bs.day).padStart(2, "0")}`;
         } catch (e) {
-            console.error("AD → BS error:", e);
+            console.error("AD → BS error:", e, "Input:", adRaw);
             return "";
         }
     }
@@ -135,11 +176,18 @@ $(document).ready(function () {
      **************************************************/
     function bindBsAdSync(bsSelector, adSelector) {
         const today = new Date();
+        today.setHours(23, 59, 59, 999); // End of today
         
         // BS input changes → update AD
         $(bsSelector).on('input change blur', function () {
-            const ad = bsToAd($(this).val());
-            if (!ad) return;
+            const bsVal = $(this).val();
+            if (!bsVal) return;
+            
+            const ad = bsToAd(bsVal);
+            if (!ad) {
+                console.warn("Failed to convert BS to AD:", bsVal);
+                return;
+            }
             
             const adDate = new Date(ad);
             if (adDate <= today) {
@@ -156,8 +204,19 @@ $(document).ready(function () {
             const ad = $(this).val();
             if (!ad) return;
             
+            // Validate before processing
+            if (!isValidAdDate(ad)) {
+                console.warn("Invalid AD date format in input:", ad);
+                return;
+            }
+            
             const adDate = new Date(ad);
             const bs = adToBs(ad);
+            
+            if (!bs) {
+                console.warn("Failed to convert AD to BS:", ad);
+                return;
+            }
             
             if (adDate <= today) {
                 $(bsSelector).val(bs);
@@ -180,17 +239,14 @@ $(document).ready(function () {
      **************************************************/
     setTimeout(() => {
         document.dispatchEvent(new Event("NepaliDatepickerReady"));
-        console.log("✅ NepaliDatepickerReady dispatched");
     }, 150);
 
     /**************************************************
      * PREFILL LISTENER WITH BIND LOGIC
      **************************************************/
     document.addEventListener("NepaliDatepickerReady", () => {
-        console.log("📅 NepaliDatepickerReady received - applying prefill");
 
         if (!window.prefill_data) {
-            console.log("No prefill_data available");
             return;
         }
 
@@ -199,15 +255,15 @@ $(document).ready(function () {
         // Prefill AD dates first, then trigger change to sync BS
         // The bindBsAdSync handlers will automatically convert AD→BS
         
-        if (data.dob_ad) {
+        if (data.dob_ad && isValidAdDate(data.dob_ad)) {
             $("#dob_ad").val(data.dob_ad).trigger('change');
         }
 
-        if (data.citizen_ad) {
+        if (data.citizen_ad && isValidAdDate(data.citizen_ad)) {
             $("#citizen_ad").val(data.citizen_ad).trigger('change');
         }
 
-        if (data.nominee_dob_ad) {
+        if (data.nominee_dob_ad && isValidAdDate(data.nominee_dob_ad)) {
             $("#nominee_dob_ad").val(data.nominee_dob_ad).trigger('change');
         }
 
@@ -225,6 +281,4 @@ $(document).ready(function () {
         }
 
     });
-
-    console.log("✅ Date conversion script loaded");
 });

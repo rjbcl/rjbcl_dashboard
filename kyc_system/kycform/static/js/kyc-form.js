@@ -8,7 +8,6 @@ $(document).ready(function () {
   (function initOtpState() {
     const el = document.getElementById('mobileOtpServerVerified');
     window.mobileOtpVerified = el && el.value === "1";
-    console.log('[OTP INIT]', window.mobileOtpVerified);
   })();
 
   (function applyOtpLockIfVerified() {
@@ -20,8 +19,6 @@ $(document).ready(function () {
       $('#verifyBtn')
         .prop('disabled', true)
         .text('Verified ✓');
-
-      console.log('[OTP LOCK APPLIED]');
     }
   })();
 
@@ -372,24 +369,17 @@ $(document).ready(function () {
   // Add this helper function to collect additional documents info
   function collectAdditionalDocsForPreview() {
     const additionalDocs = [];
-
-    console.log('🔍 Collecting additional docs for preview...');
-    console.log('Total additional-doc-item elements:', $('.additional-doc-item').length);
-
     $('.additional-doc-item').each(function (index) {
       const $item = $(this);
       const docIndex = $item.data('doc-index');
       const isExisting = $item.hasClass('existing-doc');
 
-      console.log(`Document ${index + 1}: docIndex=${docIndex}, isExisting=${isExisting}`);
 
       if (isExisting) {
         // Existing document
         const docName = $item.find(`input[name="additional_doc_name_${docIndex}"]`).val();
         const docUrl = $item.find(`input[name="existing_doc_url_${docIndex}"]`).val();
         const fileName = $item.find('.file-name-inline').text().trim();
-
-        console.log('  Existing doc:', { docName, docUrl, fileName });
 
         if (docName && docUrl) {
           additionalDocs.push({
@@ -416,8 +406,6 @@ $(document).ready(function () {
           // Create a temporary URL for preview
           const fileUrl = URL.createObjectURL(file);
 
-          console.log('  Creating preview URL for:', file.name);
-
           additionalDocs.push({
             name: docName || 'Unnamed Document',
             fileName: file.name,
@@ -428,8 +416,6 @@ $(document).ready(function () {
         }
       }
     });
-
-    console.log('✅ Collected', additionalDocs.length, 'additional documents');
     return additionalDocs;
   }
 
@@ -653,9 +639,6 @@ $(document).ready(function () {
 
       e.preventDefault();
       e.stopImmediatePropagation();
-
-      console.log('[OTP STATE]', window.mobileOtpVerified);
-
       if (!window.mobileOtpVerified) {
         Swal.fire({
           icon: 'warning',
@@ -808,7 +791,7 @@ $(document).ready(function () {
         } else $el.addClass('is-valid');
       });
     }
-    setupMobileValidation('#contact_mobile');
+    setupMobileValidation('#nominee_mobile');
 
     // ===============================
     // MOBILE VALIDATION WITH REAL OTP - ENHANCED UI
@@ -820,7 +803,6 @@ $(document).ready(function () {
 
       // Check initial verification state (from prefill or previous session)
       if (window.mobileOtpVerified) {
-        console.log('[OTP] Already verified - locking field');
         lockMobileField();
         return; // Exit early if already verified
       }
@@ -1055,8 +1037,6 @@ $(document).ready(function () {
         $btn.prop('disabled', true).removeClass('verify-btn-green').addClass('verify-btn-grey').text('Verify');
         $inp.siblings('.verified-badge').remove();
         $inp.siblings('.invalid-feedback').remove();
-
-        console.log('[OTP] Verification reset');
       };
     }
 
@@ -1133,7 +1113,6 @@ $(document).ready(function () {
     }
 
     const data = window.prefill_data;
-    log("=== KYC PREFILL START ===");
 
     // Disable occupation logic during prefill
     if (window.setOccupationPrefillMode) {
@@ -1160,13 +1139,8 @@ $(document).ready(function () {
 
     // 5) Show saved files
     showSavedFiles(data);
-
-    log("=== BASIC PREFILL DONE ===");
-
     // 6) Fill dynamic selects and addresses - these need time to populate
     fillDynamicSelectsAndAddresses(data).then(() => {
-      log("=== ALL PREFILL COMPLETE ===");
-
       // 7) Restore step progress AFTER everything is filled
       restoreStepProgress(data);
 
@@ -1289,7 +1263,6 @@ $(document).ready(function () {
             if (optVal === expectedVal || optText === expectedVal) {
               el.value = option.value;
               $(el).trigger('change');
-              console.log(`✅ Filled ${label}: "${expectedVal}"`);
               clearInterval(tryFill);
               resolve(true);
               return;
@@ -1366,8 +1339,6 @@ $(document).ready(function () {
 
     // Wait for all non-address tasks
     await Promise.all(tasks);
-
-    console.log("✅ All dynamic selects and addresses filled");
   }
 
   /**
@@ -1390,7 +1361,6 @@ $(document).ready(function () {
    */
   function restoreStepProgress(data) {
     if (!data._current_step) return;
-    console.log("Restored step from backend:", data._current_step);
     let targetStep = parseInt(data._current_step) || 1;
     if (targetStep < 1 || targetStep > totalSteps) targetStep = 1;
     // Validate and advance through steps
@@ -1405,7 +1375,6 @@ $(document).ready(function () {
     showStep(currentStep);
     window.setCurrentStep(currentStep);
     window.highestStepReached = Math.max(highestStepReached, currentStep);
-    console.log(`✅ Restored to step ${currentStep}, highest reached: ${highestStepReached}`);
   }
 
   // ---------------------------
@@ -1445,7 +1414,6 @@ $(document).ready(function () {
     const allReady = Object.values(readyState).every(status => status === true);
 
     if (allReady) {
-      console.log("✅ All events received - running prefill");
       prefillHasRun = true;
       runKycPrefill();
     }
@@ -1461,7 +1429,6 @@ $(document).ready(function () {
     const allDataPresent = Object.values(dataChecks).every(status => status === true);
 
     if (allDataPresent && window.prefill_data) {
-      console.log("🔄 Events didn't fire but data detected - running prefill");
       prefillHasRun = true;
 
       // Update readyState
@@ -1481,7 +1448,6 @@ $(document).ready(function () {
 
   // Listen for data ready events
   document.addEventListener("locationDataReady", () => {
-    console.log("📍 Location data ready");
     readyState.locationData = true;
     checkAllReady();
   });
@@ -1530,7 +1496,6 @@ $(document).ready(function () {
       }
     }, 500);
   } else {
-    console.log("ℹ️ No prefill data - skipping prefill");
   }
 
   // Expose globally for manual triggering
@@ -1543,6 +1508,4 @@ $(document).ready(function () {
     Object.keys(readyState).forEach(key => readyState[key] = true);
     runKycPrefill();
   };
-
-  console.log("✅ KYC Form script loaded");
 });
