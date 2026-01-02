@@ -807,6 +807,20 @@ $(document).ready(function () {
         return; // Exit early if already verified
       }
 
+      if (window.mobileOtpVerified) {
+        const mobileInput = $('#mobile');
+        if (!mobileInput.val()) {
+          const serverMobile = $('#verifiedMobileFromServer').val();
+          if (serverMobile) {
+            mobileInput.val(serverMobile);
+          }
+        }
+
+        mobileInput.prop('readonly', true);
+        $('#verifyBtn').prop('disabled', true).text('Verified ✓');
+      }
+
+
       // Function to lock the mobile field
       function lockMobileField() {
         $inp.prop('readonly', true).prop('disabled', true);

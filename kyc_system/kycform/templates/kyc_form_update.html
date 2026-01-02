@@ -101,6 +101,7 @@
             {% csrf_token %}
             <input type="hidden" name="kyc_data" id="kyc_data">
             <input type="hidden" name="policy_no" id="policyField" value="{{ policy_no }}">
+            <input type="hidden" id="verifiedMobileFromServer" value="{{ user.mobile|default:'' }}">
             <!-- OTP verification state from server -->
             <input type="hidden" id="mobileOtpServerVerified" value="{{ mobile_otp_verified|yesno:'1,0' }}">
             <!-- Step 1: Personal Details -->

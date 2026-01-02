@@ -740,6 +740,11 @@ def kyc_form_view(request):
     # Only temp > submission determines marital_status
     if merged.get("marital_status") in [None, "", "null", "None"]:
         merged["marital_status"] = None
+    # ---------------------------------
+    # CANONICAL MOBILE MAPPING (CRITICAL)
+    # ---------------------------------
+    if not merged.get("mobile") and user.phone_number:
+        merged["mobile"] = user.phone_number
 
 
     # ---------------------------------
@@ -1486,6 +1491,11 @@ def process_kyc_submission(request):
             "JSON:",
             submission.data_json.get("branch_name")
         )
+
+        # 🔐 FORCE verified mobile into submission
+        if user.mobile_verified and user.phone_number:
+            submission.mobile = user.phone_number
+
         submission.save()
 
         # Cleanup temp
@@ -1618,7 +1628,7 @@ def save_kyc_progress(request):
 
     if not isinstance(parsed, dict):
         parsed = {}
-
+    
     # Make folder path for temporary files
     safe_folder = f"kyc/temp/{policy_no}"
     saved_files = {}
@@ -1719,6 +1729,9 @@ def save_kyc_progress(request):
     # Persist or update KYCTemporary
     policy = KycPolicy.objects.get(policy_number=policy_no)
     user = KycUserInfo.objects.get(user_id=policy.user_id)
+    # 🔐 FORCE verified mobile into draft
+    if user.mobile_verified and user.phone_number:
+        parsed["mobile"] = user.phone_number
 
     KYCTemporary.objects.update_or_create(
         user=user,
@@ -1955,7 +1968,8 @@ def verify_mobile_otp(request):
     otp_obj.save(update_fields=["is_verified"])
 
     user.mobile_verified = True
-    user.save(update_fields=["mobile_verified"])
+    user.phone_number = otp_obj.mobile  
+    user.save(update_fields=["mobile_verified", "phone_number"])
 
     request.session["mobile_otp_verified"] = True
     request.session.pop("otp_required", None)
