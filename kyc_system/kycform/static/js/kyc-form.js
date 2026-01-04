@@ -250,6 +250,8 @@ $(document).ready(function () {
     formArray.forEach(item => {
       formData[item.name] = item.value;
     });
+    //to catch prefilled data
+    formData['mobile'] = $('#mobile').val() || null;
 
     // Force capture permanent address
     formData["perm_province"] = $("#perm_province").val() || null;
@@ -393,13 +395,6 @@ $(document).ready(function () {
         // New document upload
         const docName = $item.find(`input[name="additional_doc_name_${docIndex}"]`).val();
         const fileInput = $(`#additionalDoc${docIndex}Upload`)[0];
-
-        console.log('  New doc:', {
-          docName,
-          fileInputExists: !!fileInput,
-          hasFiles: fileInput ? fileInput.files.length : 0
-        });
-
         if (fileInput && fileInput.files.length > 0) {
           const file = fileInput.files[0];
 
