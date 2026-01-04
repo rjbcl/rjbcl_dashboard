@@ -245,7 +245,7 @@
                 </div>
                 <div class="col-md-4 mb-3">
                   <label class="form-label">Mobile No. <span class="text-danger">*</span></label>
-                 <div class="input-group mobile-input-wrapper">
+                  <div class="input-group mobile-input-wrapper">
                     <input type="text" id="mobile" name="mobile" class="form-control" required autocomplete="off">
                     <button class="btn verify-btn-grey py-0" type="button" id="verifyBtn" disabled>Verify</button>
                   </div>
@@ -668,8 +668,8 @@
                 </div>
                 <div class="col-md-6 mb-3">
                   <label class="form-label">Nominee Contact Number <span class="text-danger">*</span></label>
-                  <input type="tel" id="nominee_mobile" name="nominee_contact" class="form-control" id="nominee_contact" required
-                    autocomplete="off">
+                  <input type="tel" id="nominee_mobile" name="nominee_contact" class="form-control" id="nominee_contact"
+                    required autocomplete="off">
                 </div>
               </div>
 
@@ -779,9 +779,10 @@
                   <input class="form-check-input" type="checkbox" id="declaration" name="declaration" required
                     autocomplete="off">
                   <label class="form-check-label" for="declaration">
-                    <strong>के तपाईंले दिएको विवरण सत्य र ठ्याक्कै हो?</strong><br>
-                    I hereby declare that all the information provided above is true and accurate to the best of my
-                    knowledge.
+                    <strong>मैले सबै <span class="terms-link" data-bs-toggle="modal" data-bs-target="#termsModal">नियम
+                        तथा सर्तहरू</span> पढेको छु र सहमत छु।</strong><br>
+                    I hereby confirm that I have thoroughly read all the <span class="terms-link" data-bs-toggle="modal"
+                      data-bs-target="#termsModal">terms and conditions</span> and fully agree to abide by them.
                   </label>
                 </div>
               </div>
@@ -821,6 +822,35 @@
     <footer class="form-footer">
       <p>© RJBCL</p>
     </footer>
+  </div>
+  <!-- Terms Modal -->
+  <div class="modal fade" id="termsModal" tabindex="-1" aria-labelledby="termsModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-scrollable modal-lg">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="termsModalLabel">नियम तथा सर्तहरू / Terms and Conditions</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <p><strong>१.</strong>माथि दिएको सम्पूर्ण जानकारी मेरो ज्ञानअनुसार सत्य तथा शुद्ध छ।</p>
+
+          <p><strong>२.</strong> मेरो नाममा रहेको बीमालेखको प्रयोजनका लागि मैले उपलब्ध गराएको मोबाइल नम्बर म स्वयंले नै
+            प्रयोग गर्दै आइरहेको छु।</p>
+
+          <p><strong>३.</strong> कम्पनीले प्रदान गर्ने डिजिटल सेवाहरू प्रयोग गर्न तथा सुरक्षाका लागि आवश्यक पर्ने
+            सम्पूर्ण OTP (One Time Password) र अन्य सूचनाहरू यसै मोबाइल नम्बरमा प्रदान गर्नुहुन अनुरोध गर्दछु।</p>
+
+          <p><strong>४.</strong> मैले प्रयोग गरिरहेको मोबाइल नम्बर परिवर्तन भएमा सोको जानकारी तत्काल कम्पनीलाई गराई
+            आफ्नो विवरण अद्यावधिक (Update) गराउनेछु।</p>
+
+          <p><strong>५.</strong> माथि उल्लेखित मोबाइल नम्बर मेरो आफ्नै हो र यसमा आउने OTP वा सूचनाहरूको सुरक्षाको पूर्ण
+            जिम्मेवारी म स्वयंकै हुनेछ। उक्त विवरण गलत ठहरेमा प्रचलित कानुन बमोजिम सहूँला/बुझाउँला।</p>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">बन्द गर्नुहोस् / Close</button>
+        </div>
+      </div>
+    </div>
   </div>
   <!-- Modal -->
   <div class="modal fade" id="previewModal" tabindex="-1" aria-labelledby="previewModalLabel">
@@ -886,10 +916,10 @@
       </div>
     </div>
   </div>
-<script>
-  window.mobileOtpVerified = JSON.parse('{{ request.session.mobile_otp_verified|default:False|yesno:"true,false" }}');
-</script>
-<script>window.POLICY_NO = "{{ policy_no|escapejs }}";</script>
+  <script>
+    window.mobileOtpVerified = JSON.parse('{{ request.session.mobile_otp_verified|default:False|yesno:"true,false" }}');
+  </script>
+  <script>window.POLICY_NO = "{{ policy_no|escapejs }}";</script>
   <script src="{% static 'js/jquery-3.6.0.min.js' %}"></script>
   <script src="{% static 'js/nepali.datepicker.v5.0.6.min.js' %}"></script>
   <script src="{% static 'js/nepalify.production.min.js' %}"></script>
@@ -948,7 +978,7 @@
     bindFileName('NidUpload', 'nidFileName');
     bindFileName('signatureUpload', 'signatureFileName');
   </script>
-  
+
 
 </body>
 
