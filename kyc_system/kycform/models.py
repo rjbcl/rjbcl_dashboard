@@ -260,6 +260,13 @@ class KycSubmission(models.Model):
             }
             for d in docs
         ]
+    
+    def save(self, *args, **kwargs):
+        # 🔐 HARD GUARANTEE: verified mobile cannot be overridden
+        if self.user and self.user.mobile_verified and self.user.phone_number:
+            self.mobile = self.user.phone_number
+        super().save(*args, **kwargs)
+
 
     # -----------------------------------------------------
     # META

@@ -1314,7 +1314,11 @@ def process_kyc_submission(request):
     # AUTH CHECK (LOGIN + DIRECT KYC)
     # -------------------------
     if request.session.get("authenticated") is True:
-        policy_no = request.POST.get("policy_no") or request.session.get("policy_no")
+        policy_no = (
+            request.POST.get("policy_no")
+            or request.session.get("policy_no")
+        )
+
 
     elif request.session.get("kyc_access_mode") == "DIRECT_KYC":
         policy_no = request.session.get("kyc_policy_no")
@@ -1492,9 +1496,16 @@ def process_kyc_submission(request):
             submission.data_json.get("branch_name")
         )
 
-        # 🔐 FORCE verified mobile into submission
+        # --------------------------------------------------
+        # 🔐 FORCE VERIFIED MOBILE (AUTHORITATIVE SOURCE)
+        # --------------------------------------------------
         if user.mobile_verified and user.phone_number:
+            # DB column
             submission.mobile = user.phone_number
+
+            # JSON source used for prefill / reload
+            merged["mobile"] = user.phone_number
+
 
         submission.save()
 
