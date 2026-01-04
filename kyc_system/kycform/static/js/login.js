@@ -73,7 +73,6 @@ $(document).ready(function () {
   // ===========================
   $('form').on('submit', function (e) {
     const form = $(this);
-    debugger;
     const submitBtn = form.find('button[type="submit"]');
 
     // Clear previous errors

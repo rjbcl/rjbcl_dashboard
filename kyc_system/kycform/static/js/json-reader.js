@@ -1,7 +1,7 @@
 // Load location JSON
 $.getJSON('/static/json/nepal_locations.json')
     .done(function (data) {
-        console.log('✅ Loaded Nepal location data from json reader');
+        // console.log('✅ Loaded Nepal location data from json reader');
         initAddressCascade(data);
         document.dispatchEvent(new Event("locationDataReady"));
     })

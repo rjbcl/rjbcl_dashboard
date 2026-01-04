@@ -39,7 +39,6 @@
             <!-- Right Login Section -->
             <div class="login-section col-sm-12">
                 <div class="login-card">
-                    <!-- Logo and Company Name -->
                     <div class="login-header">
                         <img src="{% static 'images/rjbclogo.png' %}" alt="RJBCL Logo" class="company-logo">
                     </div>
@@ -54,7 +53,7 @@
                         </button>
                     </div>
 
-                    <!-- Django Messages (hidden, will be shown via SweetAlert) -->
+                    <!-- Django Messages -->
                     {% if messages %}
                     {% for message in messages %}
                     <div class="message-box {% if 'success' in message.tags %}success-box{% else %}error-box{% endif %}"
@@ -167,7 +166,6 @@
                         </form>
                     </div>
 
-                    <!-- Footer -->
                     <div class="login-footer">
                         <p>© 2025 RJBCL. All rights reserved.</p>
                     </div>
@@ -182,7 +180,7 @@
     </script>
 
     <!-- jQuery -->
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="{% static 'js/jquery-3.6.0.min.js' %}"></script>
     <script src="{% static 'js/nepali.datepicker.v5.0.6.min.js' %}"></script>
 
     <!-- Custom JS -->
