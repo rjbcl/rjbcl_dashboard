@@ -1188,15 +1188,6 @@ def _save_files_and_submission(request, user, submission=None, actor=None):
 
     doc_names = request.POST.getlist("additional_doc_names")
 
-    if multi_files:
-        # 🔴 HARD GUARANTEE: deactivate ALL previous additional docs
-        KycDocument.objects.filter(
-            user=user,
-            submission=submission,
-            doc_type="ADDITIONAL",
-                is_current=True
-        ).update(is_current=False)
-
     for idx, uploaded in enumerate(multi_files):
         try:
             doc = _create_kyc_document(

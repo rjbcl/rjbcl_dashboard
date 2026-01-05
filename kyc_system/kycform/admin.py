@@ -443,7 +443,7 @@ class KycSubmissionAdmin(admin.ModelAdmin):
         return file_thumbnail(obj.passport_doc)
 
     def extra_docs_preview(self, obj):
-        """Show only the correct ADDITIONAL docs stored in KycDocument."""
+        """Show ALL ADDITIONAL docs stored in KycDocument."""
         if not obj:
             return "No Additional Documents"
 
@@ -451,7 +451,7 @@ class KycSubmissionAdmin(admin.ModelAdmin):
             submission=obj,
             doc_type="ADDITIONAL",
             is_current=True
-        ).order_by("-id")
+        ).order_by("uploaded_at")
 
         if not docs.exists():
             return "No Additional Documents"
@@ -461,17 +461,19 @@ class KycSubmissionAdmin(admin.ModelAdmin):
         for d in docs:
             try:
                 url = d.file.url
-            except:
+            except Exception:
                 url = None
-        file_name = d.file_name or "Document"
 
-        if url:
-            html += f'<li><a href="{url}" target="_blank">{file_name}</a></li>'
-        else:
-            html += f"<li>{file_name}</li>"
+            file_name = d.file_name or "Document"
+
+            if url:
+                html += f'<li><a href="{url}" target="_blank">{file_name}</a></li>'
+            else:
+                html += f"<li>{file_name}</li>"
 
         html += "</ul>"
         return mark_safe(html)
+
 
     def kyc_status_colored(self, obj):
         status = (obj.user.kyc_status if getattr(obj, "user", None) else None) or "UNKNOWN"
