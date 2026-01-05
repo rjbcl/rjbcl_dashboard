@@ -101,6 +101,17 @@ class KycSubmissionAdmin(admin.ModelAdmin):
                 ("passport_no", "nid_no"),
             )
         }),
+
+        ('Family Details', {
+            'fields': (
+                ('spouse_name', 'father_name'),
+                ('mother_name', 'grand_father_name'),
+                ('father_in_law_name', 'son_name'),
+                ('daughter_name', 'daughter_in_law_name'),
+            )
+        }),
+
+
         ("Permanent Address", {
             "fields": (
                 ("perm_province", "perm_district", "perm_municipality"),
