@@ -4,7 +4,7 @@ import json
 from django.test import TestCase
 from django.utils import timezone
 from django.db import connection
-
+from django.db import IntegrityError
 from kycform.models import (
     KycUserInfo,
     KycPolicy,
@@ -375,3 +375,130 @@ class VerifiedMobileOverwriteProtectionTest(UnmanagedPolicyTableMixin, TestCase)
 
         self.assertEqual(user.phone_number, "9800000000")
         self.assertNotEqual(submission.mobile, "9811111111")
+
+class IdentityRiskDetectionTests(UnmanagedPolicyTableMixin,TestCase):
+    """
+    These tests DO NOT enforce uniqueness.
+    They verify that identity risk conditions
+    are DETECTABLE by the system.
+    """
+
+    def test_detect_same_mobile_and_dob_multiple_users(self):
+        """
+        RISK: Multiple user_id created with same mobile + DOB
+        """
+        KycUserInfo.objects.create(
+            user_id="U3001",
+            first_name="Ram",
+            last_name="Sharma",
+            dob=date(1990, 1, 1),
+            phone_number="9812345678",
+        )
+
+        KycUserInfo.objects.create(
+            user_id="U3002",
+            first_name="Ramesh",
+            last_name="Sharma",
+            dob=date(1990, 1, 1),
+            phone_number="9812345678",
+        )
+
+        risky_users = KycUserInfo.objects.filter(
+            phone_number="9812345678",
+            dob=date(1990, 1, 1)
+        )
+
+        self.assertGreaterEqual(
+            risky_users.count(),
+            2,
+            "Risk not detectable: duplicate mobile + DOB not found"
+        )
+
+
+    def test_detect_policy_attached_to_multiple_users(self):
+        """
+        RISK DETECTION:
+        Same policy_number must NOT be attachable to multiple users.
+        System should BLOCK this at DB level.
+        """
+
+        user1 = KycUserInfo.objects.create(
+            user_id="U7001",
+            first_name="Ram",
+            last_name="Sharma",
+            dob=date(1990, 1, 1),
+        )
+
+        user2 = KycUserInfo.objects.create(
+            user_id="U7002",
+            first_name="Shyam",
+            last_name="Sharma",
+            dob=date(1992, 1, 1),
+        )
+
+        # First attachment — valid
+        KycPolicy.objects.create(
+            policy_number="POL-RISK-01",
+            user_id=user1.user_id,
+            created_at=timezone.now().date()
+        )
+
+        # Second attachment — MUST FAIL
+        with self.assertRaises(IntegrityError):
+            KycPolicy.objects.create(
+                policy_number="POL-RISK-01",
+                user_id=user2.user_id,
+                created_at=timezone.now().date()
+            )
+
+
+    def test_detect_weak_identity(self):
+        """
+        RISK: User exists but identity is weak
+        """
+        user = KycUserInfo.objects.create(
+            user_id="U5001",
+            first_name="Unknown",
+            last_name="User",
+            dob=date(2000, 1, 1),
+            phone_number=None,
+            mobile_verified=False,
+        )
+
+        weak_identity = (
+            not user.phone_number and
+            not user.mobile_verified
+        )
+
+        self.assertTrue(
+            weak_identity,
+            "Weak identity not detectable"
+        )
+
+
+    def test_detect_inconsistent_identity_over_time(self):
+        """
+        RISK: Same user changes identity fields over time
+        """
+        user = KycUserInfo.objects.create(
+            user_id="U6001",
+            first_name="Sita",
+            last_name="Thapa",
+            dob=date(1992, 2, 2),
+            phone_number="9800000000",
+        )
+
+        submission = KycSubmission.objects.create(
+            user=user,
+            citizenship_no="CTZ123"
+        )
+
+        # simulate later update
+        submission.citizenship_no = "CTZ999"
+        submission.save()
+
+        self.assertNotEqual(
+            submission.citizenship_no,
+            "CTZ123",
+            "Risk not detectable: identity changed silently"
+        )
