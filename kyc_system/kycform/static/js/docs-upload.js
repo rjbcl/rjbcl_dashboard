@@ -2,6 +2,7 @@
 // Additional Documents Handler
 // Manages dynamic document upload fields
 // =============================
+window.deletedAdditionalDocIds = [];
 
 const AdditionalDocs = {
 
@@ -67,49 +68,55 @@ const AdditionalDocs = {
   addExistingDocumentField: function (docId, docName, docUrl, uploadedAt, fileName) {
     const docIndex = this.nextDocIndex++;
 
-    // console.log('➕ Adding existing doc:', docIndex, docName);
-
     const $docHTML = $(`
-      <div class="additional-doc-item existing-doc" data-doc-index="${docIndex}" data-existing-doc-id="${docId}">
-        <button type="button" class="remove-doc-btn" data-remove-doc="${docIndex}">
-          ✕
-        </button>
-        <div class="row align-items-end mb-3">
-          <div class="col-md-6">
-            <label class="form-label">Document Name</label>
-            <input type="text" name="additional_doc_name_${docIndex}" class="form-control" value="${docName}" readonly>
-          </div>
-          <div class="col-md-6">
-            <label class="form-label">Attached Document</label>
-            <div class="document-upload-inline" id="additionalDoc${docIndex}Container">
-              <button type="button" class="btn btn-outline-success btn-sm view-file-btn">
-                <span class="upload-icon-btn">🔍</span> View File
-              </button>
-              <span class="file-name-inline has-file">${fileName || docName}</span>
-              <small class="text-muted d-block mt-1" style="font-size: 0.75rem;">
-                Uploaded: ${uploadedAt}
-              </small>
-            </div>
-            <input type="hidden" name="existing_doc_id_${docIndex}" value="${docId}">
-            <input type="hidden" name="existing_doc_url_${docIndex}" value="${docUrl}">
+    <div class="additional-doc-item existing-doc"
+         data-doc-index="${docIndex}"
+         data-existing-doc-id="${docId}">
+
+      <button type="button"
+              class="remove-doc-btn"
+              data-remove-doc="${docIndex}">
+        ✕
+      </button>
+
+      <div class="row align-items-end mb-3">
+        <div class="col-md-6">
+          <label class="form-label">Document Name</label>
+          <input type="text"
+                 class="form-control"
+                 value="${docName}"
+                 readonly>
+        </div>
+
+        <div class="col-md-6">
+          <label class="form-label">Attached Document</label>
+          <div class="document-upload-inline">
+            <button type="button"
+                    class="btn btn-outline-success btn-sm view-file-btn">
+              🔍 View File
+            </button>
+            <span class="file-name-inline has-file">
+              ${fileName || docName}
+            </span>
+            <small class="text-muted d-block mt-1">
+              Uploaded: ${uploadedAt}
+            </small>
           </div>
         </div>
       </div>
-    `);
+    </div>
+  `);
 
-    // Setup click handler for view file button
-    $docHTML.find('.view-file-btn').on('click', function () {
+    $docHTML.find('.view-file-btn').on('click', () => {
       window.open(docUrl, '_blank');
     });
 
-    // Append to container
     $('#additionalDocsContainer').append($docHTML);
-
-    // console.log('✅ Existing doc added. Total docs now:', this.getCurrentDocCount());
 
     this.updateCounter();
     this.updateAddButton();
   },
+
 
   /**
    * Setup the "Add More" button
@@ -246,10 +253,14 @@ const AdditionalDocs = {
         // Remove the document item
         $docItem.fadeOut(300, function () {
           if (isExisting && existingDocId) {
-            // Add hidden input to track deletion
-            const $hiddenInput = $(`<input type="hidden" name="delete_doc_id[]" value="${existingDocId}">`);
-            $('#additionalDocsContainer').append($hiddenInput);
-            // console.log('🗑️ Marked existing doc for deletion:', existingDocId);
+            const id = String(existingDocId);
+            if (!window.deletedAdditionalDocIds.includes(id)) {
+              window.deletedAdditionalDocIds.push(id);
+              sessionStorage.setItem(
+                'deletedAdditionalDocIds',
+                JSON.stringify(window.deletedAdditionalDocIds)
+              );
+            }
           }
 
           $(this).remove();
@@ -482,9 +493,6 @@ const AdditionalDocs = {
 
     // Remove all document items
     $('.additional-doc-item').remove();
-
-    // Remove delete markers
-    $('input[name="delete_doc_id[]"]').remove();
 
     this.nextDocIndex = 1;
 

@@ -1,7 +1,14 @@
 
 $(document).ready(function () {
   "use strict";
+  // ==============================
+  // GLOBAL ADDITIONAL DOC DELETE STATE
+  // ==============================
+  if (!window.deletedAdditionalDocIds) {
+    window.deletedAdditionalDocIds = [];
+  }
 
+  
   // ======================================
   // GLOBAL OTP STATE — SINGLE SOURCE OF TRUTH
   // ======================================
@@ -243,7 +250,11 @@ $(document).ready(function () {
    * @returns {Object} Complete form data object
    */
   window.collectFormData = function () {
-    const formArray = $("#kycForm").serializeArray();
+    const formArray = $("#kycForm")
+      .find(':input')
+      .not('[name="delete_doc_id[]"]')
+      .serializeArray();
+
     const formData = {};
 
     // Convert array to object
@@ -362,6 +373,14 @@ $(document).ready(function () {
         fd.append("additional_doc_names[]", nameInput.val() || "");
       }
     });
+
+    // ✅ Append removed additional document IDs explicitly (NOT inside kyc_data)
+    if (Array.isArray(window.deletedAdditionalDocIds)) {
+      window.deletedAdditionalDocIds.forEach(id => {
+        fd.append('delete_doc_id[]', String(id));
+      });
+    }
+
 
     return fd;
   };
@@ -597,6 +616,7 @@ $(document).ready(function () {
   window.showPreviewModal = showPreviewModal;
   // Function to handle final submission confirmation
   function proceedWithSubmission() {
+    
     Swal.fire({
       title: 'Submit KYC Form?',
       html: '<p>के तपाईं यो फारम पेश गर्न चाहनुहुन्छ?</p><small>Do you want to submit this form?</small>',
@@ -633,6 +653,7 @@ $(document).ready(function () {
         processData: false,
         contentType: false,
         success: function () {
+           window.deletedAdditionalDocIds = [];
           Swal.fire("Success", "KYC submitted successfully", "success")
             .then(() => window.location.href = "/dashboard/");
         },

@@ -988,6 +988,10 @@ def _save_files_and_submission(request, user, submission=None, actor=None):
 
     actor: optional dict or string to include in metadata (e.g., {"actor":"agent","id":...}) for audit logs.
     """
+    print("🧨 DELETE IDS (raw POST):", dict(request.POST))
+    print("🧨 DELETE IDS delete_doc_id[]:", request.POST.getlist("delete_doc_id[]"))
+    print("🧨 DELETE IDS remove_additional_doc_ids:", request.POST.getlist("remove_additional_doc_ids"))
+
     if not submission:
         submission, _ = KycSubmission.objects.get_or_create(user=user)
 
@@ -1233,7 +1237,11 @@ def _save_files_and_submission(request, user, submission=None, actor=None):
     # -------------------------
     # Handle removal of additional docs (frontend posted remove_additional_doc_ids)
     # -------------------------
-    remove_ids = request.POST.getlist("delete_doc_id")
+    remove_ids = (
+        request.POST.getlist("remove_additional_doc_ids")
+        or request.POST.getlist("delete_doc_id[]")
+    )
+
     if remove_ids:
         # convert to ints safely
         try:
