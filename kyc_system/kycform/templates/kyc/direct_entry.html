@@ -31,32 +31,15 @@
                     <div class="hero-description" style="max-height: 30vh!important;">
                         <div class="instruction-section">
                             <h3 class="section-title">लगइन :</h3>
-                            <p>आफ्नो बीमा लेख नम्बर (Policy Number) र पासवर्ड प्रयोग गरी लगइन गर्नुहोस्।</p>
+                            <p>आफ्नो बीमा लेख नम्बर (Policy Number) र जन्म मिति प्रयोग गरी लगइन गर्नुहोस्।</p>
                         </div>
 
                         <div class="instruction-section">
-                            <h3 class="section-title">पासवर्ड नभए वा बिर्सिएमा:</h3>
-                            <p>'Forgot Password’ मा क्लिक गरेर आफ्नो Policy Number र जन्ममिति प्रयोग गरी नयाँ पासवर्ड बनाउनुहोस्।</p>
+                            <h3 class="section-title">बीमा लेख बिर्सिएमा:</h3>
+                            <p>आफ्नो नजिकैको शाखा कार्यालयमा सम्पर्क राख्न
+                                सक्नुहुनेछ।</p>
                         </div>
-
-                        <div class="instruction-section highlight">
-                            <h3 class="section-title">लगइनका लागि वैकल्पिक माध्यम:</h3>
-                            <p>यदि तपाईंसँग लगइन विवरण छैन भने, 'Login' बटन मुनि रहेको 'Continue without
-                                Login' विकल्पमा क्लिक गर्नुहोस्। त्यहाँ आफ्नो बीमा लेख नम्बर र जन्म मिति राखेर
-                                लगइन गरी KYC फारम बुझाउन सक्नुहुनेछ।</p>
-                        </div>
-
-                        <div class="instruction-section">
-                            <h3 class="section-title">मोबाइल वा इमेल दर्ता नभएमा:</h3>
-                            <p>यदि बीमा लेख जारी गर्दा तपाईंको आफ्नै मोबाइल नम्बर वा इमेल दर्ता गरिएको छैन भने:</p>
-                            <ul class="contact-list">
-                                <li>मुख्य कार्यालयको फोन नं. <strong>+९७७-०१-५३६२५२०</strong> (एक्स्टेन्सन २१६) मा
-                                    सम्पर्क गर्नुहोस्, अथवा</li>
-                                <li>आफ्नो नजिकैको शाखा कार्यालयमा स्वयम् उपस्थित भई आफू नै सम्बन्धित व्यक्ति भएको
-                                    प्रमाणित (Verify) गरी, आफूले प्रयोग गरिरहेको मोबाइल नम्बरको स्व-घोषणा (Self
-                                    Declaration) फारम भरी विवरण अध्यावधिक (Update) गराउनुहोस्।</li>
-                            </ul>
-                        </div>
+                 
 
                         <div class="instruction-section">
                             <h3 class="section-title">थप जानकारी तथा शाखा सम्पर्क:</h3>
@@ -95,7 +78,7 @@
               {% csrf_token %}
               <div class="form-group">
                 <label class="form-label">Policy Number</label>
-                <input class="form-control" name="policy_no" id="policy-number" placeholder="POL123" autocomplete="off"
+                <input class="form-control" name="policy_no" id="policy-number" placeholder="300XXXXXX" autocomplete="off"
                   required>
               </div>
 

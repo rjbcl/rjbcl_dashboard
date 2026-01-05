@@ -8,7 +8,7 @@ urlpatterns = [
     # -------------------------------
     # AUTHENTICATION (LOGIN)
     # -------------------------------
-    path("", views.policyholder_login, name="login"),
+    path("", views.direct_kyc_entry_view, name="DirectKYCEntry"),
     path("auth/policy/", views.policyholder_login, name="policy_login"),
     path("auth/agent/", views.agent_login, name="agent_login"),
 
