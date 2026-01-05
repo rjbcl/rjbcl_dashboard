@@ -627,7 +627,7 @@ $(document).ready(function () {
       const fd = window.createSubmissionFormData(policyNo, jsonData);
 
       $.ajax({
-        url: "/kyc/submit/",
+        url: "/kyc-submit/",
         method: "POST",
         data: fd,
         processData: false,
