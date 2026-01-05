@@ -622,7 +622,25 @@ $(document).ready(function () {
         didOpen: () => Swal.showLoading()
       });
 
-      document.getElementById('kycForm').submit();
+      const policyNo = $("#policyField").val();
+      const jsonData = window.collectFormData();
+      const fd = window.createSubmissionFormData(policyNo, jsonData);
+
+      $.ajax({
+        url: "/kyc/submit/",
+        method: "POST",
+        data: fd,
+        processData: false,
+        contentType: false,
+        success: function () {
+          Swal.fire("Success", "KYC submitted successfully", "success")
+            .then(() => window.location.href = "/dashboard/");
+        },
+        error: function (xhr) {
+          Swal.fire("Error", xhr.responseJSON?.error || "Submission failed", "error");
+        }
+      });
+
     });
   }
 

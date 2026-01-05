@@ -988,8 +988,6 @@ def _save_files_and_submission(request, user, submission=None, actor=None):
 
     actor: optional dict or string to include in metadata (e.g., {"actor":"agent","id":...}) for audit logs.
     """
-    print("DEBUG additional_docs LIST =", request.FILES.getlist("additional_docs"))
-
     if not submission:
         submission, _ = KycSubmission.objects.get_or_create(user=user)
 
@@ -1177,8 +1175,18 @@ def _save_files_and_submission(request, user, submission=None, actor=None):
     # -------------------------
     # Multi-file additional_docs (REPLACE-ALL LOGIC)
     # -------------------------
-    multi_files = request.FILES.getlist("additional_docs")
-    doc_names = request.POST.getlist("additional_doc_names[]")
+    # Collect additional docs from both AJAX and native submit paths
+    multi_files = []
+
+    # 1. Preferred key (AJAX path)
+    multi_files.extend(request.FILES.getlist("additional_docs"))
+
+    # 2. Native submit dynamic keys (additional_doc_1, additional_doc_2, ...)
+    for key in request.FILES:
+        if key.startswith("additional_doc_"):
+            multi_files.extend(request.FILES.getlist(key))
+
+    doc_names = request.POST.getlist("additional_doc_names")
 
     if multi_files:
         # 🔴 HARD GUARANTEE: deactivate ALL previous additional docs
@@ -1234,7 +1242,7 @@ def _save_files_and_submission(request, user, submission=None, actor=None):
     # -------------------------
     # Handle removal of additional docs (frontend posted remove_additional_doc_ids)
     # -------------------------
-    remove_ids = request.POST.getlist("remove_additional_doc_ids")
+    remove_ids = request.POST.getlist("delete_doc_id")
     if remove_ids:
         # convert to ints safely
         try:
