@@ -1,5 +1,7 @@
 # kycform/admin.py
 from urllib import request
+from django.db.models import Q
+
 from django.contrib import admin, messages
 from django.utils.html import format_html
 from django.utils.safestring import mark_safe
@@ -8,7 +10,7 @@ from django.shortcuts import render, redirect
 from django import forms
 from django.core.exceptions import PermissionDenied
 from django.forms import ValidationError as FormValidationError
-from .models import KycChangeLog, KycUserInfo
+from .models import KycChangeLog, KycUserInfo, KycPolicy
 from .models import KycMobileOTP
 
 
@@ -49,7 +51,6 @@ class RejectCommentForm(forms.Form):
 @admin.register(KycSubmission)
 class KycSubmissionAdmin(admin.ModelAdmin):
     form = KycSubmissionAdminForm
-
     # --- list / search / filters ---
     list_display = (
         "user",
@@ -63,10 +64,17 @@ class KycSubmissionAdmin(admin.ModelAdmin):
         "review_started_at",
     )
     list_filter = ("is_lock", "submitted_at", "user__kyc_status")
-    search_fields = ("user__user_id", "user__first_name", "user__last_name", "citizenship_no")
+    search_fields = (
+        "user__user_id",
+        "user__first_name",
+        "user__last_name",
+        "citizenship_no",
+    )
+
 
     # --- readonly helpers (these are methods defined below) ---
     readonly_fields = (
+        "policy_info_block",
         "submitted_at",
         "locked_at",
         "locked_by",
@@ -84,6 +92,9 @@ class KycSubmissionAdmin(admin.ModelAdmin):
 
     # --- field layout ---
     fieldsets = (
+         ("Policy Information", {
+            "fields": ("policy_info_block",),
+        }),
         ("Personal Information", {
             "fields": (
                 ("salutation", "first_name", "middle_name", "last_name"),
@@ -200,7 +211,45 @@ class KycSubmissionAdmin(admin.ModelAdmin):
             form.base_fields["rejection_comment_input"].required = False
 
         return form
+    
 
+    def policy_info_block(self, obj):
+        if not obj or not obj.user:
+            return "-"
+
+        policies = (
+            KycPolicy.objects
+            .filter(user_id=obj.user.user_id)
+            .values_list("policy_number", flat=True)  # ✅ FIXED
+        )
+
+        if not policies:
+            return "No policies linked"
+
+        return ", ".join(policies)
+
+    policy_info_block.short_description = "Policies Linked to This User"
+
+
+    def get_search_results(self, request, queryset, search_term):
+        queryset, use_distinct = super().get_search_results(
+            request, queryset, search_term
+        )
+
+        if search_term:
+            # Find users having matching policy numbers
+            user_ids = (
+                KycPolicy.objects
+                .filter(policy_number__icontains=search_term)
+                .values_list("user_id", flat=True)
+            )
+
+            if user_ids:
+                queryset = queryset | self.model.objects.filter(
+                    user__user_id__in=user_ids
+                )
+
+        return queryset, use_distinct
 
 
     # -------------------------------------------------------------------
