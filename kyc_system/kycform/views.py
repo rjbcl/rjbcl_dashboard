@@ -988,9 +988,6 @@ def _save_files_and_submission(request, user, submission=None, actor=None):
 
     actor: optional dict or string to include in metadata (e.g., {"actor":"agent","id":...}) for audit logs.
     """
-    print("🧨 DELETE IDS (raw POST):", dict(request.POST))
-    print("🧨 DELETE IDS delete_doc_id[]:", request.POST.getlist("delete_doc_id[]"))
-    print("🧨 DELETE IDS remove_additional_doc_ids:", request.POST.getlist("remove_additional_doc_ids"))
 
     if not submission:
         submission, _ = KycSubmission.objects.get_or_create(user=user)
@@ -1341,7 +1338,16 @@ def process_kyc_submission(request):
         parsed = json.loads(raw_json) if raw_json else {}
     except Exception:
         parsed = {}
-    
+    # --------------------------------------------------
+    # 🔧 OCCUPATION-BASED NORMALIZATION (CRITICAL)
+    # --------------------------------------------------
+    occupation = parsed.get("occupation")
+
+    if occupation in ("Student", "Housewife"):
+        parsed["annual_income"] = None
+        parsed["income_mode"] = None
+        parsed["income_source"] = None
+
     # 🔧 CRITICAL FIX
     if not parsed.get("branch_name"):
         parsed["branch_name"] = request.POST.get("branch_name")
@@ -1487,6 +1493,15 @@ def process_kyc_submission(request):
 
         merged.update(urls)
         merged["additional_docs"] = additional_struct
+
+        # --------------------------------------------------
+        # 🔧 NORMALIZE annual_income (Housewife / Student)
+        # --------------------------------------------------
+        annual_income = merged.get("annual_income")
+
+        if annual_income in ("", None):
+            merged["annual_income"] = None   # or Decimal("0.00")
+            submission.annual_income = None
 
         submission.data_json = merged
         submission.version = (submission.version or 1) + 1
