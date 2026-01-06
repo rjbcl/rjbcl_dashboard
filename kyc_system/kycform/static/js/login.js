@@ -1,3 +1,15 @@
+// ---- Chrome BFCache + opacity fix ----
+window.addEventListener('pageshow', function (event) {
+  document.body.style.opacity = '1';
+  document.body.classList.remove('page-loading');
+
+  if (event.persisted) {
+    window.location.reload();
+  }
+});
+
+
+
 $(document).ready(function () {
 
   // ===========
@@ -131,13 +143,13 @@ $(document).ready(function () {
   // LOADING STATE MANAGEMENT
   // ===========================
   // Show loading state when navigating away
-  $('a').on('click', function (e) {
+  $('a').on('click', function () {
     const href = $(this).attr('href');
     if (href && !href.startsWith('#') && !$(this).hasClass('no-loading')) {
-      // Show a brief loading indicator
-      $('body').css('opacity', '0.7');
+      $('body').addClass('page-loading');
     }
   });
+
 
   // ===========================
   // ACCESSIBILITY IMPROVEMENTS
