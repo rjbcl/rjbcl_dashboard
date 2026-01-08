@@ -9,6 +9,9 @@ from django.utils import timezone
 from django.shortcuts import render, redirect
 from django import forms
 from django.core.exceptions import PermissionDenied
+from django.utils.html import format_html
+from django.utils.http import urlencode
+from django.urls import reverse
 from django.forms import ValidationError as FormValidationError
 from .models import KycChangeLog, KycUserInfo, KycPolicy
 from .models import KycMobileOTP
@@ -54,6 +57,8 @@ class KycSubmissionAdmin(admin.ModelAdmin):
     # --- list / search / filters ---
     list_display = (
         "user",
+        "policy_info_block",
+        "core_branch", 
         "kyc_status_colored",
         "is_lock",
         "locked_by",
@@ -75,6 +80,7 @@ class KycSubmissionAdmin(admin.ModelAdmin):
     # --- readonly helpers (these are methods defined below) ---
     readonly_fields = (
         "policy_info_block",
+        "core_branch_display",
         "submitted_at",
         "locked_at",
         "locked_by",
@@ -86,14 +92,14 @@ class KycSubmissionAdmin(admin.ModelAdmin):
         "citizenship_front_preview",
         "citizenship_back_preview",
         "signature_preview",
-        "passport_doc_preview",
+        "nid_preview",  
         "extra_docs_preview",
     )
 
     # --- field layout ---
     fieldsets = (
          ("Policy Information", {
-            "fields": ("policy_info_block",),
+            "fields": ("policy_info_block", "core_branch_display"),
         }),
         ("Personal Information", {
             "fields": (
@@ -161,7 +167,7 @@ class KycSubmissionAdmin(admin.ModelAdmin):
                 ("citizenship_front", "citizenship_front_preview"),
                 ("citizenship_back", "citizenship_back_preview"),
                 ("signature", "signature_preview"),
-                ("passport_doc", "passport_doc_preview"),
+                ("nid_preview",),
                 "extra_docs_preview",
             )
         }),
@@ -213,22 +219,58 @@ class KycSubmissionAdmin(admin.ModelAdmin):
         return form
     
 
+
     def policy_info_block(self, obj):
         if not obj or not obj.user:
             return "-"
 
-        policies = (
+        policies = list(
             KycPolicy.objects
             .filter(user_id=obj.user.user_id)
-            .values_list("policy_number", flat=True)  # ✅ FIXED
+            .values_list("policy_number", flat=True)
+            .order_by("policy_number")
         )
 
         if not policies:
-            return "No policies linked"
+            return "—"
 
-        return ", ".join(policies)
+        first = policies[0]
+        remaining = len(policies) - 1
 
-    policy_info_block.short_description = "Policies Linked to This User"
+        if remaining <= 0:
+            return first
+
+        # link to filtered policy list (admin-safe)
+        query = urlencode({"user_id": obj.user.user_id})
+        url = reverse("admin:kycform_kycpolicy_changelist") + "?" + query
+
+        return format_html(
+            "{} <a href='{}' target='_blank'>+{} more</a>",
+            first,
+            url,
+            remaining,
+        )
+
+    policy_info_block.short_description = "Policy No"
+
+    def core_branch_display(self, obj):
+        data = obj.data_json or {}
+        name = data.get("core_policy_branch_name")
+        code = data.get("core_policy_branch_code")
+
+        if not name and not code:
+            return "—"
+
+        return f"{name} ({code})" if code else name
+
+    core_branch_display.short_description = "Policy Branch "
+
+    def core_branch(self, obj):
+        if not obj or not obj.data_json:
+            return "—"
+        return obj.data_json.get("core_policy_branch_name", "—")
+
+    core_branch.short_description = "Branch"
 
 
     def get_search_results(self, request, queryset, search_term):
@@ -248,9 +290,17 @@ class KycSubmissionAdmin(admin.ModelAdmin):
                 queryset = queryset | self.model.objects.filter(
                     user__user_id__in=user_ids
                 )
+            
+            # JSON branch search
+            branch_matches = self.model.objects.filter(
+                data_json__core_policy_branch_name__icontains=search_term
+            )
+            if branch_matches.exists():
+                queryset = queryset | branch_matches
 
         return queryset, use_distinct
 
+    
 
     # -------------------------------------------------------------------
     # Soft lock
@@ -499,8 +549,34 @@ class KycSubmissionAdmin(admin.ModelAdmin):
     def signature_preview(self, obj):
         return file_thumbnail(obj.signature)
 
-    def passport_doc_preview(self, obj):
-        return file_thumbnail(obj.passport_doc)
+    def nid_preview(self, obj):
+        """
+        Preview CURRENT NID document from KycDocument
+        """
+        if not obj:
+            return "—"
+
+        doc = (
+            KycDocument.objects
+            .filter(
+                submission=obj,
+                doc_type="NID",
+                is_current=True
+            )
+            .order_by("-uploaded_at")
+            .first()
+        )
+
+        if not doc or not doc.file:
+            return "No NID uploaded"
+
+        return format_html(
+            '<a href="{}" target="_blank">View NID</a>',
+            doc.file.url
+        )
+
+    nid_preview.short_description = "NID Document"
+
 
     def extra_docs_preview(self, obj):
         """Show ALL ADDITIONAL docs stored in KycDocument."""
@@ -723,3 +799,20 @@ class KycMobileOTPAdmin(admin.ModelAdmin):
         "mobile",
     )
     ordering = ("-created_at",)
+
+@admin.register(KycPolicy)
+class KycPolicyAdmin(admin.ModelAdmin):
+    list_display = ("policy_number", "user_id", "created_at")
+    search_fields = ("policy_number", "user_id")
+    list_filter = ("created_at",)
+    ordering = ("-created_at",)
+
+    # Compliance-safe (recommended)
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False

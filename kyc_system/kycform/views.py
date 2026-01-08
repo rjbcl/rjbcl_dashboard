@@ -183,6 +183,38 @@ def download_url_to_filefield(instance, file_field_name, url):
     except Exception:
         return False
 
+def fetch_policy_snapshot(policy_no, dob):
+    
+    url = settings.API_BASE_URL + "/mssql/newpolicies"
+    params = {"policy_no": policy_no, "dob": dob}
+    headers = {"Authorization": f"Bearer {settings.API_TOKEN}"}
+
+    print("🏷️ CORE API CALL URL:", url)
+    print("📌 CORE API PARAMS:", params)
+    print("🔐 CORE API HEADERS:", headers)
+
+    try:
+        resp = requests.get(url, params=params, headers=headers, timeout=10)
+    except Exception as e:
+        print("❌ CORE API NETWORK ERROR:", str(e))
+        return {}
+    
+    print("📶 CORE API STATUS:", resp.status_code)
+    print("📦 CORE API RAW RESPONSE:", resp.text)
+
+    try:
+        data = resp.json()
+    except Exception as e:
+        print("❌ CORE API JSON PARSE FAILED:", str(e))
+        return {}
+
+    if not isinstance(data, list):
+        print("❌ CORE API RETURN NOT LIST:", type(data), data)
+        return {}
+    
+    return data[0] if data else {}
+
+
 
 # -----------------------------------------------------------------------------
 # AUTHENTICATION: Policyholder & Agent
@@ -1001,7 +1033,6 @@ def _save_files_and_submission(request, user, submission=None, actor=None):
         "citizenship-front": ("citizenship_front", "CITIZENSHIP_FRONT", "citizenship_front_url"),
         "citizenship-back": ("citizenship_back", "CITIZENSHIP_BACK", "citizenship_back_url"),
         "signature": ("signature", "SIGNATURE", "signature_url"),
-        "nid": ("nid_file", "NID", "nid_url"),
     }
 
     existing_additional_docs = KycDocument.objects.filter(
@@ -1172,6 +1203,47 @@ def _save_files_and_submission(request, user, submission=None, actor=None):
         }
         additional_struct = [d for d in additional_struct if d.get("field") != form_field]
         additional_struct.append(entry)
+    
+    # -------------------------
+    # NID DOCUMENT (SINGLE CURRENT PER USER)
+    # -------------------------
+    nid_file = request.FILES.get("nid")
+
+    if nid_file:
+        # 🔴 ARCHIVE OLD NID DOCUMENTS
+        KycDocument.objects.filter(
+            user=user,
+            doc_type="NID",
+            is_current=True
+        ).update(
+            is_current=False,
+            metadata=models.F("metadata")
+        )
+
+        # ✅ CREATE NEW NID
+        doc = _create_kyc_document(
+            nid_file,
+            "NID",
+            submission,
+            user,
+            original_filename=nid_file.name
+        )
+
+        # 🔗 ENSURE LINKED TO SUBMISSION
+        doc.submission = submission
+        doc.is_current = True
+        doc.save(update_fields=["submission", "is_current"])
+
+        urls["nid_url"] = getattr(doc.file, "url", None)
+
+        additional_struct.append({
+            "doc_id": doc.id,
+            "file_name": doc.file_name,
+            "file_url": urls["nid_url"],
+            "type": "NID",
+            "is_current": True,
+        })
+
 
     # -------------------------
     # Multi-file additional_docs (REPLACE-ALL LOGIC)
@@ -1481,7 +1553,7 @@ def process_kyc_submission(request):
 
         if "is_aml" in parsed:
             submission.is_aml = _norm_bool(parsed.get("is_aml"))
-
+        
         # -------------------------
         # FILE HANDLING (single place)
         # -------------------------
@@ -1493,6 +1565,32 @@ def process_kyc_submission(request):
 
         merged.update(urls)
         merged["additional_docs"] = additional_struct
+
+        # --------------------------------------------------
+        # FETCH POLICY SNAPSHOT FROM CORE (AUTHORITATIVE)
+        # --------------------------------------------------
+        policy_snapshot = {}
+
+        try:
+            print(">>> ABOUT TO CALL fetch_policy_snapshot")
+            policy_snapshot = fetch_policy_snapshot(
+                policy_no=policy.policy_number,
+                dob=user.dob.strftime("%Y-%m-%d")
+
+            )
+            print(">>> RETURNED FROM fetch_policy_snapshot:", policy_snapshot)
+        except Exception:
+            policy_snapshot = {}
+
+        # --------------------------------------------------
+        # POLICY SNAPSHOT (IMMUTABLE)
+        # --------------------------------------------------
+        merged["core_policy_number"] = policy.policy_number
+        merged["core_policy_branch_code"] = policy_snapshot.get("BranchCode")
+        merged["core_policy_branch_name"] = policy_snapshot.get("BranchName")
+
+        print("CORE SNAPSHOT:", policy_snapshot)
+
 
         # --------------------------------------------------
         # 🔧 NORMALIZE annual_income (Housewife / Student)

@@ -15,7 +15,9 @@ class PolicyOut(BaseModel):
     FirstName: str
     LastName: str
     DOB: str
-    Mobile: str
+    Mobile: str | None = None
+    BranchCode: int | None = None  
+    BranchName: str | None = None
 
 
 class RegistrationRequest(BaseModel):
@@ -40,9 +42,19 @@ def get_policies(request: Request):
         cursor = conn.cursor()
 
         cursor.execute("""
-            SELECT TOP 10 policyno, firstname, lastname, dob, mobile
-            FROM tblInsureddetail
-        """)
+                SELECT
+                    tid.policyno,
+                    tid.firstname,
+                    tid.lastname,
+                    tid.dob,
+                    tid.mobile,
+                    tid.branch AS branch_code,
+                    tb.BranchName AS branch_name
+                FROM tblInsureddetail tid
+                LEFT JOIN tblBranch tb
+                    ON tid.Branch = tb.Branch
+            """)
+
 
         rows = cursor.fetchall()
 
@@ -52,7 +64,9 @@ def get_policies(request: Request):
                 "FirstName": r.firstname,
                 "LastName": r.lastname,
                 "DOB": str(r.dob),
-                "Mobile": r.mobile
+                "Mobile": r.mobile,
+                "BranchCode": r.branch_code,
+                "BranchName": r.branch_name,
             }
             for r in rows
         ]
@@ -77,9 +91,18 @@ def get_policy_details(
         cursor = conn.cursor()
 
         cursor.execute("""
-            SELECT policyno, firstname, lastname, dob, mobile
-            FROM tblInsureddetail
-            WHERE policyno = ? AND dob = ?
+            SELECT
+                tid.policyno,
+                tid.firstname,
+                tid.lastname,
+                tid.dob,
+                tid.mobile,
+                tid.branch AS branch_code,
+                tb.BranchName AS branch_name
+            FROM tblInsureddetail tid
+            LEFT JOIN tblBranch tb
+                ON tid.Branch = tb.Branch
+            WHERE tid.policyno = ? AND tid.dob = ?
         """, (policy_no, dob))
 
         rows = cursor.fetchall()
@@ -100,7 +123,9 @@ def get_policy_details(
             FirstName=r.firstname,
             LastName=r.lastname,
             DOB=str(r.dob),
-            Mobile=r.mobile
+            Mobile=r.mobile,
+            BranchCode=r.branch_code,
+            BranchName=r.branch_name,
         )
         for r in rows
     ]
@@ -116,9 +141,19 @@ def validate_registration(data: RegistrationRequest):
         cursor = conn.cursor()
 
         cursor.execute("""
-            SELECT policyno, firstname, lastname, dob, mobile
-            FROM tblInsureddetail
-            WHERE policyno = ? AND dob = ?
+           SELECT
+                tid.policyno,
+                tid.firstname,
+                tid.lastname,
+                tid.dob,
+                tid.mobile,
+                tid.branch AS branch_code,
+                tb.BranchName AS branch_name
+            FROM tblInsureddetail tid
+            LEFT JOIN tblBranch tb
+                ON tid.Branch = tb.Branch
+            WHERE tid.policyno = ? AND tid.dob = ?
+
         """, (policy_no, dob))
 
         row = cursor.fetchone()
@@ -134,16 +169,18 @@ def validate_registration(data: RegistrationRequest):
         raise HTTPException(404, "Invalid Policy Number or DOB")
 
     return ValidationResponse(
-        allowed=True,
-        message="Valid for registration",
-        data=PolicyOut(
-            PolicyNo=row.policyno,
-            FirstName=row.firstname,
-            LastName=row.lastname,
-            DOB=str(row.dob),
-            Mobile=row.mobile
-        )
+    allowed=True,
+    message="Valid for registration",
+    data=PolicyOut(
+        PolicyNo=row.policyno,
+        FirstName=row.firstname,
+        LastName=row.lastname,
+        DOB=str(row.dob),
+        Mobile=row.mobile,
+        BranchCode=row.branch_code,
+        BranchName=row.branch_name,
     )
+)
 
 @router.get("/related-policies")
 def related_policies(
