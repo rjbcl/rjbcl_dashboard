@@ -59,6 +59,8 @@ class KycSubmissionAdmin(admin.ModelAdmin):
         "user",
         "policy_info_block",
         "core_branch", 
+        "core_client_no",
+        "core_new_client_id",
         "kyc_status_colored",
         "is_lock",
         "locked_by",
@@ -68,7 +70,7 @@ class KycSubmissionAdmin(admin.ModelAdmin):
         "currently_reviewed_by",
         "review_started_at",
     )
-    list_filter = ("is_lock", "submitted_at", "user__kyc_status")
+    list_filter = ("is_lock", "submitted_at", "user__kyc_status",)
     search_fields = (
         "user__user_id",
         "user__first_name",
@@ -273,32 +275,52 @@ class KycSubmissionAdmin(admin.ModelAdmin):
     core_branch.short_description = "Branch"
 
 
+    def core_client_no(self, obj):
+        if not obj or not obj.data_json:
+            return "—"
+        return obj.data_json.get("core_client_no", "—")
+    core_client_no.short_description = "Client No"
+
+    def core_new_client_id(self, obj):
+        if not obj or not obj.data_json:
+            return "—"
+        return obj.data_json.get("core_new_client_id", "—")
+    core_new_client_id.short_description = "New Client ID"
+
     def get_search_results(self, request, queryset, search_term):
         queryset, use_distinct = super().get_search_results(
             request, queryset, search_term
         )
 
         if search_term:
-            # Find users having matching policy numbers
+            # Find policy-related records
             user_ids = (
                 KycPolicy.objects
                 .filter(policy_number__icontains=search_term)
                 .values_list("user_id", flat=True)
             )
-
             if user_ids:
-                queryset = queryset | self.model.objects.filter(
+                queryset |= self.model.objects.filter(
                     user__user_id__in=user_ids
                 )
-            
-            # JSON branch search
-            branch_matches = self.model.objects.filter(
+
+            # Branch search
+            queryset |= self.model.objects.filter(
                 data_json__core_policy_branch_name__icontains=search_term
             )
-            if branch_matches.exists():
-                queryset = queryset | branch_matches
+
+            # ClientNo search — must match exact JSON key
+            queryset |= self.model.objects.filter(
+                data_json__core_client_no__icontains=search_term
+            )
+
+            # NewClientId search — must match exact JSON key
+            queryset |= self.model.objects.filter(
+                data_json__core_new_client_id__icontains=search_term
+            )
 
         return queryset, use_distinct
+
 
     
 
@@ -802,7 +824,14 @@ class KycMobileOTPAdmin(admin.ModelAdmin):
 
 @admin.register(KycPolicy)
 class KycPolicyAdmin(admin.ModelAdmin):
-    list_display = ("policy_number", "user_id", "created_at")
+    list_display = (
+        "policy_number",
+        "user_id",
+        "core_branch",
+        "core_client_no",
+        "core_new_client_id",
+        "created_at",
+    )
     search_fields = ("policy_number", "user_id")
     list_filter = ("created_at",)
     ordering = ("-created_at",)
@@ -816,3 +845,42 @@ class KycPolicyAdmin(admin.ModelAdmin):
 
     def has_delete_permission(self, request, obj=None):
         return False
+
+    # -------------------------
+    # DISPLAY HELPERS
+    # -------------------------
+
+    def _get_submission_data(self, obj):
+        """
+        Return the data_json from related submission, or {} if none.
+        """
+        try:
+            submission = KycSubmission.objects.filter(
+                user__user_id=obj.user_id
+            ).first()
+            return submission.data_json if submission and submission.data_json else {}
+        except Exception:
+            return {}
+
+    def core_branch(self, obj):
+        data = self._get_submission_data(obj)
+        name = data.get("core_policy_branch_name")
+        code = data.get("core_policy_branch_code")
+        if not name and not code:
+            return "—"
+        return f"{name} ({code})" if code else name
+    core_branch.short_description = "Branch"
+
+    def core_client_no(self, obj):
+        data = self._get_submission_data(obj)
+        # check both stored keys if needed
+        val = data.get("core_client_no") or data.get("ClientNo") or None
+        return val if val else "—"
+    core_client_no.short_description = "Client No"
+
+    def core_new_client_id(self, obj):
+        data = self._get_submission_data(obj)
+        # check both stored keys if needed
+        val = data.get("core_new_client_id") or data.get("NewClientId") or None
+        return val if val else "—"
+    core_new_client_id.short_description = "New Client ID"

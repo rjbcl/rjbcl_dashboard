@@ -1415,7 +1415,7 @@ def process_kyc_submission(request):
     # --------------------------------------------------
     occupation = parsed.get("occupation")
 
-    if occupation in ("Student", "Housewife"):
+    if occupation in ("Student", "House Wife"):
         parsed["annual_income"] = None
         parsed["income_mode"] = None
         parsed["income_source"] = None
@@ -1589,7 +1589,8 @@ def process_kyc_submission(request):
         merged["core_policy_branch_code"] = policy_snapshot.get("BranchCode")
         merged["core_policy_branch_name"] = policy_snapshot.get("BranchName")
 
-        print("CORE SNAPSHOT:", policy_snapshot)
+        merged["core_client_no"] = policy_snapshot.get("ClientNo")
+        merged["core_new_client_id"] = policy_snapshot.get("NewClientId")
 
 
         # --------------------------------------------------
