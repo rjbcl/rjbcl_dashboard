@@ -1,0 +1,94 @@
+{% extends "policy/base_policy.html" %}
+
+{% block title %}Renewal Pending | RJBCL{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <div>
+    <h4 class="mb-1">Renewal Pending</h4>
+    <nav class="small">
+      <a href="{% url 'kyc:dashboard' %}">Dashboard</a> /
+      <span class="text-muted">Renewal Pending</span>
+    </nav>
+  </div>
+  <a href="{% url 'kyc:dashboard' %}" class="btn btn-outline-secondary btn-sm">
+    <i class="bi bi-arrow-left"></i> Back
+  </a>
+</div>
+
+<div class="card mb-3">
+  <div class="card-body d-flex gap-2 align-items-center">
+    <input id="renewalPolicyFilter" type="text" class="form-control w-25" placeholder="Policy Number">
+    <button id="renewalFilterBtn" class="btn btn-outline-primary btn-sm">
+      <i class="bi bi-funnel"></i> Filter
+    </button>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-body">
+    <div class="small text-muted mb-3" id="renewal-total">Total: NPR 0 | Late Fee: NPR 0</div>
+    <table id="renewalTable" class="table table-striped table-bordered align-middle w-100">
+      <thead class="table-light">
+        <tr>
+          <th>Policy</th>
+          <th>Deadline</th>
+          <th>Premium</th>
+          <th>Late Fee</th>
+          <th>Total</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+  const table = $('#renewalTable').DataTable({
+    paging: true,
+    searching: false,
+    ordering: true,
+    info: true,
+    pageLength: 10
+  });
+
+  function loadRenewalPending(filterNo) {
+    fetch("/api/policy/renewal-pending/", { credentials: "same-origin" })
+      .then(function (res) { return res.json(); })
+      .then(function (data) {
+        const rows = data.rows || [];
+        const total = data.total || {};
+        document.getElementById("renewal-total").innerText =
+          "Total: NPR " + Number(total.total_amount || 0).toLocaleString() +
+          " | Late Fee: NPR " + Number(total.late_fee || 0).toLocaleString();
+
+        table.clear();
+        rows
+          .filter(function (r) {
+            if (!filterNo) return true;
+            return String(r.policy_no || "").toLowerCase().indexOf(filterNo.toLowerCase()) !== -1;
+          })
+          .forEach(function (r) {
+            table.row.add([
+              r.policy_no || "-",
+              r.renewal_deadline_date || "-",
+              "NPR " + Number(r.premium_amount || 0).toLocaleString(),
+              "NPR " + Number(r.late_fee || 0).toLocaleString(),
+              "NPR " + Number(r.total_amount || 0).toLocaleString()
+            ]);
+          });
+
+        table.draw();
+      });
+  }
+
+  loadRenewalPending("");
+  document.getElementById("renewalFilterBtn").addEventListener("click", function () {
+    loadRenewalPending(document.getElementById("renewalPolicyFilter").value || "");
+  });
+});
+</script>
+{% endblock %}

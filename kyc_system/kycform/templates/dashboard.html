@@ -2,181 +2,302 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<title>Dashboard | Rastriya Jeevan Bheema</title>
-
-<link href="{% static 'css/bootstrap.min.css' %}" rel="stylesheet">
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
-<style>
-body {
-    background-color: #f8f9fa;
-}
-.sidebar {
-    height: 100vh;
-    background: #023047;
-    color: white;
-    padding: 20px;
-}
-.sidebar h4 {
-    color: #ffb703;
-}
-.menu-item {
-    color: #fff;
-    padding: 10px 5px;
-    cursor: pointer;
-}
-.menu-item:hover {
-    background: rgba(255,255,255,0.1);
-    border-radius: 5px;
-}
-.card {
-    border-radius: 12px;
-}
-</style>
-
+  <meta charset="UTF-8">
+  <title>Policy Dashboard | RJBCL</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link href="{% static 'bootstrap/css/bootstrap.min.css' %}" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <style>
+    body { margin: 0; background: #eef3fb; font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto; }
+    .app-layout { display: flex; min-height: 100vh; }
+    .sidebar { width: 260px; background: #fff; padding: 20px; box-shadow: 2px 0 10px rgba(0,0,0,.05); }
+    .company-logo { max-width: 180px; margin-bottom: 20px; }
+    .sidebar a { display: flex; align-items: center; gap: 10px; padding: 10px 14px; margin-bottom: 6px; color: #495057; text-decoration: none; border-radius: 8px; font-weight: 500; }
+    .sidebar a.active { background: #4f9cff; color: #fff; }
+    .sidebar a:hover { background: #f1f5ff; }
+    .main-content { flex: 1; padding: 24px; }
+    .topbar { height: 60px; background: #fff; border-radius: 14px; padding: 0 18px; margin-bottom: 20px; display: flex; align-items: center; justify-content: space-between; box-shadow: 0 4px 14px rgba(0,0,0,.06); }
+    .data-card { border: 0; border-radius: 12px; box-shadow: 0 4px 14px rgba(0,0,0,.06); }
+    .section-title { font-weight: 700; margin-bottom: 12px; }
+    .card-title { font-size: .95rem; opacity: .9; }
+  </style>
 </head>
 <body>
+  <div class="app-layout">
+    <aside class="sidebar">
+      <div class="text-center mb-4">
+        <img src="{% static 'images/rjbclogo.png' %}" alt="RJBCL Logo" class="company-logo">
+      </div>
+      <nav class="nav flex-column">
+        <a class="active" href="{% url 'kyc:dashboard' %}">
+          <i class="bi bi-speedometer2"></i> Dashboard
+        </a>
+        <a href="{% url 'kyc:kyc_form' %}">
+          <i class="bi bi-file-earmark-text"></i> KYC Form
+        </a>
+        <a href="{% url 'kyc:policy_logout' %}" class="text-danger" onclick="return confirm('Logout?')">
+          <i class="bi bi-box-arrow-right"></i> Logout
+        </a>
+      </nav>
+    </aside>
 
-<div class="container-fluid">
-  <div class="row">
+    <main class="main-content">
+      <div class="topbar">
+        <div class="fw-semibold">Policy Holder Dashboard</div>
+        <div class="text-muted">Policy: {{ policy_no }}</div>
+      </div>
 
-    <!-- SIDEBAR -->
-    <div class="col-md-3 col-lg-2 sidebar">
-      <h4 class="mb-4">RJBC Dashboard</h4>
-
-      <div class="menu-item">Dashboard Overview</div>
-      <div class="menu-item">My Policies</div>
-      <div class="menu-item">Premium History</div>
-      <div class="menu-item">Payment Options</div>
-      <div class="menu-item">Profile</div>
-<a href="{% url 'kyc:policy_logout' %}" class="menu-item" style="text-decoration:none; color:white;">
-    Logout
-</a>
-    </div>
-
-    <!-- MAIN CONTENT -->
-    <div class="col-md-9 col-lg-10 p-4">
-
-      <h3 class="fw-bold mb-4">
-        Welcome! Policy: {{ policy_no }}
-      </h3>
+      <div class="row g-3 mb-3">
+        <div class="col-md-3">
+          <div class="card text-white data-card" style="background:linear-gradient(135deg,#34c38f,#2ab57d)">
+            <div class="card-body">
+              <div class="card-title">Total Policies</div>
+              <h3 class="mb-0" id="kpi-policies-total">0</h3>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="card text-white data-card" style="background:linear-gradient(135deg,#556ee6,#778beb)">
+            <div class="card-body">
+              <div class="card-title">Total Premium</div>
+              <h3 class="mb-0" id="kpi-premium-total">0</h3>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="card text-white data-card" style="background:linear-gradient(135deg,#f46a6a,#ff7979)">
+            <div class="card-body">
+              <div class="card-title">Due Policies</div>
+              <h3 class="mb-0" id="kpi-due-count">0</h3>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="card text-white data-card" style="background:linear-gradient(135deg,#3a86ff,#5aa9ff)">
+            <div class="card-body">
+              <div class="card-title">Paid Installments</div>
+              <h3 class="mb-0" id="summary-installments">0</h3>
+            </div>
+          </div>
+        </div>
+      </div>
 
       <div class="row g-4">
-
-        <!-- Total Policies -->
-        <div class="col-md-4">
-          <div class="card p-3 shadow-sm">
-            <h6>Total Policies</h6>
-            <h3 class="fw-bold" id="totalPolicies">3</h3>
+        <div class="col-lg-8">
+          <div class="card data-card">
+            <div class="card-body">
+              <h6 class="section-title">Premium Trend</h6>
+              <div style="height:250px;"><canvas id="premiumChart"></canvas></div>
+            </div>
           </div>
         </div>
-
-        <!-- Total Premium Paid -->
-        <div class="col-md-4">
-          <div class="card p-3 shadow-sm">
-            <h6>Total Premium Paid</h6>
-            <h3 class="fw-bold" id="totalPremium">Rs. 85,500</h3>
-          </div>
-        </div>
-
-        <!-- Pending Premium -->
-        <div class="col-md-4">
-          <div class="card p-3 shadow-sm">
-            <h6>Pending Premium</h6>
-            <h3 class="fw-bold text-danger">Rs. 5,700</h3>
+        <div class="col-lg-4">
+          <div class="card data-card">
+            <div class="card-body">
+              <h6 class="section-title">Profile</h6>
+              <div id="profile-box" class="small text-muted">Loading...</div>
+            </div>
           </div>
         </div>
       </div>
 
-      <hr class="my-4">
-
-      <!-- PREMIUM GRAPH -->
-<div class="card p-4 shadow-sm mb-4">
-  <h5 class="mb-3 fw-bold">Premium Payment Graph</h5>
-  <canvas id="premiumGraph" height="120"></canvas>
-</div>
-
-
-      <!-- PREMIUM HISTORY TABLE -->
-      <div class="card p-4 shadow-sm">
-        <h5 class="mb-3 fw-bold">Premium Payment History</h5>
-
-        <table class="table table-bordered">
-          <thead class="table-light">
-            <tr>
-              <th>SN</th>
-              <th>Date (AD)</th>
-              <th>Date (BS)</th>
-              <th>Amount</th>
-              <th>Mode</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td>1</td>
-              <td>2024-01-10</td>
-              <td>2080-09-25</td>
-              <td>Rs. 28,500</td>
-              <td>Online</td>
-            </tr>
-            <tr>
-              <td>2</td>
-              <td>2023-09-10</td>
-              <td>2080-05-25</td>
-              <td>Rs. 28,500</td>
-              <td>Bank</td>
-            </tr>
-            <tr>
-              <td>3</td>
-              <td>2023-05-10</td>
-              <td>2079-12-27</td>
-              <td>Rs. 28,500</td>
-              <td>Online</td>
-            </tr>
-          </tbody>
-        </table>
+      <div class="card data-card mt-4">
+        <div class="card-body">
+          <h6 class="section-title">My Policies</h6>
+          <div class="table-responsive">
+            <table class="table table-striped table-sm align-middle mb-0">
+              <thead>
+                <tr>
+                  <th>Policy No</th>
+                  <th>Plan</th>
+                  <th>Term</th>
+                  <th>Premium</th>
+                  <th>Frequency</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody id="policies-body">
+                <tr><td colspan="6" class="text-muted">Loading...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
       </div>
 
-    </div>
+      <div class="row g-4 mt-1">
+        <div class="col-lg-6">
+          <div class="card data-card h-100">
+            <div class="card-body">
+              <h6 class="section-title">Payment History</h6>
+              <div class="small mb-2 text-muted" id="payment-total">Paid: NPR 0 | Premium: NPR 0</div>
+              <div class="table-responsive">
+                <table class="table table-striped table-sm align-middle mb-0">
+                  <thead>
+                    <tr>
+                      <th>Policy</th>
+                      <th>Paid Date</th>
+                      <th>Paid Amt</th>
+                      <th>Type</th>
+                    </tr>
+                  </thead>
+                  <tbody id="payments-body">
+                    <tr><td colspan="4" class="text-muted">Loading...</td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-lg-6">
+          <div class="card data-card h-100">
+            <div class="card-body">
+              <h6 class="section-title">Renewal Pending</h6>
+              <div class="small mb-2 text-muted" id="renewal-total">Total: NPR 0 | Late Fee: NPR 0</div>
+              <div class="table-responsive">
+                <table class="table table-striped table-sm align-middle mb-0">
+                  <thead>
+                    <tr>
+                      <th>Policy</th>
+                      <th>Deadline</th>
+                      <th>Premium</th>
+                      <th>Total</th>
+                    </tr>
+                  </thead>
+                  <tbody id="renewal-body">
+                    <tr><td colspan="4" class="text-muted">Loading...</td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
   </div>
-</div>
 
-<script>
-const graph = document.getElementById('premiumGraph').getContext('2d');
+  <script>
+    function npr(v) { return "NPR " + Number(v || 0).toLocaleString(); }
+    function safe(v, d) { return (v === null || v === undefined || v === "") ? d : v; }
 
-new Chart(graph, {
-    type: 'line',   // LINE GRAPH
-    data: {
-        labels: ['2079', '2080', '2081'],
-        datasets: [{
-            label: 'Premium Paid (Rs.)',
-            data: [28500, 57000, 85500],
-            borderWidth: 3,
-            tension: 0.4,        // smooth curve
-            fill: false,
-            pointRadius: 5,
-            pointBackgroundColor: '#023047',
-            borderColor: '#023047'   // Graph color
-        }]
-    },
-    options: {
-        responsive: true,
-        scales: {
-            y: {
-                beginAtZero: true,
-                grid: { color: '#e0e0e0' }
-            },
-            x: {
-                grid: { color: '#f0f0f0' }
-            }
+    function renderSummary(data) {
+      document.getElementById("kpi-policies-total").innerText = safe(data.kpi?.policies?.total, 0);
+      document.getElementById("kpi-premium-total").innerText = npr(data.kpi?.premium?.total);
+      document.getElementById("kpi-due-count").innerText = safe(data.kpi?.due?.count, 0);
+      document.getElementById("summary-installments").innerText = safe(data.summary?.paid_installments, 0);
+
+      const chartEl = document.getElementById("premiumChart");
+      new Chart(chartEl, {
+        type: "line",
+        data: {
+          labels: data.chart?.labels || [],
+          datasets: [{
+            label: "Premium (NPR)",
+            data: data.chart?.premium || [],
+            borderColor: "#4da3ff",
+            backgroundColor: "rgba(77,163,255,0.15)",
+            borderWidth: 2,
+            tension: 0.35,
+            fill: true
+          }]
         },
-        plugins: {
-            legend: { display: true }
-        }
+        options: { responsive: true, maintainAspectRatio: false }
+      });
     }
-});
-</script>
 
+    function renderProfile(data) {
+      const p = data.policy_holder || {};
+      document.getElementById("profile-box").innerHTML =
+        "<div><strong>Name:</strong> " + safe(p.name, "-") + "</div>" +
+        "<div><strong>Client ID:</strong> " + safe(p.client_id, "-") + "</div>" +
+        "<div><strong>DOB:</strong> " + safe(p.dob, "-") + "</div>" +
+        "<div><strong>Mobile:</strong> " + safe(p.mobile, "-") + "</div>" +
+        "<div><strong>Email:</strong> " + safe(p.email, "-") + "</div>" +
+        "<div><strong>KYC:</strong> " + safe(p.kyc_status, "-") + "</div>" +
+        "<div><strong>Bank:</strong> " + safe(p.bank_name, "-") + " (" + safe(p.bank_account, "-") + ")</div>";
+    }
+
+    function renderPolicies(data) {
+      const rows = data.rows || [];
+      const el = document.getElementById("policies-body");
+      if (!rows.length) {
+        el.innerHTML = '<tr><td colspan="6" class="text-muted">No policies found.</td></tr>';
+        return;
+      }
+      el.innerHTML = rows.map(function(r) {
+        return "<tr>" +
+          "<td>" + safe(r.policy_number, "-") + "</td>" +
+          "<td>" + safe(r.plan_name, "-") + "</td>" +
+          "<td>" + safe(r.term, "-") + "</td>" +
+          "<td>" + npr(r.policy_premium) + "</td>" +
+          "<td>" + safe(r.policy_premium_frequency, "-") + "</td>" +
+          "<td>" + safe(r.current_status, "-") + "</td>" +
+        "</tr>";
+      }).join("");
+    }
+
+    function renderPayments(data) {
+      const rows = data.rows || [];
+      const total = data.total || {};
+      document.getElementById("payment-total").innerText =
+        "Paid: " + npr(total.paid_amount) + " | Premium: " + npr(total.premium);
+
+      const el = document.getElementById("payments-body");
+      if (!rows.length) {
+        el.innerHTML = '<tr><td colspan="4" class="text-muted">No payment history found.</td></tr>';
+        return;
+      }
+      el.innerHTML = rows.slice(0, 15).map(function(r) {
+        return "<tr>" +
+          "<td>" + safe(r.policy_no, "-") + "</td>" +
+          "<td>" + safe(r.premium_paid_date, "-") + "</td>" +
+          "<td>" + npr(r.paid_amount) + "</td>" +
+          "<td>" + safe(r.installment_type, "-") + "</td>" +
+        "</tr>";
+      }).join("");
+    }
+
+    function renderRenewal(data) {
+      const rows = data.rows || [];
+      const total = data.total || {};
+      document.getElementById("renewal-total").innerText =
+        "Total: " + npr(total.total_amount) + " | Late Fee: " + npr(total.late_fee);
+
+      const el = document.getElementById("renewal-body");
+      if (!rows.length) {
+        el.innerHTML = '<tr><td colspan="4" class="text-muted">No pending renewal found.</td></tr>';
+        return;
+      }
+      el.innerHTML = rows.slice(0, 15).map(function(r) {
+        return "<tr>" +
+          "<td>" + safe(r.policy_no, "-") + "</td>" +
+          "<td>" + safe(r.renewal_deadline_date, "-") + "</td>" +
+          "<td>" + npr(r.premium_amount) + "</td>" +
+          "<td>" + npr(r.total_amount) + "</td>" +
+        "</tr>";
+      }).join("");
+    }
+
+    document.addEventListener("DOMContentLoaded", function() {
+      Promise.all([
+        fetch("/api/policy/summary/", { credentials: "same-origin" }).then(r => r.json()),
+        fetch("/api/policy/profile/", { credentials: "same-origin" }).then(r => r.json()),
+        fetch("/api/policy/policies/", { credentials: "same-origin" }).then(r => r.json()),
+        fetch("/api/policy/payment-history/", { credentials: "same-origin" }).then(r => r.json()),
+        fetch("/api/policy/renewal-pending/", { credentials: "same-origin" }).then(r => r.json())
+      ])
+      .then(function(responses) {
+        renderSummary(responses[0]);
+        renderProfile(responses[1]);
+        renderPolicies(responses[2]);
+        renderPayments(responses[3]);
+        renderRenewal(responses[4]);
+      })
+      .catch(function() {
+        document.getElementById("profile-box").innerHTML = '<span class="text-danger">Unable to load dashboard data.</span>';
+      });
+    });
+  </script>
 </body>
 </html>

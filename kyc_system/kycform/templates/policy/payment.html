@@ -1,0 +1,40 @@
+{% extends "policy/base_policy.html" %}
+
+{% block title %}Payment | RJBCL{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <div>
+    <h4 class="mb-1">Premium Payment</h4>
+    <nav class="small">
+      <a href="{% url 'kyc:dashboard' %}">Dashboard</a> /
+      <span class="text-muted">Payment</span>
+    </nav>
+  </div>
+  <a href="{% url 'kyc:dashboard' %}" class="btn btn-outline-secondary btn-sm">
+    <i class="bi bi-arrow-left"></i> Back
+  </a>
+</div>
+
+<div class="card">
+  <div class="card-body p-4 p-md-5">
+    <div class="row align-items-center g-4">
+      <div class="col-md-8">
+        <h5 class="fw-semibold mb-2">Pay Your Premium Online</h5>
+        <p class="text-muted mb-0">
+          Continue to the official premium payment portal in a new tab.
+        </p>
+      </div>
+      <div class="col-md-4 text-md-end">
+        <a href="https://rbs.gov.np/premium-payment"
+           target="_blank"
+           rel="noopener noreferrer"
+           class="btn btn-primary btn-lg">
+          <i class="bi bi-box-arrow-up-right me-2"></i>
+          Go to Payment Portal
+        </a>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

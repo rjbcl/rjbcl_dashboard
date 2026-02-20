@@ -1,0 +1,77 @@
+{% extends "policy/base_policy.html" %}
+
+{% block title %}Claim Process | RJBCL{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <div>
+    <h4 class="mb-1">Claim Process</h4>
+    <nav class="small">
+      <a href="{% url 'kyc:dashboard' %}">Home</a> /
+      <span class="text-muted">Claim Process</span>
+    </nav>
+  </div>
+  <a href="{% url 'kyc:dashboard' %}" class="btn btn-outline-secondary btn-sm">
+    <i class="bi bi-arrow-left"></i> Back
+  </a>
+</div>
+
+<div class="card">
+  <div class="card-body p-4">
+    <div class="row g-4">
+
+      <div class="col-lg-4">
+        <div class="card shadow-sm text-center p-4 h-100">
+          <div class="mb-3">
+            <div class="rounded-circle bg-primary text-white d-inline-flex align-items-center justify-content-center"
+                 style="width:88px;height:88px;font-size:2rem;">
+              <i class="bi bi-file-earmark-medical"></i>
+            </div>
+          </div>
+          <h5 class="fw-semibold mb-2">Claim Process</h5>
+          <p class="text-muted small mb-4">
+            Start your claim in just a few steps — we're here to help you every step of the way.
+          </p>
+          <div class="text-start small">
+            <p class="mb-2"><strong>Step 1:</strong> Required documents ready गर्नुहोस्।</p>
+            <p class="mb-2"><strong>Step 2:</strong> Claim Form र supporting documents बुझाउनुहोस्।</p>
+            <p class="mb-0"><strong>Step 3:</strong> Verification पछि claim settlement हुन्छ।</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-lg-8">
+        <div class="card shadow-sm p-4 h-100">
+          <h6 class="fw-semibold mb-3 border-bottom pb-2">मृत्यु दाबी भुक्तानी लिँदा चाहिने कागजातहरू</h6>
+          <ul class="mb-4">
+            <li>(क) बीमितको परिचय पत्र (स्थानिय निकायबाट प्रमाणित)</li>
+            <li>(ख) मृत्युको जानकारी खुल्ने निवेदनपत्र</li>
+            <li>(ग) दावी विवरण फारम (Claim Form)</li>
+            <li>(घ) मृत्युदर्ता प्रमाणपत्र</li>
+            <li>(ङ) नाता प्रमाणित प्रमाणपत्र</li>
+            <li>(च) सक्कल बीमालेख</li>
+            <li>(छ) बीमितको नागरिकता प्रमाणपत्रको प्रतिलिपि</li>
+            <li>(ज) दावीकर्ताको नागरिकता प्रमाणपत्रको प्रतिलिपि</li>
+            <li>(झ) आवश्यक भएमा अन्य कागजातहरू</li>
+            <li>(ञ) दावीकर्ताको बैंकको नाम र खाता नम्बर खुल्ने कागजात</li>
+          </ul>
+
+          <h6 class="fw-semibold mb-3 border-bottom pb-2">थप कागजातहरू</h6>
+          <p class="fw-semibold mb-2">१. बिरामीको कारण मृत्यु</p>
+          <ul class="mb-3">
+            <li>(क) माथिका सबै कागजातहरू</li>
+            <li>(ख) अस्पतालको अभिलेख / औषधोपचार विवरण / Medical Attendant’s Report</li>
+          </ul>
+
+          <p class="fw-semibold mb-2">२. दुर्घटनाको कारण मृत्यु</p>
+          <ul class="mb-0">
+            <li>(क) माथिका सबै कागजातहरू</li>
+            <li>(ख) शव परिक्षण प्रतिवेदन वा प्रहरी प्रतिवेदन (घटनास्थल विवरण सहित)</li>
+          </ul>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+{% endblock %}

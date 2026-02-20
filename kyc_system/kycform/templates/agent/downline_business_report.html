@@ -1,0 +1,140 @@
+{% extends "agent/base_agent.html" %}
+{% load static %}
+
+{% block title %}Downline Business Report | RJBCL{% endblock %}
+
+{% block content %}
+
+<!-- PAGE HEADER -->
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+        <h4 class="mb-1">Downline Business Report</h4>
+        <nav class="small">
+            <a href="{% url 'kyc:agent_dashboard' %}">Dashboard</a> /
+            <span class="text-muted">Downline Business Report</span>
+        </nav>
+    </div>
+
+    <a href="{% url 'kyc:agent_dashboard' %}" class="btn btn-outline-secondary btn-sm">
+        <i class="bi bi-arrow-left"></i> Back
+    </a>
+</div>
+
+<!-- FILTER BAR -->
+<div class="card mb-3">
+    <div class="card-body d-flex gap-2 align-items-center">
+        <input type="text" class="form-control w-25" placeholder="Agent Code">
+        <button class="btn btn-outline-primary btn-sm">
+            <i class="bi bi-funnel"></i> Filter
+        </button>
+    </div>
+</div>
+
+<!-- TABLE -->
+<div class="card shadow-sm">
+    <div class="card-body">
+        <table id="downlineBusinessTable" class="table table-striped table-bordered w-100">
+
+            <thead class="table-light">
+                <tr>
+                    <th>SN</th>
+                    <th>Agent Name</th>
+                    <th>Policy</th>
+                    <th>Earned Premium</th>
+                    <th>Credit Premium</th>
+                    <th>Premium Not Included</th>
+                    <th>Business Type</th>
+                </tr>
+            </thead>
+
+            <tbody>
+                <!-- Leave empty for DataTables -->
+            </tbody>
+
+            <tfoot>
+                <tr class="fw-semibold">
+                    <th>TOTAL</th>
+                    <th></th>
+                    <th>0</th>
+                    <th>0</th>
+                    <th>0</th>
+                    <th>0</th>
+                    <th></th>
+                </tr>
+            </tfoot>
+
+        </table>
+
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.8/js/jquery.dataTables.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.8/js/dataTables.bootstrap5.min.js"></script>
+
+<script>
+$(function () {
+
+  const table = $('#downlineBusinessTable').DataTable({
+    paging: true,
+    searching: true,
+    ordering: true
+  });
+
+  function loadDownlineBusiness(agentCode = "") {
+    table.clear();
+
+    fetch(`/api/agent/downline-business-report/?agent_code=${agentCode}`, {
+      credentials: "same-origin"
+    })
+    .then(res => res.json())
+    .then(data => {
+
+      let tPolicy = 0, tEarned = 0, tCredit = 0, tNot = 0;
+
+      data.rows.forEach(r => {
+        tPolicy += r.policy;
+        tEarned += r.earned;
+        tCredit += r.credit;
+        tNot += r.not_included;
+
+        table.row.add([
+          r.sn,
+          r.agent_name,
+          r.policy,
+          r.earned.toLocaleString(),
+          r.credit.toLocaleString(),
+          r.not_included.toLocaleString(),
+          `<span class="badge rounded-pill text-primary border border-primary">
+            ${r.business_type}
+           </span>`
+        ]);
+      });
+
+      table.draw();
+
+      // FOOTER TOTALS
+      const tds = $('#downlineBusinessTable tfoot th');
+      tds.eq(2).text(tPolicy);
+      tds.eq(3).text(tEarned.toLocaleString());
+      tds.eq(4).text(tCredit.toLocaleString());
+      tds.eq(5).text(tNot.toLocaleString());
+    });
+  }
+
+  // initial load
+  loadDownlineBusiness();
+
+  // filter
+  $('.btn-outline-primary').on('click', function () {
+    const agentCode = $('input[placeholder="Agent Code"]').val();
+    loadDownlineBusiness(agentCode);
+  });
+
+});
+</script>
+
+{% endblock %}

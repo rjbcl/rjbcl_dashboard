@@ -38,6 +38,7 @@ from django.utils import timezone
 from django.core.exceptions import PermissionDenied
 from django.contrib import messages
 from django.contrib.auth.hashers import check_password, make_password
+from kycform.auth.agent_jwt import generate_agent_access_token
 from django.http import FileResponse
 from django.shortcuts import get_object_or_404
 from django.views.decorators.cache import never_cache
@@ -47,9 +48,9 @@ from django.db import transaction
 from django.views.decorators.http import require_POST
 from .models import KycMobileOTP
 from .utils import hash_otp
-
-
-
+from rest_framework_simplejwt.tokens import RefreshToken
+from kycform.services.jwt_service import generate_agent_access_token
+from kycform.services.core_agent import verify_agent_from_core
 from kycform.services.policy_identity import resolve_policy_identity
 from django.conf import settings
 
@@ -65,9 +66,9 @@ from .models import (
 from .storage_utils import save_uploaded_file_to_storage 
 
 
-FASTAPI_BASE = "http://127.0.0.1:9000"   # your FastAPI server
-API_USER = "rjbcl_api"
-API_PASS = "your_api_password"   # stored in .env ideally
+# FASTAPI_BASE = "http://127.0.0.1:9000"   # your FastAPI server
+# API_USER = "rjbcl_api"
+# API_PASS = "your_api_password"   # stored in .env ideally
 
 IGNORED_USER_AUDIT_FIELDS = {
     "submitted_at",
@@ -185,31 +186,24 @@ def download_url_to_filefield(instance, file_field_name, url):
 
 def fetch_policy_snapshot(policy_no, dob):
     
-    url = settings.API_BASE_URL + "/mssql/newpolicies"
+    url = settings.KYC_API_BASE_URL + "/mssql/newpolicies"
     params = {"policy_no": policy_no, "dob": dob}
-    headers = {"Authorization": f"Bearer {settings.API_TOKEN}"}
-
-    print("🏷️ CORE API CALL URL:", url)
-    print("📌 CORE API PARAMS:", params)
-    print("🔐 CORE API HEADERS:", headers)
+    headers = {"Authorization": f"Bearer {settings.KYC_API_TOKEN}"}
 
     try:
         resp = requests.get(url, params=params, headers=headers, timeout=10)
-    except Exception as e:
-        print("❌ CORE API NETWORK ERROR:", str(e))
+    except Exception:
+        logger.exception("Core policy snapshot request failed")
         return {}
-    
-    print("📶 CORE API STATUS:", resp.status_code)
-    print("📦 CORE API RAW RESPONSE:", resp.text)
 
     try:
         data = resp.json()
-    except Exception as e:
-        print("❌ CORE API JSON PARSE FAILED:", str(e))
+    except Exception:
+        logger.warning("Core policy snapshot response was not valid JSON")
         return {}
 
     if not isinstance(data, list):
-        print("❌ CORE API RETURN NOT LIST:", type(data), data)
+        logger.warning("Core policy snapshot response type mismatch")
         return {}
     
     return data[0] if data else {}
@@ -278,66 +272,280 @@ def agent_login(request):
     agent_code = request.POST.get("agent_code")
     password = request.POST.get("password")
 
-    if missing_fields(agent_code, password):
+    if not agent_code or not password:
         messages.error(request, "Agent code and password are required.")
-        return redirect_login_tab("agent")
+        return redirect("kyc:agent_login")
 
     try:
         agent = KycAgentInfo.objects.get(agent_code__iexact=agent_code)
-    except Exception:
+    except KycAgentInfo.DoesNotExist:
         messages.error(request, "Agent code not found!")
-        return redirect_login_tab("agent")
+        return redirect("kyc:agent_login")
 
-    if password != (agent.password or ""):
+    if not check_password(password, agent.password):
         messages.error(request, "Incorrect password!")
-        return redirect_login_tab("agent")
+        return redirect("kyc:agent_login")
 
-    return redirect(f"/agent-dashboard/?agent_code={agent_code}")
+    # 🔐 RESET SESSION (IMPORTANT)
+    request.session.flush()
+
+    request.session["agent_authenticated"] = True
+    request.session["agent_code"] = agent.agent_code
+    request.session["agent_name"] = f"{agent.first_name} {agent.last_name}"
+
+    # ✅ REAL JWT (SimpleJWT)
+    request.session["agent_access_token"] = generate_agent_access_token(agent.agent_code)
+
+    request.session.set_expiry(60 * 60 * 8)  # 8 hours
+
+    return redirect("kyc:agent_dashboard")
 
 
 # -----------------------------------------------------------------------------
 # Simple render views
 # -----------------------------------------------------------------------------
-def dashboard_view(request):
-
+def _policy_portal_guard(request):
     if request.session.get("kyc_access_mode") == "DIRECT_KYC":
-        return HttpResponse("Unauthorized dashboard access", status=403)
+        return None, None, HttpResponse("Unauthorized dashboard access", status=403)
 
-    # ✅ Only policy-login users allowed
     if not request.session.get("authenticated"):
-        return redirect("/auth/policy/?tab=policy")
+        return None, None, redirect("/auth/policy/?tab=policy")
 
     policy_no = request.session.get("policy_no")
     if not policy_no:
-        return redirect("/auth/policy/?tab=policy")
+        return None, None, redirect("/auth/policy/?tab=policy")
 
     try:
         policy = KycPolicy.objects.get(policy_number=policy_no)
         user = KycUserInfo.objects.get(user_id=policy.user_id)
     except Exception:
-        return redirect("/auth/policy/?tab=policy")
+        return None, None, redirect("/auth/policy/?tab=policy")
 
-    # 🔒 KYC submitted → dashboard is final
-    if user.kyc_status in ["PENDING", "VERIFIED"]:
-        return render(request, "dashboard.html", {
-            "policy_no": policy_no,
-            "user": user,
-        })
-    # Editable states → form
-    return redirect("/kyc-form/")
+    if user.kyc_status not in ["PENDING", "VERIFIED"]:
+        return None, None, redirect("/kyc-form/")
 
-    # ✅ PENDING / VERIFIED → dashboard
-    return render(request, "dashboard.html", {
+    return policy_no, user, None
+
+
+def dashboard_view(request):
+    policy_no, user, error_response = _policy_portal_guard(request)
+    if error_response:
+        return error_response
+
+    return render(request, "policy/dashboard.html", {
         "policy_no": policy_no,
         "user": user,
+        "page_title": "Dashboard",
+    })
+
+
+def policy_profile_view(request):
+    policy_no, user, error_response = _policy_portal_guard(request)
+    if error_response:
+        return error_response
+
+    return render(request, "policy/profile.html", {
+        "policy_no": policy_no,
+        "user": user,
+        "page_title": "My Profile",
+    })
+
+
+def policy_policies_view(request):
+    policy_no, user, error_response = _policy_portal_guard(request)
+    if error_response:
+        return error_response
+
+    return render(request, "policy/policies.html", {
+        "policy_no": policy_no,
+        "user": user,
+        "page_title": "My Policies",
+    })
+
+
+def policy_payment_history_view(request):
+    policy_no, user, error_response = _policy_portal_guard(request)
+    if error_response:
+        return error_response
+
+    return render(request, "policy/payment_history.html", {
+        "policy_no": policy_no,
+        "user": user,
+        "page_title": "Payment History",
+    })
+
+
+def policy_renewal_pending_view(request):
+    policy_no, user, error_response = _policy_portal_guard(request)
+    if error_response:
+        return error_response
+
+    return render(request, "policy/renewal_pending.html", {
+        "policy_no": policy_no,
+        "user": user,
+        "page_title": "Renewal Pending",
+    })
+
+
+def policy_payment_view(request):
+    policy_no, user, error_response = _policy_portal_guard(request)
+    if error_response:
+        return error_response
+
+    return render(request, "policy/payment.html", {
+        "policy_no": policy_no,
+        "user": user,
+        "page_title": "Payment",
+    })
+
+
+def policy_loan_repayment_view(request):
+    policy_no, user, error_response = _policy_portal_guard(request)
+    if error_response:
+        return error_response
+
+    return render(request, "policy/loan_repayment.html", {
+        "policy_no": policy_no,
+        "user": user,
+        "page_title": "Policy Loan Repayment",
+    })
+
+
+def policy_foreign_policy_view(request):
+    policy_no, user, error_response = _policy_portal_guard(request)
+    if error_response:
+        return error_response
+
+    return render(request, "policy/foreign_policy.html", {
+        "policy_no": policy_no,
+        "user": user,
+        "page_title": "Foreign Policy",
+    })
+
+
+def policy_claim_process_view(request):
+    policy_no, user, error_response = _policy_portal_guard(request)
+    if error_response:
+        return error_response
+
+    return render(request, "policy/claim_process.html", {
+        "policy_no": policy_no,
+        "user": user,
+        "page_title": "Claim Process",
+    })
+
+
+def policy_rastra_sewak_view(request):
+    policy_no, user, error_response = _policy_portal_guard(request)
+    if error_response:
+        return error_response
+
+    return render(request, "policy/rastra_sewak.html", {
+        "policy_no": policy_no,
+        "user": user,
+        "page_title": "Rastra Sewak",
     })
 
 
 def agent_dashboard_view(request):
-    return render(request, "dashboard.html", {
-        "agent_code": request.GET.get("agent_code")
+    """
+    Agent dashboard (UI phase)
+    Auth logic will be tightened later
+    """
+
+    # 🔒 Future: agent authentication check
+    # if not request.session.get("agent_authenticated"):
+    #     return redirect("/agent/login/")
+
+    return render(request, "agent/dashboard.html", {
+        "kpi": {
+            "proposals": {"total": 0, "new": 0, "renewal": 0},
+            "policies": {"total": 0, "new": 0, "renewal": 0},
+            "claims": {"total": 0},
+        },
+        "summary": {
+            "policies": 0,
+            "premium": "NPR 0",
+            "commission": "NPR 0",
+        },
+        "rewards": {
+            "progress": 0,   # IMPORTANT: normalized integer
+            "status": "Not Achieved",
+        },
+        "page_title": "Dashboard",
     })
 
+def business_report(request):
+    if not request.session.get("agent_authenticated"):
+        return redirect("kyc:agent_login")
+
+    return render(request, "agent/business_report.html", {
+        "page_title": "Business Report",
+    })
+
+def agent_profile_view(request):
+    if not request.session.get("agent_authenticated"):
+        return redirect("kyc:agent_login")
+
+    return render(request, "agent/agent_profile.html", {
+        "page_title": "Agent Profile",
+    })
+
+def due_report(request):
+    if not request.session.get("agent_authenticated"):
+        return redirect("kyc:agent_login")
+
+    return render(request, "agent/due_report.html", {
+        "page_title": "Due Report",
+    })
+
+def commission_report(request):
+    if not request.session.get("agent_authenticated"):
+        return redirect("kyc:agent_login")
+
+    return render(request, "agent/commission_report.html", {
+        "page_title": "Commission Report",
+    })
+
+def agent_hierarchy(request):
+    if not request.session.get("agent_authenticated"):
+        return redirect("kyc:agent_login")
+
+    return render(request, "agent/agent_hierarchy.html", {
+        "page_title": "Agent Hierarchy",
+    })
+
+
+def downline_business_report(request):
+    if not request.session.get("agent_authenticated"):
+        return redirect("kyc:agent_login")
+
+    return render(request, "agent/downline_business_report.html", {
+        "page_title": "Downline Business Report",
+    })
+
+def agent_logout(request):
+    """
+    Clear agent session and logout safely
+    """
+    keys_to_clear = [
+        "agent_code",
+        "agent_name",
+        "agent_access_token"
+    ]
+
+    for key in keys_to_clear:
+        request.session.pop(key, None)
+
+    request.session.flush()  # 🔒 clears entire session safely
+
+    messages.success(request, "You have been logged out successfully.")
+    return redirect("kyc:agent_login")    
+
+def contact_us_view(request):
+    if not request.session.get("agent_code"):
+        return redirect("kyc:agent_login")
+    return render(request, "agent/contact_us.html")
 
 # -----------------------------------------------------------------------------
 # Registration / Forgot / Reset
@@ -352,7 +560,7 @@ def policyholder_register_view(request):
        deterministic hashed user_id generation.
     """
     if request.method == "GET":
-        return render(request, "register.html")
+        return render(request, "kyc_auth.html", {"active_tab": "policy"})
 
     # ----------------------------------------------------------
     # 1) COLLECT INPUTS
@@ -386,8 +594,8 @@ def policyholder_register_view(request):
    # 3) LOOKUP IN CORE VIA FASTAPI (secure + centralized)
    # ----------------------------------------------------------
     try:
-        api_url = f"{settings.API_BASE_URL}/mssql/newpolicies"
-        headers = {"Authorization": f"Bearer {settings.API_TOKEN}"}
+        api_url = f"{settings.KYC_API_BASE_URL}/mssql/newpolicies"
+        headers = {"Authorization": f"Bearer {settings.KYC_API_TOKEN}"}
 
         response = requests.get(api_url, params={
             "policy_no": policy_no,
@@ -411,7 +619,7 @@ def policyholder_register_view(request):
         core_dob = data["DOB"]
         core_mobile = data["Mobile"]
     except Exception as e:
-        print("API LOOKUP ERROR:", e)
+        logger.exception("Policy registration lookup failed")
         messages.error(request, "Could not connect to policy lookup API.")
         return redirect("kyc:policy_register")
 
@@ -431,8 +639,8 @@ def policyholder_register_view(request):
     # 5) FIND ALL RELATED POLICIES FROM MSSQL (via FastAPI)
     # ----------------------------------------------------------
     try:
-        api_url = f"{settings.API_BASE_URL}/mssql/related-policies"
-        headers = {"Authorization": f"Bearer {settings.API_TOKEN}"}
+        api_url = f"{settings.KYC_API_BASE_URL}/mssql/related-policies"
+        headers = {"Authorization": f"Bearer {settings.KYC_API_TOKEN}"}
 
         resp = requests.get(api_url, params={
             "firstname": core_first,
@@ -445,7 +653,7 @@ def policyholder_register_view(request):
         related = resp.json()
 
     except Exception as e:
-        print("RELATED POLICY LOOKUP ERROR:", e)
+        logger.exception("Related policy lookup failed")
         messages.error(request, "Could not fetch related policies.", extra_tags="error")
         return redirect("kyc:policy_register")
 
@@ -546,8 +754,48 @@ def policyholder_register_view(request):
     return redirect_login_tab("policy")
 
 def agent_register_view(request):
-    messages.error(request, "Agent registration not implemented.", extra_tags="error")
-    return redirect("kyc:policy_register")
+    if request.method == "GET":
+        return render(request, "agent/agent_register.html", {"active_tab": "agent"})
+
+    agent_code = request.POST.get("agent_code", "").strip()
+    dob = request.POST.get("dob_ad", "").strip()  # YYYY-MM-DD
+
+    if not agent_code or not dob:
+        messages.error(request, "Agent Code and DOB are required.")
+        return redirect("kyc:agent_register")
+
+    # Prevent duplicate local registration
+    if KycAgentInfo.objects.filter(agent_code__iexact=agent_code).exists():
+        messages.error(request, "Agent already registered. Please login.")
+        return redirect("kyc:agent_login")
+
+    # 🔐 CORE VERIFICATION (AUTHORITATIVE)
+    core_ok = verify_agent_from_core(agent_code, dob)
+
+    if not core_ok:
+        messages.error(request, "Agent verification failed")
+        return redirect("kyc:agent_register")
+
+    # ---------------------------------------
+    # Create LOCAL agent (authoritative app DB)
+    # ---------------------------------------
+    raw_password = dob.replace("-", "")  # YYYYMMDD
+
+    KycAgentInfo.objects.create(
+        agent_code=agent_code,
+        first_name="",
+        last_name="",
+        dob=dob,
+        phone_number="",   # can be updated later
+        email="",
+        password=make_password(raw_password),
+    )
+
+    messages.success(
+        request,
+        "Registration successful. Password is your DOB (YYYYMMDD)."
+    )
+    return redirect("kyc:agent_login")
 
 def forgot_password(request):
     user_type = request.GET.get("type", "policy")
@@ -593,7 +841,7 @@ def forgot_password(request):
         return redirect(f"/reset-password/?type={user_type}&identifier={identifier}")
 
     except Exception as e:
-        print("FORGOT ERROR:", e)
+        logger.exception("Forgot-password lookup failed")
         messages.error(request, "Record not found!", extra_tags="error")
         return redirect(f"/forgot-password/?type={user_type}")
 
@@ -640,7 +888,7 @@ def reset_password(request):
         return redirect_login_tab(user_type)
 
     except Exception as e:
-        print("RESET ERROR:", e)
+        logger.exception("Password reset failed")
         messages.error(request, "Something went wrong!", extra_tags="error")
         return redirect(f"/reset-password/?type={user_type}&identifier={identifier}")
 # -----------------------------------------------------------------------------
@@ -883,12 +1131,6 @@ def kyc_form_view(request):
 # -----------------------------------------------------------------------------
 @csrf_exempt
 def kyc_form_submit(request):
-    print(">>> ENTERED kyc_form_submit <<<")
-
-    print("SUBMIT SESSION:", dict(request.session))
-    print("POST policy_no:", request.POST.get("policy_no"))
-
-
     if request.method != "POST":
         messages.error(request, "Invalid request method!")
         return redirect("/")
@@ -1572,13 +1814,11 @@ def process_kyc_submission(request):
         policy_snapshot = {}
 
         try:
-            print(">>> ABOUT TO CALL fetch_policy_snapshot")
             policy_snapshot = fetch_policy_snapshot(
                 policy_no=policy.policy_number,
                 dob=user.dob.strftime("%Y-%m-%d")
 
             )
-            print(">>> RETURNED FROM fetch_policy_snapshot:", policy_snapshot)
         except Exception:
             policy_snapshot = {}
 
@@ -1609,13 +1849,6 @@ def process_kyc_submission(request):
         # 🔒 RE-APPLY branch AFTER helper (helper overwrites fields)
         if parsed.get("branch_name"):
             submission.bank_branch = parsed["branch_name"]
-
-        print(
-        "DEBUG FINAL bank_branch:",
-            submission.bank_branch,
-            "JSON:",
-            submission.data_json.get("branch_name")
-        )
 
         # --------------------------------------------------
         # 🔐 FORCE VERIFIED MOBILE (AUTHORITATIVE SOURCE)
@@ -1903,12 +2136,15 @@ def view_additional_doc(request, doc_id):
 # -----------------------------------------------------------------------------
 # Direct KYC entry view (no login)
 
+from datetime import datetime
+from django.core.exceptions import ValidationError
+
 def direct_kyc_entry_view(request):
     """
     Direct KYC entry without login.
     Inputs:
       - policy_no
-      - dob_ad
+      - dob_ad (YYYY-MM-DD from browser)
     """
 
     if request.method == "GET":
@@ -1921,15 +2157,21 @@ def direct_kyc_entry_view(request):
         messages.error(request, "Policy number and DOB are required.")
         return redirect("kyc:direct_kyc_entry")
 
+
     # -------------------------------------------------
-    # VALIDATE POLICY + DOB (single source of truth)
+    # 🔍 RESOLVE POLICY IDENTITY
     # -------------------------------------------------
     try:
         user, user_id = resolve_policy_identity(
             policy_no=policy_no,
             dob_ad=dob_ad,
         )
-    except ValidationError:
+    except ValidationError as e:
+        messages.error(request, str(e))
+        return redirect("kyc:direct_kyc_entry")
+
+    # 🚨 THIS IS THE REAL FAILURE CHECK
+    if not user or not user_id:
         messages.error(
             request,
             "Invalid policy number or date of birth. Please check and try again."
@@ -1949,11 +2191,11 @@ def direct_kyc_entry_view(request):
     # -------------------------------------------------
     # 🔐 CLEAN SESSION (CRITICAL)
     # -------------------------------------------------
-    request.session.flush()      # remove any old login session
-    request.session.cycle_key()  # prevent fixation
+    request.session.flush()
+    request.session.cycle_key()
 
     # -------------------------------------------------
-    # SESSION BINDING (STRICT)
+    # 🔒 SESSION BINDING (STRICT)
     # -------------------------------------------------
     request.session["kyc_access_mode"] = "DIRECT_KYC"
     request.session["kyc_policy_no"] = policy_no
@@ -1961,7 +2203,7 @@ def direct_kyc_entry_view(request):
     request.session["kyc_dob"] = user.dob.isoformat()
 
     # -------------------------------------------------
-    # AUDIT LOG (OPTIONAL BUT GOOD)
+    # 📝 AUDIT LOG (OPTIONAL)
     # -------------------------------------------------
     submission = KycSubmission.objects.filter(user=user).first()
     if submission:
@@ -1974,6 +2216,7 @@ def direct_kyc_entry_view(request):
         )
 
     return redirect("/kyc-form/")
+
 
 
 def kyc_submitted_view(request):

@@ -30,7 +30,8 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-
+    'rest_framework',
+    
     # KYC Application
     'kycform',
 ]
@@ -72,17 +73,33 @@ WSGI_APPLICATION = 'kyc_system.wsgi.application'
 
 # DATABASE
 DATABASES = {
+    # KYC DATABASE (UNCHANGED)
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': config("PGNAME"),
-        'USER': config("PGUSER"),
-        'PASSWORD': config("PGPASSWORD"),
-        'HOST': config("PGHOST"),
-        'PORT': config("PGPORT"),
+        'NAME': config('PGNAME'),
+        'USER': config('PGUSER'),
+        'PASSWORD': config('PGPASSWORD'),
+        'HOST': config('PGHOST'),
+        'PORT': config('PGPORT'),
         'OPTIONS': {
-            'sslmode': config("PGSSL", default="require"),
+            'sslmode': config('PGSSL', default='require'),
         }
+    },
+
+    # CORE INSURANCE DATABASE (SQL SERVER – READ ONLY)
+    'sqlserver': {
+        'ENGINE': 'mssql',
+        'NAME': config('MSSQL_NAME'),
+        'USER': config('MSSQL_USER'),
+        'PASSWORD': config('MSSQL_PASSWORD'),
+        'HOST': config('MSSQL_HOST'),
+        'PORT': config('MSSQL_PORT', default='1433'),
+        'OPTIONS': {
+            'driver': 'ODBC Driver 18 for SQL Server',
+            'extra_params': 'Encrypt=yes;TrustServerCertificate=yes;',
+        },
     }
+
 }
 
 
@@ -93,6 +110,20 @@ AUTH_PASSWORD_VALIDATORS = [
     {'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator'},
     {'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator'},
 ]
+
+REST_FRAMEWORK = {
+    "DEFAULT_RENDERER_CLASSES": (
+        "rest_framework.renderers.JSONRenderer",
+    ),
+    "DEFAULT_AUTHENTICATION_CLASSES": (
+        "rest_framework.authentication.SessionAuthentication",
+    ),
+    "DEFAULT_PERMISSION_CLASSES": (
+        "rest_framework.permissions.AllowAny",
+    ),
+}
+
+
 
 
 # INTERNATIONALIZATION
@@ -123,14 +154,30 @@ MEDIA_ROOT = BASE_DIR / 'media'
 # -----------------------------------------------------------
 
 
-API_BACKEND_TOKEN = "super-secret-backend-token-123456"
-FASTAPI_BASE_URL = "http://127.0.0.1:9000"
+# ============================================================
+# EXTERNAL BACKEND SERVICES (SEPARATED BY DOMAIN)
+# ============================================================
 
-# ------------------------------
-# FASTAPI INTEGRATION SETTINGS
-# ------------------------------
-API_BASE_URL = config("API_BASE_URL", default="http://127.0.0.1:9000")
-API_TOKEN = config("API_TOKEN", default="super-secret-backend-token-123456")
+# ---- CORE INSURANCE API (AGENT / BUSINESS DATA) ----
+CORE_API_BASE_URL = config(
+    "CORE_API_BASE_URL",
+    default="http://127.0.0.1:8100"
+)
+CORE_API_TOKEN = config(
+    "CORE_API_TOKEN",
+    default="super-secret-core-token"
+)
+
+# ---- KYC FASTAPI SERVICE (POLICY / PERSON KYC) ----
+KYC_API_BASE_URL = config(
+    "KYC_API_BASE_URL",
+    default="http://127.0.0.1:9000"
+)
+KYC_API_TOKEN = config(
+    "KYC_API_TOKEN",
+    default="super-secret-kyc-token"
+)
+
 
 # SESSION SETTINGS
 SESSION_COOKIE_AGE = 20 * 60  # 20 minutes

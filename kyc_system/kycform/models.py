@@ -347,18 +347,27 @@ class KycDocument(models.Model):
 # ================================================================
 # AGENT MODEL
 # ================================================================
+# kycform/models.py
+
 class KycAgentInfo(models.Model):
-    agent_code = models.CharField(primary_key=True, max_length=50)
-    first_name = models.CharField(max_length=50)
-    last_name = models.CharField(max_length=50)
+    agent_code = models.CharField(
+        max_length=20,
+        primary_key=True
+    )
+
+    first_name = models.CharField(max_length=100)
+    last_name = models.CharField(max_length=100)
     dob = models.DateField()
-    phone_number = models.CharField(max_length=20)
-    email = models.CharField(max_length=100)
-    password = models.CharField(max_length=50)
+
+    phone_number = models.CharField(max_length=15, null=True, blank=True)
+    email = models.CharField(max_length=255, null=True, blank=True)
+
+    password = models.CharField(max_length=128)
 
     class Meta:
         db_table = "kyc_agent_info"
-        managed = False
+        managed = False   # 🔒 CRITICAL for legacy table
+
 
 
 # ================================================================
@@ -466,3 +475,16 @@ class KycMobileOTP(models.Model):
 
     def __str__(self):
         return f"OTP for {self.kyc_user.user_id} ({self.mobile})"
+
+
+class Group(models.Model):
+    group_id = models.CharField(max_length=50, unique=True)
+    name = models.CharField(max_length=255)
+
+    class Meta:
+        db_table = "Group"
+        ordering = ["group_id"]
+        managed = False
+
+    def __str__(self):
+        return f"{self.group_id} - {self.name}"

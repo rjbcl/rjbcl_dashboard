@@ -1,0 +1,178 @@
+{% extends "agent/base_agent.html" %}
+{% load static %}
+
+{% block title %}My Profile | RJBCL{% endblock %}
+
+{% block content %}
+
+<!-- PAGE HEADER -->
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <div>
+    <h4 class="mb-1">My Profile</h4>
+    <nav class="small">
+      <a href="{% url 'kyc:agent_dashboard' %}">Dashboard</a> /
+      <span class="text-muted">Profile</span>
+    </nav>
+  </div>
+</div>
+
+<div class="row g-4">
+
+  <!-- LEFT: PROFILE CARD -->
+  <div class="col-lg-4">
+    <div class="card shadow-sm text-center p-4 h-100">
+
+      <div class="mb-3">
+        <div class="rounded-circle bg-primary text-white d-inline-flex
+                    align-items-center justify-content-center"
+             style="width:96px;height:96px;font-size:2.5rem;">
+          <i class="bi bi-person"></i>
+        </div>
+      </div>
+
+      <h5 class="fw-semibold mb-1" id="profile-name">-</h5>
+      <p class="text-muted mb-3">Agent</p>
+
+      <span id="license-status" class="badge px-3 py-2">
+        Loading...
+      </span>
+
+      <hr class="my-4">
+
+      <div class="text-start small">
+        <p class="mb-2">
+          <i class="bi bi-telephone me-2"></i>
+          <strong>Mobile:</strong>
+          <span id="profile-mobile">-</span>
+        </p>
+        <p class="mb-0">
+          <i class="bi bi-geo-alt me-2"></i>
+          <strong>Address:</strong>
+          <span id="profile-address">-</span>
+        </p>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- RIGHT: DETAILS -->
+  <div class="col-lg-8">
+    <div class="card shadow-sm p-4 h-100">
+
+      <h6 class="fw-semibold mb-3 border-bottom pb-2">
+        Agent Information
+      </h6>
+
+      <div class="row mb-3">
+        <div class="col-md-4 text-muted fw-semibold">Agent Name</div>
+        <div class="col-md-8" id="info-name">-</div>
+      </div>
+
+      <div class="row mb-3">
+        <div class="col-md-4 text-muted fw-semibold">Agent Code</div>
+        <div class="col-md-8" id="info-code">-</div>
+      </div>
+
+      <div class="row mb-3">
+        <div class="col-md-4 text-muted fw-semibold">Date of Birth</div>
+        <div class="col-md-8" id="info-dob">-</div>
+      </div>
+
+      <div class="row mb-3">
+        <div class="col-md-4 text-muted fw-semibold">Address</div>
+        <div class="col-md-8" id="info-address">-</div>
+      </div>
+
+      <hr>
+
+      <h6 class="fw-semibold mb-3 border-bottom pb-2">
+        License Details
+      </h6>
+
+      <div class="row mb-3">
+        <div class="col-md-4 text-muted fw-semibold">License Number</div>
+        <div class="col-md-8" id="license-no">-</div>
+      </div>
+
+      <div class="row mb-3">
+        <div class="col-md-4 text-muted fw-semibold">Issue Date</div>
+        <div class="col-md-8" id="license-issue">-</div>
+      </div>
+
+      <div class="row mb-3">
+        <div class="col-md-4 text-muted fw-semibold">Expiry Date</div>
+        <div class="col-md-8 text-danger fw-semibold" id="license-expiry">-</div>
+      </div>
+
+      <hr>
+
+      <h6 class="fw-semibold mb-3 border-bottom pb-2">
+        Bank Information
+      </h6>
+
+      <div class="row mb-3">
+        <div class="col-md-4 text-muted fw-semibold">Bank Name</div>
+        <div class="col-md-8" id="bank-name">-</div>
+      </div>
+
+      <div class="row">
+        <div class="col-md-4 text-muted fw-semibold">Bank Account</div>
+        <div class="col-md-8" id="bank-account">-</div>
+      </div>
+
+    </div>
+  </div>
+
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+
+  fetch("/api/agent/profile/", { credentials: "same-origin" })
+    .then(res => {
+      if (!res.ok) throw new Error("Profile API error");
+      return res.json();
+    })
+    .then(data => {
+      const a = data.agent;
+
+      // LEFT CARD
+      document.getElementById("profile-name").innerText = a.name || "-";
+      document.getElementById("profile-mobile").innerText = a.mobile || "-";
+      document.getElementById("profile-address").innerText = a.address || "-";
+
+      // RIGHT INFO
+      document.getElementById("info-name").innerText = a.name || "-";
+      document.getElementById("info-code").innerText = a.code || "-";
+      document.getElementById("info-dob").innerText = a.dob || "-";
+      document.getElementById("info-address").innerText = a.address || "-";
+
+      // LICENSE
+      document.getElementById("license-no").innerText = a.license_no || "-";
+      document.getElementById("license-issue").innerText = a.license_issue || "-";
+      document.getElementById("license-expiry").innerText = a.license_expiry || "-";
+
+      // BANK
+      document.getElementById("bank-name").innerText = a.bank_name || "-";
+      document.getElementById("bank-account").innerText = a.bank_account || "-";
+
+      // STATUS BADGE
+      const badge = document.getElementById("license-status");
+      if (a.is_active) {
+        badge.className = "badge bg-success-subtle text-success px-3 py-2";
+        badge.innerHTML = '<i class="bi bi-patch-check-fill me-1"></i> License Active';
+      } else {
+        badge.className = "badge bg-danger-subtle text-danger px-3 py-2";
+        badge.innerHTML = '<i class="bi bi-x-circle-fill me-1"></i> License Inactive';
+      }
+    })
+    .catch(err => {
+      console.error("Profile load error:", err);
+    });
+
+});
+</script>
+{% endblock %}

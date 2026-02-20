@@ -1,0 +1,211 @@
+{% extends "policy/base_policy.html" %}
+
+{% block title %}Rastra Sewak | RJBCL{% endblock %}
+{% block extra_css %}
+<style>
+  .entry-wrap {
+    max-width: 520px;
+    margin: 10px auto 24px auto;
+  }
+  .entry-card {
+    border: 0;
+    border-radius: 18px;
+    box-shadow: 0 12px 34px rgba(33, 58, 101, 0.14);
+    background: linear-gradient(170deg, #ffffff 0%, #f7f9ff 100%);
+  }
+  .entry-icon {
+    width: 72px;
+    height: 72px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #3a86ff, #5aa9ff);
+    color: #fff;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.8rem;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <div>
+    <h4 class="mb-1">Rastra Sewak</h4>
+    <nav class="small">
+      <a href="{% url 'kyc:dashboard' %}">Dashboard</a> /
+      <span class="text-muted">Rastra Sewak</span>
+    </nav>
+  </div>
+  <a href="{% url 'kyc:dashboard' %}" class="btn btn-outline-secondary btn-sm">
+    <i class="bi bi-arrow-left"></i> Back
+  </a>
+</div>
+
+<div class="entry-wrap">
+  <div class="card entry-card mb-3">
+    <div class="card-body p-4 p-md-5">
+      <div class="text-center mb-3">
+        <span class="entry-icon">
+          <i class="bi bi-shield-check"></i>
+        </span>
+      </div>
+      <h5 class="text-center fw-semibold mb-2">Rastra Sewak Verification</h5>
+      <p class="text-center text-muted small mb-4">
+        Please enter the <strong>Rastra Sewak Policy No</strong> and Date of Birth to continue.
+      </p>
+
+      <div class="mb-3">
+        <label class="form-label small fw-semibold mb-1">Rastra Sewak Policy No</label>
+        <input id="rastraPolicyNo" type="text" class="form-control" placeholder="Enter Rastra Sewak Policy Number">
+      </div>
+      <div class="mb-3">
+        <label class="form-label small fw-semibold mb-1">Date of Birth</label>
+        <input id="rastraDob" type="date" class="form-control">
+      </div>
+
+      <div class="d-grid">
+        <button id="rastraSearchBtn" class="btn btn-primary">
+          <i class="bi bi-search me-1"></i> Submit
+        </button>
+      </div>
+    </div>
+
+    <div class="card-footer bg-transparent border-0 pt-0 pb-3 px-4 px-md-5">
+      <span id="rastraMessage" class="small text-muted">
+        Enter Rastra Sewak Policy No and DOB, then click Submit.
+      </span>
+    </div>
+  </div>
+</div>
+
+<div class="card d-none" id="rastraResultsSection">
+  <div class="card-body">
+    <table id="rastraSewakTable" class="table table-striped table-bordered align-middle w-100">
+      <thead class="table-light">
+        <tr>
+          <th>Policy No</th>
+          <th>Policy Holder</th>
+          <th>DOB</th>
+          <th>Branch</th>
+          <th>Group ID</th>
+          <th>Paid Date</th>
+          <th>Paid Amount</th>
+          <th>Installment</th>
+          <th>Claim Status</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+  const entryWrap = document.querySelector(".entry-wrap");
+  const resultsSection = document.getElementById("rastraResultsSection");
+  const table = $('#rastraSewakTable').DataTable({
+    paging: true,
+    searching: false,
+    ordering: true,
+    info: true,
+    pageLength: 10,
+    language: {
+      emptyTable: "Enter Policy Number and DOB to search."
+    }
+  });
+
+  function setMessage(msg, danger) {
+    const el = document.getElementById("rastraMessage");
+    el.innerText = msg || "";
+    el.className = danger ? "small text-danger" : "small text-muted";
+  }
+
+  function loadRastraSewak() {
+    const policyNo = (document.getElementById("rastraPolicyNo").value || "").trim();
+    const dob = document.getElementById("rastraDob").value;
+
+    if (!policyNo || !dob) {
+      setMessage("Policy Number and DOB are required.", true);
+      return;
+    }
+
+    if (entryWrap) {
+      entryWrap.classList.add("d-none");
+    }
+    resultsSection.classList.remove("d-none");
+    setMessage("Loading...", false);
+    table.clear().draw();
+
+    fetch("/api/policy/rastra-sewak/", {
+      method: "POST",
+      credentials: "same-origin",
+      headers: {
+        "Content-Type": "application/json",
+        "X-CSRFToken": getCsrfToken()
+      },
+      body: JSON.stringify({
+        policy_no: policyNo,
+        dob: dob
+      })
+    })
+    .then(async function (res) {
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.detail || "Unable to fetch records.");
+      }
+      return data;
+    })
+    .then(function (data) {
+      const rows = data.rows || [];
+      if (!rows.length) {
+        setMessage("No record found.", true);
+        table.clear().draw();
+        return;
+      }
+
+      rows.forEach(function (r) {
+        table.row.add([
+          r.policy_no || "-",
+          r.policy_holder_name || "-",
+          r.dob || "-",
+          r.branch || "-",
+          r.group_id || "-",
+          r.paid_date || "-",
+          "NPR " + Number(r.paid_amount || 0).toLocaleString(),
+          r.instalment || "-",
+          r.claim_status || "-",
+          r.paid_policy_status || r.policy_current_status || "-"
+        ]);
+      });
+      table.draw();
+      setMessage("Found " + rows.length + " record(s).", false);
+    })
+    .catch(function (err) {
+      setMessage(err.message || "Unable to fetch records.", true);
+      table.clear().draw();
+    });
+  }
+
+  function getCsrfToken() {
+    const name = "csrftoken=";
+    const cookies = document.cookie ? document.cookie.split(";") : [];
+    for (let i = 0; i < cookies.length; i++) {
+      const c = cookies[i].trim();
+      if (c.indexOf(name) === 0) return decodeURIComponent(c.substring(name.length));
+    }
+    return "";
+  }
+
+  document.getElementById("rastraSearchBtn").addEventListener("click", loadRastraSewak);
+  document.getElementById("rastraDob").addEventListener("keydown", function (e) {
+    if (e.key === "Enter") loadRastraSewak();
+  });
+  document.getElementById("rastraPolicyNo").addEventListener("keydown", function (e) {
+    if (e.key === "Enter") loadRastraSewak();
+  });
+});
+</script>
+{% endblock %}

@@ -62,7 +62,7 @@
                     {% endfor %}
                     {% endif %}
 
-                    <!-- POLICY HOLDER REGISTRATION FORM -->
+                    <!-- POLICY HOLDER REGISTRATION FORM
                     <div class="form-container active" id="policyFormWrapper">
                         <form id="policyForm" method="POST" action="{% url 'kyc:policy_register' %}" autocomplete="off">
                             {% csrf_token %}
@@ -92,7 +92,8 @@
                                 <div class="col-md-6">
                                     <div class="form-group">
                                         <label class="form-label">DOB (BS)</label>
-                                        <input class="form-control" name="dob_bs" type="text" id="user_dob_bs" placeholder="MM/DD/YYYY" autocomplete="bday" required >
+                                        <input class="form-control" name="dob_bs" type="text" id="user_dob_bs"
+                                            placeholder="MM/DD/YYYY" autocomplete="bday" required>
                                     </div>
                                 </div>
                                 <div class="col-md-6">
@@ -135,52 +136,49 @@
                                 </p>
                             </div>
                         </form>
-                    </div>
+                    </div> -->
 
-                    <!-- RGISTRATION FORM -->
-                    <div class="form-container" id="agentFormWrapper">
+                    <!-- AGENT REGISTRATION FORM -->
+                    <div class="form-container active" id="agentFormWrapper">
                         <form id="agentForm" method="POST" action="{% url 'kyc:agent_register' %}" autocomplete="off">
                             {% csrf_token %}
 
-
                             <div class="row g-1 mb-1">
-                                <h5 class="border-bottom pb-2 mb-3 fw-bold">    
+                                <h5 class="border-bottom pb-2 mb-3 fw-bold">
                                     Agent Registration
                                 </h5>
                             </div>
+
+                            <!-- Agent Code -->
+                            <div class="form-group">
+                                <label class="form-label">Agent Code</label>
+                                <input class="form-control" name="agent_code" id="agent_code" placeholder="30005144"
+                                    autocomplete="off" required>
+                            </div>
+
+                            <!-- License Number -->
+                            <div class="form-group">
+                                <label class="form-label">License Number</label>
+                                <input class="form-control" name="license_no" id="license_no" placeholder="LIC-XXXXXX"
+                                    autocomplete="off" required>
+                            </div>
+
+                            <!-- DOB -->
                             <div class="row g-2">
                                 <div class="col-md-6">
                                     <div class="form-group">
-                                        <label class="form-label">First Name</label>
-                                        <input class="form-control" name="first_name" id="agent-first-name"
-                                            placeholder="John" autocomplete="off" required>
+                                        <label class="form-label">DOB (BS)</label>
+                                        <input class="form-control" type="text" name="dob_bs" id="agent_dob_bs"
+                                            placeholder="MM/DD/YYYY" autocomplete="off">
                                     </div>
                                 </div>
+
                                 <div class="col-md-6">
                                     <div class="form-group">
-                                        <label class="form-label">Last Name</label>
-                                        <input class="form-control" name="last_name" id="agent-last-name"
-                                            placeholder="Doe" autocomplete="off" required>
+                                        <label class="form-label">DOB (AD)</label>
+                                        <input class="form-control" type="date" name="dob_ad" id="agent_dob_ad" required>
                                     </div>
                                 </div>
-                            </div>
-
-                            <div class="form-group">
-                                <label class="form-label">Phone Number</label>
-                                <input class="form-control" name="phone_number" id="phone-number"
-                                    placeholder="98XXXXXXXX" autocomplete="off" required>
-                            </div>
-
-                            <div class="form-group">
-                                <label class="form-label">License Number</label>
-                                <input class="form-control" name="License_no" type="text" id="License_no"
-                                    placeholder="LIC-XXX" required>
-                            </div>
-
-                            <div class="form-group">
-                                <label class="form-label">Agent Code</label>
-                                <input class="form-control" name="agent_code" id="agent_code" placeholder="AGT123"
-                                    autocomplete="off" required>
                             </div>
 
                             <div class="form-footer mb-2">
@@ -199,7 +197,8 @@
 
                             <div class="form-links">
                                 <p class="register-link">
-                                    Already have an account? <a href="/auth/agent/?tab=agent">Login</a>
+                                    Already have an account?
+                                    <a href="/auth/agent/?tab=agent">Login</a>
                                 </p>
                             </div>
                         </form>
@@ -214,12 +213,13 @@
         </div>
     </div>
 
-    <!-- jQuery -->
-    <script src="{% static 'js/jquery-3.6.0.min.js' %}"></script>
-    <!-- Custom JS -->
-    <script src="{% static 'js/login.js' %}"></script>
-    <script src="{% static 'js/nepali.datepicker.v5.0.6.min.js' %}"></script>
-    <script src="{% static 'js/date-conversion.js' %}"></script>
+   <!-- jQuery -->
+  <script src="{% static 'js/jquery-3.6.0.min.js' %}"></script>
+
+  <!-- Custom JS -->
+  <script src="{% static 'js/login.js' %}"></script>
+  <script src="{% static 'js/nepali.datepicker.v5.0.6.min.js' %}"></script>
+  <script src="{% static 'js/date-conversion.js' %}"></script>
 
 </body>
 
