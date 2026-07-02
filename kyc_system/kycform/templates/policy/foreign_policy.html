@@ -1,0 +1,224 @@
+{% extends "policy/base_policy.html" %}
+
+{% block title %}Foreign Policy | RJBCL{% endblock %}
+
+{% block extra_css %}
+<style>
+  .foreign-shell {
+    display: grid;
+    gap: 18px;
+  }
+  .foreign-hero {
+    border: 0;
+    border-radius: 20px;
+    overflow: hidden;
+    background:
+      radial-gradient(circle at bottom right, rgba(255, 255, 255, 0.18), transparent 32%),
+      linear-gradient(135deg, #16425b 0%, #25718f 55%, #d7f1ff 145%);
+    color: #fff;
+  }
+  .foreign-hero .card-body {
+    padding: 28px;
+  }
+  .foreign-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 16px;
+  }
+  .foreign-card {
+    border: 1px solid var(--line);
+    border-radius: 18px;
+    background: #fff;
+    box-shadow: 0 12px 28px rgba(23, 42, 78, 0.06);
+  }
+  .foreign-category-icon,
+  .foreign-category-logo,
+  .foreign-item-logo {
+    width: 52px;
+    height: 52px;
+    border-radius: 14px;
+  }
+  .foreign-category-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: #e9f8ff;
+    color: #1b728e;
+    font-size: 1.35rem;
+  }
+  .foreign-category-logo,
+  .foreign-item-logo {
+    object-fit: contain;
+    padding: 8px;
+    background: #fff;
+    border: 1px solid #edf2fb;
+  }
+  .foreign-item {
+    border: 1px solid #eef3fb;
+    border-radius: 14px;
+    padding: 14px;
+    background: #fbfdff;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <div>
+    <h4 class="mb-1">Foreign Policy</h4>
+    <nav class="small">
+      <a href="{% url 'kyc:dashboard' %}">Dashboard</a> /
+      <span class="text-muted">Foreign Policy</span>
+    </nav>
+  </div>
+  <a href="{% url 'kyc:dashboard' %}" class="btn btn-outline-secondary btn-sm">
+    <i class="bi bi-arrow-left"></i> Back
+  </a>
+</div>
+
+<div class="foreign-shell">
+  <div class="card foreign-hero">
+    <div class="card-body">
+      <h5 class="fw-semibold mb-2" id="foreignHeroTitle">Foreign Employment Services</h5>
+      <p class="mb-0 opacity-75" id="foreignHeroSubtitle">
+        Loading foreign policy information...
+      </p>
+    </div>
+  </div>
+
+  <div class="card d-none" id="foreignErrorCard">
+    <div class="card-body text-danger">
+      <div class="fw-semibold mb-1">Unable to load foreign policy services</div>
+      <div class="small" id="foreignErrorText"></div>
+    </div>
+  </div>
+
+  <div class="card" id="foreignLoadingCard">
+    <div class="card-body text-muted">
+      <i class="bi bi-hourglass-split me-2"></i>Fetching foreign policy options...
+    </div>
+  </div>
+
+  <div class="card d-none" id="foreignSectionCard">
+    <div class="card-body p-4">
+      <div class="mb-3">
+        <h5 class="fw-semibold mb-1" id="foreignSectionTitle">Foreign Employment Policies</h5>
+        <p class="text-muted mb-0" id="foreignSectionSubtitle"></p>
+      </div>
+      <div class="foreign-grid" id="foreignCategoriesGrid"></div>
+    </div>
+  </div>
+
+  <div class="card d-none" id="foreignSupportCard">
+    <div class="card-body p-4">
+      <h6 class="fw-semibold mb-1" id="foreignSupportTitle"></h6>
+      <p class="text-muted mb-0" id="foreignSupportSubtitle"></p>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+  const loadingCard = document.getElementById("foreignLoadingCard");
+  const errorCard = document.getElementById("foreignErrorCard");
+  const errorText = document.getElementById("foreignErrorText");
+  const sectionCard = document.getElementById("foreignSectionCard");
+  const supportCard = document.getElementById("foreignSupportCard");
+  const categoriesGrid = document.getElementById("foreignCategoriesGrid");
+
+  function renderCategory(category) {
+    const categoryIcon = category.icon_url
+      ? `<img src="${category.icon_url}" alt="" class="foreign-category-logo">`
+      : `<span class="foreign-category-icon"><i class="bi bi-airplane"></i></span>`;
+    const categoryAction = category.action_url
+      ? `<a href="${category.action_url}" target="_blank" rel="noopener noreferrer" class="btn btn-outline-primary btn-sm">
+          ${category.action_label || "Open"}
+        </a>`
+      : "";
+    const items = (category.items || []).map(function (item) {
+      const itemIcon = item.icon_url
+        ? `<img src="${item.icon_url}" alt="" class="foreign-item-logo">`
+        : `<span class="foreign-category-icon"><i class="bi bi-file-earmark-text"></i></span>`;
+      const itemAction = item.action_url
+        ? `<a href="${item.action_url}" target="_blank" rel="noopener noreferrer" class="btn btn-primary btn-sm">
+            <i class="bi bi-box-arrow-up-right me-1"></i>Open
+          </a>`
+        : `<button type="button" class="btn btn-outline-secondary btn-sm" disabled>Unavailable</button>`;
+
+      return `
+        <div class="foreign-item">
+          <div class="d-flex align-items-start gap-3">
+            <div>${itemIcon}</div>
+            <div class="flex-grow-1">
+              <h6 class="fw-semibold mb-1">${item.title || "Policy"}</h6>
+              <p class="text-muted small mb-3">${item.subtitle || "No description available."}</p>
+              ${itemAction}
+            </div>
+          </div>
+        </div>
+      `;
+    }).join("");
+
+    return `
+      <div class="foreign-card">
+        <div class="card-body p-4">
+          <div class="d-flex justify-content-between align-items-start gap-3 mb-3">
+            <div class="d-flex align-items-center gap-3">
+              <div>${categoryIcon}</div>
+              <div>
+                <h5 class="fw-semibold mb-1">${category.title || "Category"}</h5>
+                <p class="text-muted small mb-0">${category.description || ""}</p>
+              </div>
+            </div>
+            <div>${categoryAction}</div>
+          </div>
+          <div class="d-grid gap-3">${items || '<div class="text-muted small">No policies available.</div>'}</div>
+        </div>
+      </div>
+    `;
+  }
+
+  fetch("/api/policy/foreign-employment/", { credentials: "same-origin" })
+    .then(async function (response) {
+      const payload = await response.json();
+      if (!response.ok) {
+        throw new Error(payload.detail || "Unable to load foreign employment services.");
+      }
+      return payload;
+    })
+    .then(function (payload) {
+      const section = payload.policy_section || {};
+      const types = section.types || [];
+      const help = payload.help_support || {};
+
+      document.getElementById("foreignHeroTitle").innerText = payload.screen_title || "Foreign Employment Services";
+      document.getElementById("foreignHeroSubtitle").innerText =
+        section.subtitle || "Browse the latest foreign employment policy options.";
+      document.getElementById("foreignSectionTitle").innerText = section.title || "Foreign Employment Policies";
+      document.getElementById("foreignSectionSubtitle").innerText = section.subtitle || "";
+
+      if (!types.length) {
+        throw new Error("No foreign employment services are currently available.");
+      }
+
+      categoriesGrid.innerHTML = types.map(renderCategory).join("");
+      sectionCard.classList.remove("d-none");
+
+      if (help.title || help.subtitle) {
+        document.getElementById("foreignSupportTitle").innerText = help.title || "Help & Support";
+        document.getElementById("foreignSupportSubtitle").innerText = help.subtitle || "";
+        supportCard.classList.remove("d-none");
+      }
+    })
+    .catch(function (error) {
+      errorText.innerText = error.message || "Unable to load foreign employment services.";
+      errorCard.classList.remove("d-none");
+    })
+    .finally(function () {
+      loadingCard.classList.add("d-none");
+    });
+});
+</script>
+{% endblock %}

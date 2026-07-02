@@ -20,9 +20,6 @@ PROTECTED_PATHS = ["/mssql"]
 async def jwt_middleware(request: Request, call_next):
     path = request.url.path
 
-    print("PATH:", path)
-    print("HEADER:", request.headers.get("Authorization"))
-
     # Skip auth for non-protected routes
     if not any(path.startswith(p) for p in PROTECTED_PATHS):
         return await call_next(request)

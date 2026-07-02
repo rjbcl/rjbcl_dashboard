@@ -18,24 +18,24 @@ from kycform.utils import generate_user_id
 # ------------------------------------------------------
 def _normalize_dob(value):
     """
-    CORE may return DOB as:
-    - datetime.date
-    - datetime.datetime
-    - string (YYYY-MM-DD)
-
-    Always normalize to datetime.date
+    Accepts DOB in:
+      - YYYY-MM-DD (HTML date input)
+      - DD-MM-YYYY (vendor / manual)
+    Returns: date object
     """
+
     if not value:
-        return None
+        raise ValidationError("DOB is required.")
 
-    if isinstance(value, date):
-        return value
+    value = str(value).strip()
 
-    try:
-        return datetime.strptime(str(value), "%Y-%m-%d").date()
-    except Exception:
-        raise ValidationError("Invalid DOB format received from core system.")
+    for fmt in ("%Y-%m-%d", "%d-%m-%Y"):
+        try:
+            return datetime.strptime(value, fmt).date()
+        except ValueError:
+            continue
 
+    raise ValidationError("Invalid DOB format received from core system.")
 
 # ------------------------------------------------------
 # MAIN IDENTITY RESOLVER
@@ -67,7 +67,7 @@ def resolve_policy_identity(*, policy_no, dob_ad, mobile=None):
     input_dob = _normalize_dob(dob_ad)
 
     headers = {
-        "Authorization": f"Bearer {settings.API_TOKEN}"
+        "Authorization": f"Bearer {settings.KYC_API_TOKEN}"
     }
 
     # ------------------------------------------------------
@@ -109,7 +109,7 @@ def resolve_policy_identity(*, policy_no, dob_ad, mobile=None):
     # ------------------------------------------------------
     try:
         response = requests.get(
-            f"{settings.API_BASE_URL}/mssql/newpolicies",
+            f"{settings.KYC_API_BASE_URL}/mssql/newpolicies",
             params={
                 "policy_no": policy_no,
                 "dob": input_dob.isoformat(),
@@ -152,7 +152,7 @@ def resolve_policy_identity(*, policy_no, dob_ad, mobile=None):
     # ------------------------------------------------------
     try:
         response = requests.get(
-            f"{settings.API_BASE_URL}/mssql/related-policies",
+            f"{settings.KYC_API_BASE_URL}/mssql/related-policies",
             params={
                 "firstname": core_first,
                 "lastname": core_last,

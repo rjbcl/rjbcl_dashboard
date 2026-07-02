@@ -7,11 +7,7 @@ from dotenv import load_dotenv
 BASE_DIR = Path(__file__).resolve().parent
 ENV_PATH = BASE_DIR / ".env"
 
-print("Loading env from:", ENV_PATH)
 load_dotenv(dotenv_path=ENV_PATH)
-
-print("DB_SERVER =", os.getenv("DB_SERVER"))
-print("DB_NAME =", os.getenv("DB_NAME"))
 
 load_dotenv()
 

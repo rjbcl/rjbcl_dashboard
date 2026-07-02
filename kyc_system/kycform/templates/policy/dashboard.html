@@ -1,0 +1,240 @@
+{% extends "policy/base_policy.html" %}
+{% load static %}
+
+{% block title %}Policy Dashboard | RJBCL{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <div>
+    <h4 class="mb-1">Policy Dashboard</h4>
+    <nav class="small">
+      <a href="{% url 'kyc:dashboard' %}">Dashboard</a> /
+      <span class="text-muted">Overview</span>
+    </nav>
+  </div>
+</div>
+
+<div class="row g-3 mb-4">
+  <div class="col-md-3">
+    <div class="card text-white border-0" style="background:linear-gradient(135deg,#34c38f,#2ab57d)">
+      <div class="card-body">
+        <h3 class="mb-1" id="kpi-policies-total">0</h3>
+        <p class="mb-0">Total Policies</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-md-3">
+    <div class="card text-white border-0" style="background:linear-gradient(135deg,#556ee6,#778beb)">
+      <div class="card-body">
+        <h3 class="mb-1" id="kpi-premium-total">NPR 0</h3>
+        <p class="mb-0">Total Premium</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-md-3">
+    <div class="card text-white border-0" style="background:linear-gradient(135deg,#f46a6a,#ff7979)">
+      <div class="card-body">
+        <h3 class="mb-1" id="kpi-due-count">0</h3>
+        <p class="mb-0">Due Policies</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-md-3">
+    <div class="card text-white border-0" style="background:linear-gradient(135deg,#3a86ff,#5aa9ff)">
+      <div class="card-body">
+        <h3 class="mb-1" id="summary-installments">0</h3>
+        <p class="mb-0">Paid Installments</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="row g-4">
+  <div class="col-lg-8">
+    <div class="card shadow-sm">
+      <div class="card-body">
+        <h6 class="fw-semibold mb-3">Premium Trend</h6>
+        <div style="height:260px;">
+          <canvas id="premiumChart"></canvas>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-4">
+    <div class="card shadow-sm mb-3">
+      <div class="card-body">
+        <h6 class="fw-semibold">Summary</h6>
+        <ul class="list-unstyled small mb-0">
+          <li>Total Policies: <strong id="summary-policies">0</strong></li>
+          <li>Total Premium: <strong id="summary-premium">NPR 0</strong></li>
+          <li>Due Premium: <strong id="summary-due-premium">NPR 0</strong></li>
+        </ul>
+      </div>
+    </div>
+    <div class="card shadow-sm mb-3">
+      <div class="card-body">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+          <h6 class="fw-semibold mb-0">Policy Loan Snapshot</h6>
+          <a href="{% url 'kyc:policy_loan_details' %}" class="small text-decoration-none">View all</a>
+        </div>
+        <ul class="list-unstyled small mb-2">
+          <li>Loan Records: <strong id="summary-loan-count">0</strong></li>
+          <li>Total Loan: <strong id="summary-loan-amount">NPR 0</strong></li>
+          <li>Outstanding: <strong id="summary-loan-balance">NPR 0</strong></li>
+        </ul>
+        <ul id="recent-loans" class="list-group list-group-flush small">
+          <li class="list-group-item text-muted px-0">Loading...</li>
+        </ul>
+      </div>
+    </div>
+    <div class="card shadow-sm">
+      <div class="card-body">
+        <h6 class="fw-semibold">Recent Payment Snapshot</h6>
+        <p class="text-muted small mb-2">Latest 5 paid entries</p>
+        <ul id="recent-payments" class="list-group list-group-flush small">
+          <li class="list-group-item text-muted px-0">Loading...</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="card mt-4">
+  <div class="card-body">
+    <h6 class="fw-semibold mb-3">Policy Status</h6>
+    <div class="table-responsive">
+      <table class="table table-striped table-bordered align-middle w-100" id="dashboardPolicyTable">
+        <thead>
+          <tr>
+            <th>Policy No</th>
+            <th>Plan</th>
+            <th>Term</th>
+            <th>Premium</th>
+            <th>Next Due</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+  function pickLoanField(row, candidates) {
+    if (!row) return null;
+    const map = {};
+    Object.keys(row).forEach(function (key) {
+      map[String(key).toLowerCase()] = key;
+    });
+    for (let i = 0; i < candidates.length; i++) {
+      const actual = map[candidates[i].toLowerCase()];
+      if (actual) return row[actual];
+    }
+    return null;
+  }
+
+  const policyTable = $('#dashboardPolicyTable').DataTable({
+    paging: true,
+    searching: false,
+    ordering: true,
+    info: true,
+    pageLength: 5,
+    language: {
+      emptyTable: "No policies found."
+    }
+  });
+
+  fetch("/api/policy/policies/", { credentials: "same-origin" })
+    .then(function (res) { return res.json(); })
+    .then(function (data) {
+      const rows = data.rows || [];
+      policyTable.clear();
+      rows.forEach(function (r) {
+        policyTable.row.add([
+          r.policy_number || "-",
+          r.plan_name || "-",
+          r.term || "-",
+          "NPR " + Number(r.policy_premium || 0).toLocaleString(),
+          r.policy_premium_next_due_date || "-",
+          r.current_status || "-"
+        ]);
+      });
+      policyTable.draw();
+    });
+
+  fetch("/api/policy/summary/", { credentials: "same-origin" })
+    .then(function (res) { return res.json(); })
+    .then(function (data) {
+      document.getElementById("kpi-policies-total").innerText = data.kpi?.policies?.total ?? 0;
+      document.getElementById("kpi-premium-total").innerText = "NPR " + Number(data.kpi?.premium?.total ?? 0).toLocaleString();
+      document.getElementById("kpi-due-count").innerText = data.kpi?.due?.count ?? 0;
+      document.getElementById("summary-installments").innerText = data.summary?.paid_installments ?? 0;
+
+      document.getElementById("summary-policies").innerText = data.summary?.policies ?? 0;
+      document.getElementById("summary-premium").innerText = "NPR " + Number(data.summary?.premium ?? 0).toLocaleString();
+      document.getElementById("summary-due-premium").innerText = "NPR " + Number(data.kpi?.due?.premium ?? 0).toLocaleString();
+
+      document.getElementById("summary-loan-count").innerText = data.loan?.count ?? 0;
+      document.getElementById("summary-loan-amount").innerText = "NPR " + Number(data.loan?.loan_amount ?? 0).toLocaleString();
+      document.getElementById("summary-loan-balance").innerText = "NPR " + Number(data.loan?.balance_amount ?? 0).toLocaleString();
+
+      const loanList = document.getElementById("recent-loans");
+      const loanRows = (data.loan?.rows || []).slice(0, 5);
+      if (!loanRows.length) {
+        loanList.innerHTML = '<li class="list-group-item text-muted px-0">No loan records found.</li>';
+      } else {
+        loanList.innerHTML = loanRows.map(function (r) {
+          const policyNo = pickLoanField(r, ["policy_no", "PolicyNo", "PolicyNO", "PolicyNumber", "Policy_No"]) || "-";
+          const loanAmount = pickLoanField(r, ["loan_amount", "LoanAmount", "LoanAmt", "Amount", "PrincipalAmount", "PrincipleAmount"]) || 0;
+          const balanceAmount = pickLoanField(r, ["balance_amount", "BalanceAmount", "OutstandingAmount", "Outstanding", "Balance", "DueAmount", "LoanBalance"]) || 0;
+          return '<li class="list-group-item px-0 d-flex justify-content-between">' +
+            '<span>' + policyNo + '</span>' +
+            '<strong>NPR ' + Number(loanAmount).toLocaleString() + ' / ' + Number(balanceAmount).toLocaleString() + '</strong>' +
+          '</li>';
+        }).join("");
+      }
+
+      const list = document.getElementById("recent-payments");
+      const rows = (data.history || []).slice(0, 5);
+      if (!rows.length) {
+        list.innerHTML = '<li class="list-group-item text-muted px-0">No payment records found.</li>';
+      } else {
+        list.innerHTML = rows.map(function (r) {
+          return '<li class="list-group-item px-0 d-flex justify-content-between">' +
+            '<span>' + (r.policy_no || "-") + ' (' + (r.paid_date || "-") + ')</span>' +
+            '<strong>NPR ' + Number(r.amount || 0).toLocaleString() + '</strong>' +
+          '</li>';
+        }).join("");
+      }
+
+      const chartEl = document.getElementById("premiumChart");
+      if (!chartEl) return;
+      new Chart(chartEl, {
+        type: "line",
+        data: {
+          labels: data.chart?.labels || [],
+          datasets: [{
+            label: "Premium (NPR)",
+            data: data.chart?.premium || [],
+            borderColor: "#4da3ff",
+            backgroundColor: "rgba(77,163,255,0.15)",
+            borderWidth: 2,
+            tension: 0.35,
+            fill: true
+          }]
+        },
+        options: { responsive: true, maintainAspectRatio: false }
+      });
+    });
+});
+</script>
+{% endblock %}

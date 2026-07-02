@@ -1,0 +1,32 @@
+<div class="topbar">
+
+  <div class="d-flex align-items-center gap-2">
+
+    <!-- Sidebar Toggle -->
+    <button id="sidebarToggle"
+            class="btn btn-light d-flex align-items-center justify-content-center"
+            style="width:38px;height:38px;">
+      <i class="bi bi-list fs-5"></i>
+    </button>
+
+    <div>
+      <p class="topbar-title">{{ page_title|default:"Dashboard" }}</p>
+      <p class="topbar-sub">Home / {{ page_title|default:"Dashboard" }}</p>
+    </div>
+
+  </div>
+
+  <!-- Right -->
+  <div class="d-flex align-items-center gap-3">
+    <span class="agent-chip">
+      Hi, {{ request.session.agent_name|default:"Agent" }}
+    </span>
+    <a href="{% url 'kyc:agent_logout' %}"
+       class="text-danger"
+       title="Logout"
+       onclick="return confirm('Logout?')">
+      <i class="bi bi-box-arrow-right fs-5"></i>
+    </a>
+  </div>
+
+</div>

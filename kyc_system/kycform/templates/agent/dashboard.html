@@ -1,0 +1,205 @@
+{% extends "agent/base_agent.html" %}
+{% load static %}
+
+{% block title %}Agent Dashboard | RJBCL{% endblock %}
+{% block content %}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <div>
+    <h4 class="mb-1">Agent Dashboard</h4>
+    <nav class="small">
+      <a href="{% url 'kyc:agent_dashboard' %}">Dashboard</a> /
+      <span class="text-muted">Overview</span>
+    </nav>
+  </div>
+</div>
+
+<div class="row g-3 mb-4">
+  <div class="col-md-3">
+    <div class="card text-white border-0" style="background:linear-gradient(135deg,#34c38f,#2ab57d)">
+      <div class="card-body">
+        <h3 class="mb-1" id="kpi-policies-total">0</h3>
+        <p class="mb-0">Total Policies</p>
+        <small><span id="kpi-policies-self">0</span> Self | <span id="kpi-policies-downline">0</span> Downline</small>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-md-3">
+    <div class="card text-white border-0" style="background:linear-gradient(135deg,#556ee6,#778beb)">
+      <div class="card-body">
+        <h3 class="mb-1" id="kpi-premium-total">NPR 0</h3>
+        <p class="mb-0">Total Premium</p>
+        <small><span id="kpi-premium-self">0</span> Self | <span id="kpi-premium-downline">0</span> Downline</small>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-md-3">
+    <div class="card text-white border-0" style="background:linear-gradient(135deg,#f46a6a,#ff7979)">
+      <div class="card-body">
+        <h3 class="mb-1" id="kpi-downline-count">0</h3>
+        <p class="mb-0">Downline Count</p>
+        <small>Active agents</small>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-md-3">
+    <div class="card text-white border-0" style="background:linear-gradient(135deg,#3a86ff,#5aa9ff)">
+      <div class="card-body">
+        <h3 class="mb-1" id="summary-commission-top">NPR 0</h3>
+        <p class="mb-0">Total Commission</p>
+        <small>This period</small>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="row g-4">
+  <div class="col-lg-8">
+    <div class="card">
+      <div class="card-body">
+        <h6 class="fw-semibold mb-3">Premium & Commission Trend</h6>
+        <div style="height:270px;">
+          <canvas id="agentRevenueChart"></canvas>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-4">
+    <div class="card mb-3">
+      <div class="card-body">
+        <h6 class="fw-semibold">Summary</h6>
+        <ul class="list-unstyled small mb-0">
+          <li>Total Policies: <strong id="summary-policies">0</strong></li>
+          <li>Total Premium: <strong id="summary-premium">NPR 0</strong></li>
+          <li>Total Commission: <strong id="summary-commission">NPR 0</strong></li>
+        </ul>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-body">
+        <h6 class="fw-semibold mb-2">Performance Snapshot</h6>
+        <p class="small text-muted mb-0">
+          Keep tracking policy growth, premium inflow, and commission outcomes from your business and downline.
+        </p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="card mt-4">
+  <div class="card-body">
+    <h6 class="fw-semibold mb-3">Recent Business</h6>
+    <table id="agentRecentBusinessTable" class="table table-striped table-bordered align-middle w-100">
+      <thead class="table-light">
+        <tr>
+          <th>SN</th>
+          <th>Policy No</th>
+          <th>Policy Holder</th>
+          <th>Plan</th>
+          <th>DOC</th>
+          <th>Premium</th>
+          <th>Premium Type</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+  const businessTable = $('#agentRecentBusinessTable').DataTable({
+    paging: true,
+    searching: false,
+    ordering: true,
+    info: true,
+    pageLength: 8,
+    language: {
+      emptyTable: "No recent business found."
+    }
+  });
+
+  Promise.all([
+    fetch("/api/agent/summary/", { credentials: "same-origin" }).then(function (r) { return r.json(); }),
+    fetch("/api/agent/business-report/?limit=20", { credentials: "same-origin" }).then(function (r) { return r.json(); })
+  ])
+  .then(function (responses) {
+    const summary = responses[0];
+    const business = responses[1];
+
+    document.getElementById("kpi-policies-total").innerText = summary.kpi?.policies?.total ?? 0;
+    document.getElementById("kpi-policies-self").innerText = summary.kpi?.policies?.self ?? 0;
+    document.getElementById("kpi-policies-downline").innerText = summary.kpi?.policies?.downline ?? 0;
+
+    document.getElementById("kpi-premium-total").innerText = "NPR " + Number(summary.kpi?.premium?.total ?? 0).toLocaleString();
+    document.getElementById("kpi-premium-self").innerText = Number(summary.kpi?.premium?.self ?? 0).toLocaleString();
+    document.getElementById("kpi-premium-downline").innerText = Number(summary.kpi?.premium?.downline ?? 0).toLocaleString();
+
+    document.getElementById("kpi-downline-count").innerText = summary.kpi?.downline?.count ?? 0;
+
+    document.getElementById("summary-policies").innerText = summary.summary?.policies ?? 0;
+    document.getElementById("summary-premium").innerText = "NPR " + Number(summary.summary?.premium ?? 0).toLocaleString();
+    document.getElementById("summary-commission").innerText = "NPR " + Number(summary.summary?.commission ?? 0).toLocaleString();
+    document.getElementById("summary-commission-top").innerText = "NPR " + Number(summary.summary?.commission ?? 0).toLocaleString();
+
+    const chartEl = document.getElementById("agentRevenueChart");
+    if (chartEl) {
+      new Chart(chartEl, {
+        type: "line",
+        data: {
+          labels: summary.chart?.labels || [],
+          datasets: [
+            {
+              label: "Premium (NPR)",
+              data: summary.chart?.premium || [],
+              borderColor: "#4da3ff",
+              backgroundColor: "rgba(77,163,255,0.15)",
+              borderWidth: 2,
+              tension: 0.35,
+              fill: true
+            },
+            {
+              label: "Commission (NPR)",
+              data: summary.chart?.commission || [],
+              borderColor: "#ff6384",
+              backgroundColor: "rgba(255,99,132,0.12)",
+              borderWidth: 2,
+              tension: 0.35,
+              fill: true
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          interaction: { mode: "index", intersect: false }
+        }
+      });
+    }
+
+    (business.rows || []).slice(0, 20).forEach(function (row) {
+      businessTable.row.add([
+        row.sn ?? "-",
+        row.policy_no ?? "-",
+        row.policy_holder ?? "-",
+        row.plan ?? "-",
+        row.doc ?? "-",
+        "NPR " + Number(row.premium || 0).toLocaleString(),
+        row.premium_type ?? "-"
+      ]);
+    });
+    businessTable.draw();
+  })
+  .catch(function (err) {
+    console.error("Agent dashboard load error:", err);
+  });
+});
+</script>
+{% endblock %}

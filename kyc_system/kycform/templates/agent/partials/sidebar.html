@@ -1,0 +1,75 @@
+{% load static %}
+
+<div class="sidebar">
+
+  <div class="brand-block">
+    <img src="{% static 'images/rjbclogo.png' %}" alt="RJBCL Logo" class="company-logo">
+    <p class="brand-title">Agent Portal</p>
+  </div>
+
+  <nav class="nav flex-column">
+    <div class="nav-section">Overview</div>
+
+    <a class="nav-link {% if request.path == '/agent-dashboard/' %}active{% endif %}"
+      href="{% url 'kyc:agent_dashboard' %}">
+      <i class="bi bi-speedometer2 me-2"></i>
+      Dashboard
+    </a>
+
+    <a class="nav-link {% if request.path == '/agent-profile/' %}active{% endif %}"
+      href="{% url 'kyc:agent_profile' %}">
+      <i class="bi bi-person me-2"></i>
+      My Profile
+    </a>
+
+    <div class="nav-section">Reports</div>
+    <a class="nav-link {% if request.path == '/business-report/' %}active{% endif %}"
+      href="{% url 'kyc:business_report' %}">
+      <i class="bi bi-file-earmark-text me-2"></i>
+      Business Report
+    </a>
+
+    <a class="nav-link {% if request.path == '/due-report/' %}active{% endif %}" href="{% url 'kyc:due_report' %}">
+      <i class="bi bi-clock-history me-2"></i>
+      Due Report
+    </a>
+
+    <a class="nav-link {% if request.path == '/commission-report/' %}active{% endif %}"
+      href="{% url 'kyc:commission_report' %}">
+      <i class="bi bi-cash-stack me-2"></i>
+      Commission Report
+    </a>
+
+    <a class="nav-link {% if request.path == '/agent-hierarchy/' %}active{% endif %}"
+      href="{% url 'kyc:agent_hierarchy' %}">
+      <i class="bi bi-diagram-3 me-2"></i>
+      Agent Hierarchy
+    </a>
+
+    <a class="nav-link {% if request.path == '/downline-business-report/' %}active{% endif %}"
+      href="{% url 'kyc:downline_business_report' %}">
+      <i class="bi bi-people me-2"></i>
+      Downline Business Report
+    </a>
+
+    <a class="nav-link {% if request.path == '/maturity-forecasting/' %}active{% endif %}"
+      href="{% url 'kyc:agent_maturity_forecasting' %}">
+      <i class="bi bi-calendar2-week me-2"></i>
+      Maturity Forecasting
+    </a>
+
+    <div class="nav-section">Support</div>
+    <a class="nav-link {% if request.path == '/contact-us/' %}active{% endif %}"
+        href="{% url 'kyc:contact_us' %}">
+      <i class="bi bi-envelope me-2"></i>
+      Contact Us
+    </a>
+    <hr>
+    <a href="{% url 'kyc:agent_logout' %}" class="text-danger" onclick="return confirm('Logout?')">
+      <i class="bi bi-box-arrow-right me-2"></i>
+      Logout
+    </a>
+
+
+  </nav>
+</div>

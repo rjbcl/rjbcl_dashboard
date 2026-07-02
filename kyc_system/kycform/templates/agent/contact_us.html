@@ -1,0 +1,119 @@
+{% extends "agent/base_agent.html" %}
+{% load static %}
+
+{% block title %}Contact Us | RJBCL{% endblock %}
+
+{% block content %}
+
+<!-- PAGE HEADER -->
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <div>
+    <h4 class="mb-1">Contact Us</h4>
+    <nav class="small">
+      <a href="{% url 'kyc:agent_dashboard' %}">Dashboard</a> /
+      <span class="text-muted">Contact Us</span>
+    </nav>
+  </div>
+</div>
+
+<div class="row g-4">
+
+  <!-- LEFT: OFFICE DETAILS -->
+  <div class="col-lg-8">
+    <div class="card shadow-sm p-4 h-100">
+
+      <h6 class="fw-semibold mb-3 border-bottom pb-2">
+        Rastriya Jeevan Beema Company Limited
+      </h6>
+
+      <div class="row mb-3">
+        <div class="col-md-4 text-muted fw-semibold">
+          <i class="bi bi-geo-alt me-2"></i>Head Office
+        </div>
+        <div class="col-md-8">
+          Ramshah Path, Kathmandu, Nepal
+        </div>
+      </div>
+
+      <div class="row mb-3">
+        <div class="col-md-4 text-muted fw-semibold">
+          <i class="bi bi-telephone me-2"></i>Telephone
+        </div>
+        <div class="col-md-8">
+          +977-01-5362520
+        </div>
+      </div>
+
+      <div class="row mb-3">
+        <div class="col-md-4 text-muted fw-semibold">
+          <i class="bi bi-envelope me-2"></i>Email
+        </div>
+        <div class="col-md-8">
+          info@rbs.gov.np
+        </div>
+      </div>
+
+      <div class="row mb-3">
+        <div class="col-md-4 text-muted fw-semibold">
+          <i class="bi bi-clock me-2"></i>Office Hours
+        </div>
+        <div class="col-md-8">
+          Sunday – Thursday<br>
+          10:00 AM – 5:00 PM <br>
+          Friday <br>
+          10:00 AM – 1:30 PM
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="col-md-4 text-muted fw-semibold">
+          <i class="bi bi-globe me-2"></i>Website
+        </div>
+        <div class="col-md-8">
+          <a href="https://www.rbs.gov.np" target="_blank">
+            www.rbs.gov.np
+          </a>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- RIGHT: QUICK INFO -->
+  <div class="col-lg-4">
+    <div class="card shadow-sm p-4 h-100">
+
+      <h6 class="fw-semibold mb-3 border-bottom pb-2">
+        Support Information
+      </h6>
+
+      <p class="mb-3 small text-muted">
+        For policy-related queries, commission details, or technical support,
+        please contact the Head Office during official working hours.
+      </p>
+
+      <ul class="list-unstyled small">
+        <li class="mb-2">
+          <i class="bi bi-check-circle-fill text-success me-2"></i>
+          Policy & Claims Support
+        </li>
+        <li class="mb-2">
+          <i class="bi bi-check-circle-fill text-success me-2"></i>
+          Agent Commission Queries
+        </li>
+        <li class="mb-2">
+          <i class="bi bi-check-circle-fill text-success me-2"></i>
+          License & Renewal Support
+        </li>
+        <li>
+          <i class="bi bi-check-circle-fill text-success me-2"></i>
+          Technical Assistance
+        </li>
+      </ul>
+
+    </div>
+  </div>
+
+</div>
+
+{% endblock %}

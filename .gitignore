@@ -5,6 +5,7 @@
 __pycache__/
 *.pyc
 media/*
+/kyc_system/media/
 # Django static collection
 staticfiles/
 kyc_system/media/

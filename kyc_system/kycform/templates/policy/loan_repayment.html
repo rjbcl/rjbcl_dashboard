@@ -1,0 +1,219 @@
+{% extends "policy/base_policy.html" %}
+
+{% block title %}Policy Loan Repayment | RJBCL{% endblock %}
+
+{% block extra_css %}
+<style>
+  .service-shell {
+    display: grid;
+    gap: 18px;
+  }
+  .service-hero {
+    border: 0;
+    border-radius: 20px;
+    overflow: hidden;
+    background:
+      radial-gradient(circle at top left, rgba(255, 255, 255, 0.14), transparent 28%),
+      linear-gradient(135deg, #21416b 0%, #1f5fbf 52%, #a5c7ff 148%);
+    color: #fff;
+  }
+  .service-hero .card-body {
+    padding: 28px;
+  }
+  .service-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 12px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.16);
+    font-size: 0.82rem;
+    font-weight: 600;
+  }
+  .service-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 16px;
+  }
+  .service-card {
+    height: 100%;
+    border: 1px solid var(--line);
+    border-radius: 18px;
+    background: #fff;
+    box-shadow: 0 12px 28px rgba(23, 42, 78, 0.06);
+  }
+  .service-card .card-body {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    padding: 20px;
+  }
+  .service-icon,
+  .service-logo {
+    width: 52px;
+    height: 52px;
+    border-radius: 14px;
+  }
+  .service-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--brand-soft);
+    color: var(--brand);
+    font-size: 1.35rem;
+  }
+  .service-logo {
+    object-fit: contain;
+    padding: 8px;
+    background: #fff;
+    border: 1px solid #edf2fb;
+  }
+  .service-note {
+    border: 1px dashed #cddcf5;
+    background: #f8fbff;
+    border-radius: 16px;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <div>
+    <h4 class="mb-1">Policy Loan Repayment</h4>
+    <nav class="small">
+      <a href="{% url 'kyc:dashboard' %}">Dashboard</a> /
+      <span class="text-muted">Policy Loan Repayment</span>
+    </nav>
+  </div>
+  <a href="{% url 'kyc:dashboard' %}" class="btn btn-outline-secondary btn-sm">
+    <i class="bi bi-arrow-left"></i> Back
+  </a>
+</div>
+
+<div class="service-shell">
+  <div class="card service-hero">
+    <div class="card-body">
+      <span class="service-badge mb-3">
+        <i class="bi bi-cash-coin"></i>
+        RJBCL Service
+      </span>
+      <h5 class="fw-semibold mb-2" id="loanHeroTitle">Repay Your Policy Loan Online</h5>
+      <p class="mb-0 opacity-75" id="loanHeroSubtitle">
+        Loading available repayment options...
+      </p>
+    </div>
+  </div>
+
+  <div class="card d-none" id="loanErrorCard">
+    <div class="card-body text-danger">
+      <div class="fw-semibold mb-1">Unable to load repayment options</div>
+      <div class="small" id="loanErrorText"></div>
+    </div>
+  </div>
+
+  <div class="card" id="loanLoadingCard">
+    <div class="card-body text-muted">
+      <i class="bi bi-hourglass-split me-2"></i>Fetching repayment options...
+    </div>
+  </div>
+
+  <div class="card d-none" id="loanSectionCard">
+    <div class="card-body p-4">
+      <div class="d-flex justify-content-between align-items-start gap-3 flex-wrap mb-3">
+        <div>
+          <h5 class="fw-semibold mb-1" id="loanSectionTitle">Loan Repayment Options</h5>
+          <p class="text-muted mb-0" id="loanSectionSubtitle"></p>
+        </div>
+      </div>
+      <div class="service-grid" id="loanOptionsGrid"></div>
+    </div>
+  </div>
+
+  <div class="card service-note d-none" id="loanSupportCard">
+    <div class="card-body p-4">
+      <h6 class="fw-semibold mb-1" id="loanSupportTitle"></h6>
+      <p class="text-muted mb-0" id="loanSupportSubtitle"></p>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+  const loadingCard = document.getElementById("loanLoadingCard");
+  const errorCard = document.getElementById("loanErrorCard");
+  const errorText = document.getElementById("loanErrorText");
+  const sectionCard = document.getElementById("loanSectionCard");
+  const supportCard = document.getElementById("loanSupportCard");
+  const optionsGrid = document.getElementById("loanOptionsGrid");
+
+  function renderOptionCard(item) {
+    const iconMarkup = item.icon_url
+      ? `<img src="${item.icon_url}" alt="" class="service-logo">`
+      : `<span class="service-icon"><i class="bi bi-bank"></i></span>`;
+    const buttonMarkup = item.action_url
+      ? `<a href="${item.action_url}" target="_blank" rel="noopener noreferrer" class="btn btn-primary">
+          <i class="bi bi-box-arrow-up-right me-2"></i>Open
+        </a>`
+      : `<button type="button" class="btn btn-outline-secondary" disabled>Unavailable</button>`;
+
+    return `
+      <div class="service-card">
+        <div class="card-body">
+          <div>${iconMarkup}</div>
+          <div>
+            <h6 class="fw-semibold mb-1">${item.title || "Repayment Option"}</h6>
+            <p class="text-muted small mb-0">${item.subtitle || "No description available."}</p>
+          </div>
+          <div class="mt-auto">${buttonMarkup}</div>
+        </div>
+      </div>
+    `;
+  }
+
+  fetch("/api/policy/payment-options/?type_code=loan-payment", { credentials: "same-origin" })
+    .then(async function (response) {
+      const payload = await response.json();
+      if (!response.ok) {
+        throw new Error(payload.detail || "Unable to load repayment options.");
+      }
+      return payload;
+    })
+    .then(function (payload) {
+      const section = payload.payment_section || {};
+      const types = section.types || [];
+      const selectedType = types[0] || {};
+      const items = selectedType.items || [];
+      const help = payload.help_support || {};
+
+      document.getElementById("loanHeroTitle").innerText = selectedType.title || payload.screen_title || "Policy Loan Repayment";
+      document.getElementById("loanHeroSubtitle").innerText =
+        selectedType.description || section.subtitle || "Choose a repayment option to continue.";
+      document.getElementById("loanSectionTitle").innerText = selectedType.title || section.title || "Loan Repayment Options";
+      document.getElementById("loanSectionSubtitle").innerText =
+        selectedType.description || section.subtitle || "";
+
+      if (!items.length) {
+        throw new Error("No policy loan repayment options are currently available.");
+      }
+
+      optionsGrid.innerHTML = items.map(renderOptionCard).join("");
+      sectionCard.classList.remove("d-none");
+
+      if (help.title || help.subtitle) {
+        document.getElementById("loanSupportTitle").innerText = help.title || "Help & Support";
+        document.getElementById("loanSupportSubtitle").innerText = help.subtitle || "";
+        supportCard.classList.remove("d-none");
+      }
+    })
+    .catch(function (error) {
+      errorText.innerText = error.message || "Unable to load repayment options.";
+      errorCard.classList.remove("d-none");
+    })
+    .finally(function () {
+      loadingCard.classList.add("d-none");
+    });
+});
+</script>
+{% endblock %}

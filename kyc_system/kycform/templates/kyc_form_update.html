@@ -29,7 +29,7 @@
       <!-- Left Sidebar -->
       <div class="col-md-3 sidebar">
         <div class="logo-section">
-          <a href="{% url 'kyc:policy_logout' %}?tab=policy">
+          <a href="{% url 'kyc:policy_logout' %}?tab=policy" onclick="return confirm('Logout?')">
             <img src="{% static 'images/rjbclogo.png' %}" alt="RJBC Logo" class="logo" style="cursor:pointer;">
           </a>
         </div>
@@ -49,7 +49,7 @@
             <a href="#" class="nav-link" id="DashboardBtn">
               <i class="bi bi-house-door"></i> Dashboard
             </a>
-            <a href="{% url 'kyc:policy_logout' %}?tab=policy" class="nav-link">
+            <a href="{% url 'kyc:policy_logout' %}?tab=policy" class="nav-link" onclick="return confirm('Logout?')">
               <i class="bi bi-box-arrow-right"></i> Logout
             </a>
           </div>

@@ -10,6 +10,7 @@ Full views.py for KYC form handling.
   attaches NID as KycDocument (doc_type="NID"), deletes temp draft.
 """
 
+import csv
 import json
 import os
 import uuid
@@ -29,15 +30,18 @@ from django.http import HttpResponse, HttpResponseForbidden, JsonResponse
 from django.shortcuts import render, redirect
 from django.urls import reverse
 from django.db import transaction, connection
+from django.db.utils import ProgrammingError, OperationalError
 from django.core.files import File
 from django.utils.text import get_valid_filename
 from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.csrf import ensure_csrf_cookie
 from django.views.decorators.http import require_POST
 from django.utils.text import get_valid_filename
 from django.utils import timezone
 from django.core.exceptions import PermissionDenied
 from django.contrib import messages
 from django.contrib.auth.hashers import check_password, make_password
+from kycform.auth.agent_jwt import generate_agent_access_token
 from django.http import FileResponse
 from django.shortcuts import get_object_or_404
 from django.views.decorators.cache import never_cache
@@ -47,9 +51,9 @@ from django.db import transaction
 from django.views.decorators.http import require_POST
 from .models import KycMobileOTP
 from .utils import hash_otp
-
-
-
+from rest_framework_simplejwt.tokens import RefreshToken
+from kycform.services.jwt_service import generate_agent_access_token
+from kycform.services.core_agent import verify_agent_from_core
 from kycform.services.policy_identity import resolve_policy_identity
 from django.conf import settings
 
@@ -60,14 +64,20 @@ from .utils import generate_user_id  # from kycform/utils.py
 
 from .models import (
     KycChangeLog, KycUserInfo, KycAgentInfo, KycPolicy, KycAdmin,
-    KycSubmission, KycDocument, KYCTemporary
+    KycSubmission, KycDocument, KYCTemporary, PolicyClaimRequest, PolicyClaimDocument,
+    ProductType, ProductPlan
 )
 from .storage_utils import save_uploaded_file_to_storage 
+from .services.policy_client import PolicyClientService
+from .services.policy_payment_history import PolicyPaymentHistoryService
+from .services.policy_policies import PolicyPoliciesService
+from .services.payment_receipt_lookup import get_payment_receipt_row
+from .services.payment_receipt_pdf import build_payment_receipt_pdf
 
 
-FASTAPI_BASE = "http://127.0.0.1:9000"   # your FastAPI server
-API_USER = "rjbcl_api"
-API_PASS = "your_api_password"   # stored in .env ideally
+# FASTAPI_BASE = "http://127.0.0.1:9000"   # your FastAPI server
+# API_USER = "rjbcl_api"
+# API_PASS = "your_api_password"   # stored in .env ideally
 
 IGNORED_USER_AUDIT_FIELDS = {
     "submitted_at",
@@ -98,6 +108,190 @@ def get_fastapi_token():
 # Utilities
 # -----------------------------------------------------------------------------
 MAX_UPLOAD_BYTES = 2 * 1024 * 1024  # 2 MB default per-file check
+
+
+def get_active_claim_insurance_types():
+    """
+    Read active product types from the shared mobile-app table.
+    Falls back to a static list only if the table is unavailable.
+    """
+    fallback = [
+        "Endowment",
+        "Term Life",
+        "Whole Life",
+        "Child Life",
+        "Joint Life",
+        "Money Back",
+        "Group Insurance",
+        "Rastrasewak",
+    ]
+
+    try:
+        existing_tables = set(connection.introspection.table_names())
+        if "product_type" not in existing_tables:
+            return fallback
+
+        with connection.cursor() as cursor:
+            cursor.execute(
+                """
+                SELECT name
+                FROM product_type
+                WHERE is_active = %s
+                ORDER BY display_order ASC, name ASC
+                """,
+                [True],
+            )
+            rows = [str(row[0]).strip() for row in cursor.fetchall() if row and row[0]]
+        return rows or fallback
+    except Exception:
+        return fallback
+
+
+def get_active_claim_products_map():
+    """
+    Return active plans grouped by active product type.
+    """
+    fallback = {}
+    try:
+        existing_tables = set(connection.introspection.table_names())
+        if not {"product_type", "product_plan"}.issubset(existing_tables):
+            return fallback
+
+        rows = (
+            ProductPlan.objects
+            .select_related("product_type")
+            .filter(is_active=True, product_type__is_active=True)
+            .order_by("product_type__display_order", "display_order", "plan_name")
+            .values(
+                "id",
+                "plan_name",
+                "core_plan_id",
+                "product_type__name",
+            )
+        )
+
+        plan_map = {}
+        for row in rows:
+            type_name = (row.get("product_type__name") or "").strip()
+            if not type_name:
+                continue
+            plan_map.setdefault(type_name, []).append({
+                "id": row.get("id"),
+                "plan_name": row.get("plan_name"),
+                "core_plan_id": row.get("core_plan_id"),
+            })
+        return plan_map
+    except Exception:
+        return fallback
+
+
+def get_policyholder_claim_catalog(user_id, current_policy_no=""):
+    """
+    Build claim type/product choices from policies actually purchased by the
+    current policyholder, not from the full product catalog.
+    """
+    fallback_types = get_active_claim_insurance_types()
+    fallback_products = get_active_claim_products_map()
+
+    try:
+        client_id = PolicyClientService.get_client_no(user_id)
+        purchased = PolicyPoliciesService.get_policies(
+            client_id=client_id,
+            paginated=False,
+        ).get("rows", [])
+
+        if not purchased:
+            return fallback_types, fallback_products, None
+
+        existing_tables = set(connection.introspection.table_names())
+        if "product_plan" not in existing_tables or "product_type" not in existing_tables:
+            return fallback_types, fallback_products, None
+
+        purchased_plan_names = {
+            (row.get("plan_name") or "").strip()
+            for row in purchased
+            if (row.get("plan_name") or "").strip()
+        }
+        if not purchased_plan_names:
+            return fallback_types, fallback_products, None
+
+        plan_rows = (
+            ProductPlan.objects
+            .select_related("product_type")
+            .filter(
+                is_active=True,
+                product_type__is_active=True,
+                plan_name__in=list(purchased_plan_names),
+            )
+            .order_by("product_type__display_order", "display_order", "plan_name")
+            .values(
+                "id",
+                "plan_name",
+                "core_plan_id",
+                "product_type__name",
+            )
+        )
+
+        plan_lookup = {}
+        for row in plan_rows:
+            plan_name = (row.get("plan_name") or "").strip()
+            if not plan_name:
+                continue
+            plan_lookup[plan_name] = {
+                "id": row.get("id"),
+                "plan_name": plan_name,
+                "core_plan_id": row.get("core_plan_id"),
+                "type_name": (row.get("product_type__name") or "").strip(),
+            }
+
+        type_to_products = {}
+        default_selection = None
+
+        for item in purchased:
+            plan_name = (item.get("plan_name") or "").strip()
+            policy_number = (item.get("policy_number") or "").strip()
+            match = plan_lookup.get(plan_name)
+            if not match:
+                continue
+
+            type_name = match["type_name"]
+            product_entry = {
+                "id": match["id"],
+                "plan_name": match["plan_name"],
+                "core_plan_id": match["core_plan_id"],
+                "policy_number": policy_number,
+            }
+
+            bucket = type_to_products.setdefault(type_name, [])
+            if not any(existing["plan_name"] == product_entry["plan_name"] and existing["policy_number"] == product_entry["policy_number"] for existing in bucket):
+                bucket.append(product_entry)
+
+            if current_policy_no and policy_number == current_policy_no and default_selection is None:
+                default_selection = {
+                    "claim_type": type_name,
+                    "product_name": match["plan_name"],
+                    "policy_number": policy_number,
+                    "product_plan_id": match["id"],
+                }
+
+        claim_types = list(type_to_products.keys())
+        if not claim_types:
+            return fallback_types, fallback_products, None
+
+        if default_selection is None:
+            first_type = claim_types[0]
+            first_product = type_to_products[first_type][0] if type_to_products[first_type] else None
+            if first_product:
+                default_selection = {
+                    "claim_type": first_type,
+                    "product_name": first_product["plan_name"],
+                    "policy_number": first_product["policy_number"],
+                    "product_plan_id": first_product["id"],
+                }
+
+        return claim_types, type_to_products, default_selection
+    except Exception:
+        return fallback_types, fallback_products, None
 
 def resolve_session_policy_no(request):
     """
@@ -185,31 +379,24 @@ def download_url_to_filefield(instance, file_field_name, url):
 
 def fetch_policy_snapshot(policy_no, dob):
     
-    url = settings.API_BASE_URL + "/mssql/newpolicies"
+    url = settings.KYC_API_BASE_URL + "/mssql/newpolicies"
     params = {"policy_no": policy_no, "dob": dob}
-    headers = {"Authorization": f"Bearer {settings.API_TOKEN}"}
-
-    print("🏷️ CORE API CALL URL:", url)
-    print("📌 CORE API PARAMS:", params)
-    print("🔐 CORE API HEADERS:", headers)
+    headers = {"Authorization": f"Bearer {settings.KYC_API_TOKEN}"}
 
     try:
         resp = requests.get(url, params=params, headers=headers, timeout=10)
-    except Exception as e:
-        print("❌ CORE API NETWORK ERROR:", str(e))
+    except Exception:
+        logger.exception("Core policy snapshot request failed")
         return {}
-    
-    print("📶 CORE API STATUS:", resp.status_code)
-    print("📦 CORE API RAW RESPONSE:", resp.text)
 
     try:
         data = resp.json()
-    except Exception as e:
-        print("❌ CORE API JSON PARSE FAILED:", str(e))
+    except Exception:
+        logger.warning("Core policy snapshot response was not valid JSON")
         return {}
 
     if not isinstance(data, list):
-        print("❌ CORE API RETURN NOT LIST:", type(data), data)
+        logger.warning("Core policy snapshot response type mismatch")
         return {}
     
     return data[0] if data else {}
@@ -278,66 +465,580 @@ def agent_login(request):
     agent_code = request.POST.get("agent_code")
     password = request.POST.get("password")
 
-    if missing_fields(agent_code, password):
+    if not agent_code or not password:
         messages.error(request, "Agent code and password are required.")
-        return redirect_login_tab("agent")
+        return redirect("kyc:agent_login")
 
     try:
         agent = KycAgentInfo.objects.get(agent_code__iexact=agent_code)
-    except Exception:
+    except KycAgentInfo.DoesNotExist:
         messages.error(request, "Agent code not found!")
-        return redirect_login_tab("agent")
+        return redirect("kyc:agent_login")
 
-    if password != (agent.password or ""):
+    if not check_password(password, agent.password):
         messages.error(request, "Incorrect password!")
-        return redirect_login_tab("agent")
+        return redirect("kyc:agent_login")
 
-    return redirect(f"/agent-dashboard/?agent_code={agent_code}")
+    # 🔐 RESET SESSION (IMPORTANT)
+    request.session.flush()
+
+    request.session["agent_authenticated"] = True
+    request.session["agent_code"] = agent.agent_code
+    request.session["agent_name"] = f"{agent.first_name} {agent.last_name}"
+
+    # ✅ REAL JWT (SimpleJWT)
+    request.session["agent_access_token"] = generate_agent_access_token(agent.agent_code)
+
+    request.session.set_expiry(60 * 60 * 8)  # 8 hours
+
+    return redirect("kyc:agent_dashboard")
 
 
 # -----------------------------------------------------------------------------
 # Simple render views
 # -----------------------------------------------------------------------------
-def dashboard_view(request):
-
+def _policy_portal_guard(request):
     if request.session.get("kyc_access_mode") == "DIRECT_KYC":
-        return HttpResponse("Unauthorized dashboard access", status=403)
+        return None, None, HttpResponse("Unauthorized dashboard access", status=403)
 
-    # ✅ Only policy-login users allowed
     if not request.session.get("authenticated"):
-        return redirect("/auth/policy/?tab=policy")
+        return None, None, redirect("/auth/policy/?tab=policy")
 
     policy_no = request.session.get("policy_no")
     if not policy_no:
-        return redirect("/auth/policy/?tab=policy")
+        return None, None, redirect("/auth/policy/?tab=policy")
 
     try:
         policy = KycPolicy.objects.get(policy_number=policy_no)
         user = KycUserInfo.objects.get(user_id=policy.user_id)
     except Exception:
-        return redirect("/auth/policy/?tab=policy")
+        return None, None, redirect("/auth/policy/?tab=policy")
 
-    # 🔒 KYC submitted → dashboard is final
-    if user.kyc_status in ["PENDING", "VERIFIED"]:
-        return render(request, "dashboard.html", {
-            "policy_no": policy_no,
-            "user": user,
-        })
-    # Editable states → form
-    return redirect("/kyc-form/")
+    if user.kyc_status not in ["PENDING", "VERIFIED"]:
+        return None, None, redirect("/kyc-form/")
 
-    # ✅ PENDING / VERIFIED → dashboard
-    return render(request, "dashboard.html", {
+    return policy_no, user, None
+
+
+def dashboard_view(request):
+    policy_no, user, error_response = _policy_portal_guard(request)
+    if error_response:
+        return error_response
+
+    return render(request, "policy/dashboard.html", {
         "policy_no": policy_no,
         "user": user,
+        "page_title": "Dashboard",
+    })
+
+
+def policy_profile_view(request):
+    policy_no, user, error_response = _policy_portal_guard(request)
+    if error_response:
+        return error_response
+
+    return render(request, "policy/profile.html", {
+        "policy_no": policy_no,
+        "user": user,
+        "page_title": "My Profile",
+    })
+
+
+def policy_policies_view(request):
+    policy_no, user, error_response = _policy_portal_guard(request)
+    if error_response:
+        return error_response
+
+    return render(request, "policy/policies.html", {
+        "policy_no": policy_no,
+        "user": user,
+        "page_title": "My Policies",
+    })
+
+
+def policy_payment_history_view(request):
+    policy_no, user, error_response = _policy_portal_guard(request)
+    if error_response:
+        return error_response
+
+    return render(request, "policy/payment_history.html", {
+        "policy_no": policy_no,
+        "user": user,
+        "page_title": "Payment History",
+    })
+
+
+def policy_payment_history_export(request):
+    policy_no, user, error_response = _policy_portal_guard(request)
+    if error_response:
+        return error_response
+
+    policy_filter = (request.GET.get("policy_no") or "").strip()
+    policy_client_id = PolicyClientService.get_client_no(user.user_id)
+    data = PolicyPaymentHistoryService.get_payment_history(
+        client_id=policy_client_id,
+        policy_no=policy_filter,
+        paginated=False,
+    )
+
+    response = HttpResponse(content_type="text/csv")
+    response["Content-Disposition"] = 'attachment; filename="policy_payment_history.csv"'
+
+    writer = csv.writer(response)
+    writer.writerow(["Policy", "Paid Date", "Paid Amount", "Premium", "Type", "Plan", "Term", "FUP", "Client ID", "Client Name", "Frequency"])
+    for row in data.get("rows", []):
+        writer.writerow([
+            row.get("policy_no", ""),
+            row.get("premium_paid_date", ""),
+            row.get("paid_amount", 0),
+            row.get("premium", 0),
+            row.get("installment_type", ""),
+            row.get("plan_name", ""),
+            row.get("term", ""),
+            row.get("fup", ""),
+            row.get("client_id", ""),
+            row.get("client_name", ""),
+            row.get("policy_premium_frequency", ""),
+        ])
+
+    return response
+
+
+def policy_payment_receipt_download(request):
+    policy_no, user, error_response = _policy_portal_guard(request)
+    if error_response:
+        return error_response
+
+    receipt_row = get_payment_receipt_row(user.user_id, {
+        "policy_no": (request.GET.get("policy_no") or "").strip(),
+        "paid_date": (request.GET.get("paid_date") or "").strip(),
+        "paid_amount": (request.GET.get("paid_amount") or "").strip(),
+        "premium": (request.GET.get("premium") or "").strip(),
+        "installment_type": (request.GET.get("installment_type") or "").strip(),
+    })
+
+    if not receipt_row:
+        return HttpResponse("Receipt not found.", status=404)
+
+    pdf_content = build_payment_receipt_pdf({
+        "policy_no": receipt_row.get("policy_no") or policy_no,
+        "client_name": receipt_row.get("client_name") or "",
+        "paid_date": receipt_row.get("premium_paid_date") or "",
+        "installment_type": receipt_row.get("installment_type") or "",
+        "paid_amount": float(receipt_row.get("paid_amount") or 0),
+        "premium": float(receipt_row.get("premium") or 0),
+        "plan_name": receipt_row.get("plan_name") or "",
+        "term": receipt_row.get("term") or "",
+        "policy_premium_frequency": receipt_row.get("policy_premium_frequency") or "",
+        "fup": receipt_row.get("fup") or "",
+    })
+
+    receipt_no = receipt_row.get("policy_no") or policy_no
+    response = HttpResponse(pdf_content, content_type="application/pdf")
+    response["Content-Disposition"] = f'attachment; filename="receipt-{receipt_no}.pdf"'
+    return response
+
+
+def policy_renewal_pending_view(request):
+    policy_no, user, error_response = _policy_portal_guard(request)
+    if error_response:
+        return error_response
+
+    return render(request, "policy/renewal_pending.html", {
+        "policy_no": policy_no,
+        "user": user,
+        "page_title": "Renewal Pending",
+    })
+
+
+def policy_payment_view(request):
+    policy_no, user, error_response = _policy_portal_guard(request)
+    if error_response:
+        return error_response
+
+    return render(request, "policy/payment.html", {
+        "policy_no": policy_no,
+        "user": user,
+        "page_title": "Payment",
+    })
+
+
+def policy_loan_repayment_view(request):
+    policy_no, user, error_response = _policy_portal_guard(request)
+    if error_response:
+        return error_response
+
+    return render(request, "policy/loan_repayment.html", {
+        "policy_no": policy_no,
+        "user": user,
+        "page_title": "Policy Loan Repayment",
+    })
+
+
+def policy_loan_details_view(request):
+    policy_no, user, error_response = _policy_portal_guard(request)
+    if error_response:
+        return error_response
+
+    return render(request, "policy/loan_details.html", {
+        "policy_no": policy_no,
+        "user": user,
+        "page_title": "Policy Loan Details",
+    })
+
+
+def policy_foreign_policy_view(request):
+    policy_no, user, error_response = _policy_portal_guard(request)
+    if error_response:
+        return error_response
+
+    return render(request, "policy/foreign_policy.html", {
+        "policy_no": policy_no,
+        "user": user,
+        "page_title": "Foreign Policy",
+    })
+
+
+def policy_claim_process_view(request):
+    policy_no, user, error_response = _policy_portal_guard(request)
+    if error_response:
+        return error_response
+
+    return render(request, "policy/claim_process.html", {
+        "policy_no": policy_no,
+        "user": user,
+        "page_title": "Claim Process",
+    })
+
+
+@ensure_csrf_cookie
+def policy_online_file_claim_view(request):
+    policy_no, user, error_response = _policy_portal_guard(request)
+    if error_response:
+        return error_response
+
+    form_data = {
+        "claim_type": "",
+        "product_name": "",
+        "product_plan_id": "",
+        "name_of_insured": f"{(user.first_name or '').strip()} {(user.last_name or '').strip()}".strip(),
+        "phone_number": user.phone_number or "",
+        "email": user.email or "",
+        "date_of_loss": "",
+        "contact_person": "",
+        "policy_number": policy_no or "",
+        "place_of_loss": "",
+        "details_of_loss": "",
+        "message": "",
+    }
+
+    claim_type_choices, claim_products_map, default_claim_selection = get_policyholder_claim_catalog(
+        user.user_id,
+        current_policy_no=policy_no,
+    )
+    if default_claim_selection:
+        form_data["claim_type"] = default_claim_selection.get("claim_type") or ""
+        form_data["product_name"] = default_claim_selection.get("product_name") or ""
+        form_data["product_plan_id"] = default_claim_selection.get("product_plan_id") or ""
+        form_data["policy_number"] = default_claim_selection.get("policy_number") or form_data["policy_number"]
+    elif claim_type_choices and not form_data["claim_type"]:
+        form_data["claim_type"] = claim_type_choices[0]
+    max_upload_mb = MAX_UPLOAD_BYTES // (1024 * 1024)
+    claim_tables_ready = True
+
+    try:
+        existing_tables = set(connection.introspection.table_names())
+        claim_tables_ready = {
+            PolicyClaimRequest._meta.db_table,
+            PolicyClaimDocument._meta.db_table,
+        }.issubset(existing_tables)
+    except Exception:
+        claim_tables_ready = False
+
+    if request.method == "POST":
+        if not claim_tables_ready:
+            messages.error(
+                request,
+                "Claim request tables are not ready yet. Please run migrations first.",
+            )
+            return redirect("kyc:policy_online_file_claim")
+
+        form_data = {
+            "claim_type": (request.POST.get("claim_type") or "").strip(),
+            "product_name": (request.POST.get("product_name") or "").strip(),
+            "product_plan_id": (request.POST.get("product_plan_id") or "").strip(),
+            "name_of_insured": (request.POST.get("name_of_insured") or "").strip(),
+            "phone_number": (request.POST.get("phone_number") or "").strip(),
+            "email": (request.POST.get("email") or "").strip(),
+            "date_of_loss": (request.POST.get("date_of_loss") or "").strip(),
+            "contact_person": (request.POST.get("contact_person") or "").strip(),
+            "policy_number": (request.POST.get("policy_number") or "").strip(),
+            "place_of_loss": (request.POST.get("place_of_loss") or "").strip(),
+            "details_of_loss": (request.POST.get("details_of_loss") or "").strip(),
+            "message": (request.POST.get("message") or "").strip(),
+        }
+        uploaded_files = request.FILES.getlist("documents")
+        errors = []
+
+        required_fields = {
+            "claim_type": "Type of insurance",
+            "product_name": "Insurance product",
+            "name_of_insured": "Name of insured",
+            "phone_number": "Phone number",
+            "email": "Email address",
+            "date_of_loss": "Date of loss",
+            "contact_person": "Contact person",
+            "policy_number": "Policy number / document number",
+            "place_of_loss": "Place of loss / accident",
+            "details_of_loss": "Details of loss",
+            "message": "Message",
+        }
+
+        for field_name, label in required_fields.items():
+            if not form_data[field_name]:
+                errors.append(f"{label} is required.")
+
+        valid_claim_types = set(claim_type_choices)
+        if form_data["claim_type"] and form_data["claim_type"] not in valid_claim_types:
+            errors.append("Invalid insurance type selected.")
+
+        available_products = claim_products_map.get(form_data["claim_type"], [])
+        selected_product = next(
+            (
+                item for item in available_products
+                if (item.get("plan_name") or "").strip() == form_data["product_name"]
+                and (item.get("policy_number") or "").strip() == form_data["policy_number"]
+            ),
+            None,
+        )
+        if selected_product is None:
+            selected_product = next(
+                (
+                    item for item in available_products
+                    if (item.get("plan_name") or "").strip() == form_data["product_name"]
+                ),
+                None,
+            )
+        if form_data["claim_type"] and not available_products:
+            errors.append("No active products found for the selected insurance type.")
+        elif form_data["product_name"] and not selected_product:
+            errors.append("Invalid insurance product selected.")
+
+        if form_data["email"] and "@" not in form_data["email"]:
+            errors.append("Enter a valid email address.")
+
+        try:
+            loss_date = datetime.strptime(form_data["date_of_loss"], "%Y-%m-%d").date()
+        except ValueError:
+            loss_date = None
+            errors.append("Enter a valid date of loss.")
+
+        if not uploaded_files:
+            errors.append("Upload at least one document.")
+
+        for uploaded_file in uploaded_files:
+            if uploaded_file.size > MAX_UPLOAD_BYTES:
+                errors.append(f"{uploaded_file.name} exceeds {max_upload_mb}MB.")
+
+        if errors:
+            for error in errors:
+                messages.error(request, error)
+        else:
+            existing_claim = (
+                PolicyClaimRequest.objects
+                .filter(policy_number__iexact=form_data["policy_number"])
+                .only("id")
+                .first()
+            )
+            if existing_claim:
+                messages.error(request, "Claim already submitted for the given policy number.")
+                return redirect("kyc:policy_online_file_claim")
+
+            with transaction.atomic():
+                claim_request = PolicyClaimRequest.objects.create(
+                    user=user,
+                    claim_type=form_data["claim_type"],
+                    product_name=form_data["product_name"],
+                    product_plan_id=selected_product.get("id") if selected_product else None,
+                    name_of_insured=form_data["name_of_insured"],
+                    phone_number=form_data["phone_number"],
+                    email=form_data["email"],
+                    date_of_loss=loss_date,
+                    contact_person=form_data["contact_person"],
+                    policy_number=form_data["policy_number"],
+                    place_of_loss=form_data["place_of_loss"],
+                    details_of_loss=form_data["details_of_loss"],
+                    message=form_data["message"],
+                )
+
+                for uploaded_file in uploaded_files:
+                    doc = PolicyClaimDocument(
+                        claim_request=claim_request,
+                        original_name=uploaded_file.name,
+                    )
+                    doc.file.save(uploaded_file.name, uploaded_file, save=True)
+
+            messages.success(request, "Claim request submitted successfully.")
+            return redirect("kyc:policy_online_file_claim")
+
+    recent_claims = []
+    if claim_tables_ready:
+        try:
+            recent_claims = list(
+                PolicyClaimRequest.objects
+                .filter(user=user)
+                .prefetch_related("documents")[:5]
+            )
+        except (ProgrammingError, OperationalError):
+            claim_tables_ready = False
+            recent_claims = []
+
+    return render(request, "policy/online_file_claim.html", {
+        "policy_no": policy_no,
+        "user": user,
+        "page_title": "Online File Claim",
+        "claim_type_choices": claim_type_choices,
+        "claim_products_map": claim_products_map,
+        "form_data": form_data,
+        "max_upload_mb": max_upload_mb,
+        "recent_claims": recent_claims,
+        "claim_tables_ready": claim_tables_ready,
+    })
+
+
+def policy_claim_status_view(request):
+    policy_no, user, error_response = _policy_portal_guard(request)
+    if error_response:
+        return error_response
+
+    return render(request, "policy/claim_status.html", {
+        "policy_no": policy_no,
+        "user": user,
+        "page_title": "Claim Status",
+        "recaptcha_site_key": getattr(settings, "RECAPTCHA_SITE_KEY", ""),
+    })
+
+
+def policy_rastra_sewak_view(request):
+    policy_no, user, error_response = _policy_portal_guard(request)
+    if error_response:
+        return error_response
+
+    return render(request, "policy/rastra_sewak.html", {
+        "policy_no": policy_no,
+        "user": user,
+        "page_title": "Rastra Sewak",
     })
 
 
 def agent_dashboard_view(request):
-    return render(request, "dashboard.html", {
-        "agent_code": request.GET.get("agent_code")
+    """
+    Agent dashboard (UI phase)
+    Auth logic will be tightened later
+    """
+
+    # 🔒 Future: agent authentication check
+    # if not request.session.get("agent_authenticated"):
+    #     return redirect("/agent/login/")
+
+    return render(request, "agent/dashboard.html", {
+        "kpi": {
+            "proposals": {"total": 0, "new": 0, "renewal": 0},
+            "policies": {"total": 0, "new": 0, "renewal": 0},
+            "claims": {"total": 0},
+        },
+        "summary": {
+            "policies": 0,
+            "premium": "NPR 0",
+            "commission": "NPR 0",
+        },
+        "rewards": {
+            "progress": 0,   # IMPORTANT: normalized integer
+            "status": "Not Achieved",
+        },
+        "page_title": "Dashboard",
     })
 
+def business_report(request):
+    if not request.session.get("agent_authenticated"):
+        return redirect("kyc:agent_login")
+
+    return render(request, "agent/business_report.html", {
+        "page_title": "Business Report",
+    })
+
+def agent_profile_view(request):
+    if not request.session.get("agent_authenticated"):
+        return redirect("kyc:agent_login")
+
+    return render(request, "agent/agent_profile.html", {
+        "page_title": "Agent Profile",
+    })
+
+def due_report(request):
+    if not request.session.get("agent_authenticated"):
+        return redirect("kyc:agent_login")
+
+    return render(request, "agent/due_report.html", {
+        "page_title": "Due Report",
+    })
+
+def commission_report(request):
+    if not request.session.get("agent_authenticated"):
+        return redirect("kyc:agent_login")
+
+    return render(request, "agent/commission_report.html", {
+        "page_title": "Commission Report",
+    })
+
+def agent_hierarchy(request):
+    if not request.session.get("agent_authenticated"):
+        return redirect("kyc:agent_login")
+
+    return render(request, "agent/agent_hierarchy.html", {
+        "page_title": "Agent Hierarchy",
+    })
+
+
+def agent_maturity_forecasting(request):
+    if not request.session.get("agent_authenticated"):
+        return redirect("kyc:agent_login")
+
+    return render(request, "agent/maturity_forecasting.html", {
+        "page_title": "Maturity Forecasting",
+    })
+
+
+def downline_business_report(request):
+    if not request.session.get("agent_authenticated"):
+        return redirect("kyc:agent_login")
+
+    return render(request, "agent/downline_business_report.html", {
+        "page_title": "Downline Business Report",
+    })
+
+def agent_logout(request):
+    """
+    Clear agent session and logout safely
+    """
+    keys_to_clear = [
+        "agent_code",
+        "agent_name",
+        "agent_access_token"
+    ]
+
+    for key in keys_to_clear:
+        request.session.pop(key, None)
+
+    request.session.flush()  # 🔒 clears entire session safely
+
+    messages.success(request, "You have been logged out successfully.")
+    return redirect("kyc:agent_login")    
+
+def contact_us_view(request):
+    if not request.session.get("agent_code"):
+        return redirect("kyc:agent_login")
+    return render(request, "agent/contact_us.html")
 
 # -----------------------------------------------------------------------------
 # Registration / Forgot / Reset
@@ -352,7 +1053,7 @@ def policyholder_register_view(request):
        deterministic hashed user_id generation.
     """
     if request.method == "GET":
-        return render(request, "register.html")
+        return render(request, "kyc_auth.html", {"active_tab": "policy"})
 
     # ----------------------------------------------------------
     # 1) COLLECT INPUTS
@@ -386,8 +1087,8 @@ def policyholder_register_view(request):
    # 3) LOOKUP IN CORE VIA FASTAPI (secure + centralized)
    # ----------------------------------------------------------
     try:
-        api_url = f"{settings.API_BASE_URL}/mssql/newpolicies"
-        headers = {"Authorization": f"Bearer {settings.API_TOKEN}"}
+        api_url = f"{settings.KYC_API_BASE_URL}/mssql/newpolicies"
+        headers = {"Authorization": f"Bearer {settings.KYC_API_TOKEN}"}
 
         response = requests.get(api_url, params={
             "policy_no": policy_no,
@@ -411,7 +1112,7 @@ def policyholder_register_view(request):
         core_dob = data["DOB"]
         core_mobile = data["Mobile"]
     except Exception as e:
-        print("API LOOKUP ERROR:", e)
+        logger.exception("Policy registration lookup failed")
         messages.error(request, "Could not connect to policy lookup API.")
         return redirect("kyc:policy_register")
 
@@ -431,8 +1132,8 @@ def policyholder_register_view(request):
     # 5) FIND ALL RELATED POLICIES FROM MSSQL (via FastAPI)
     # ----------------------------------------------------------
     try:
-        api_url = f"{settings.API_BASE_URL}/mssql/related-policies"
-        headers = {"Authorization": f"Bearer {settings.API_TOKEN}"}
+        api_url = f"{settings.KYC_API_BASE_URL}/mssql/related-policies"
+        headers = {"Authorization": f"Bearer {settings.KYC_API_TOKEN}"}
 
         resp = requests.get(api_url, params={
             "firstname": core_first,
@@ -445,7 +1146,7 @@ def policyholder_register_view(request):
         related = resp.json()
 
     except Exception as e:
-        print("RELATED POLICY LOOKUP ERROR:", e)
+        logger.exception("Related policy lookup failed")
         messages.error(request, "Could not fetch related policies.", extra_tags="error")
         return redirect("kyc:policy_register")
 
@@ -546,8 +1247,48 @@ def policyholder_register_view(request):
     return redirect_login_tab("policy")
 
 def agent_register_view(request):
-    messages.error(request, "Agent registration not implemented.", extra_tags="error")
-    return redirect("kyc:policy_register")
+    if request.method == "GET":
+        return render(request, "agent/agent_register.html", {"active_tab": "agent"})
+
+    agent_code = request.POST.get("agent_code", "").strip()
+    dob = request.POST.get("dob_ad", "").strip()  # YYYY-MM-DD
+
+    if not agent_code or not dob:
+        messages.error(request, "Agent Code and DOB are required.")
+        return redirect("kyc:agent_register")
+
+    # Prevent duplicate local registration
+    if KycAgentInfo.objects.filter(agent_code__iexact=agent_code).exists():
+        messages.error(request, "Agent already registered. Please login.")
+        return redirect("kyc:agent_login")
+
+    # 🔐 CORE VERIFICATION (AUTHORITATIVE)
+    core_ok = verify_agent_from_core(agent_code, dob)
+
+    if not core_ok:
+        messages.error(request, "Agent verification failed")
+        return redirect("kyc:agent_register")
+
+    # ---------------------------------------
+    # Create LOCAL agent (authoritative app DB)
+    # ---------------------------------------
+    raw_password = dob.replace("-", "")  # YYYYMMDD
+
+    KycAgentInfo.objects.create(
+        agent_code=agent_code,
+        first_name="",
+        last_name="",
+        dob=dob,
+        phone_number="",   # can be updated later
+        email="",
+        password=make_password(raw_password),
+    )
+
+    messages.success(
+        request,
+        "Registration successful. Password is your DOB (YYYYMMDD)."
+    )
+    return redirect("kyc:agent_login")
 
 def forgot_password(request):
     user_type = request.GET.get("type", "policy")
@@ -593,7 +1334,7 @@ def forgot_password(request):
         return redirect(f"/reset-password/?type={user_type}&identifier={identifier}")
 
     except Exception as e:
-        print("FORGOT ERROR:", e)
+        logger.exception("Forgot-password lookup failed")
         messages.error(request, "Record not found!", extra_tags="error")
         return redirect(f"/forgot-password/?type={user_type}")
 
@@ -640,7 +1381,7 @@ def reset_password(request):
         return redirect_login_tab(user_type)
 
     except Exception as e:
-        print("RESET ERROR:", e)
+        logger.exception("Password reset failed")
         messages.error(request, "Something went wrong!", extra_tags="error")
         return redirect(f"/reset-password/?type={user_type}&identifier={identifier}")
 # -----------------------------------------------------------------------------
@@ -883,12 +1624,6 @@ def kyc_form_view(request):
 # -----------------------------------------------------------------------------
 @csrf_exempt
 def kyc_form_submit(request):
-    print(">>> ENTERED kyc_form_submit <<<")
-
-    print("SUBMIT SESSION:", dict(request.session))
-    print("POST policy_no:", request.POST.get("policy_no"))
-
-
     if request.method != "POST":
         messages.error(request, "Invalid request method!")
         return redirect("/")
@@ -1572,13 +2307,11 @@ def process_kyc_submission(request):
         policy_snapshot = {}
 
         try:
-            print(">>> ABOUT TO CALL fetch_policy_snapshot")
             policy_snapshot = fetch_policy_snapshot(
                 policy_no=policy.policy_number,
                 dob=user.dob.strftime("%Y-%m-%d")
 
             )
-            print(">>> RETURNED FROM fetch_policy_snapshot:", policy_snapshot)
         except Exception:
             policy_snapshot = {}
 
@@ -1609,13 +2342,6 @@ def process_kyc_submission(request):
         # 🔒 RE-APPLY branch AFTER helper (helper overwrites fields)
         if parsed.get("branch_name"):
             submission.bank_branch = parsed["branch_name"]
-
-        print(
-        "DEBUG FINAL bank_branch:",
-            submission.bank_branch,
-            "JSON:",
-            submission.data_json.get("branch_name")
-        )
 
         # --------------------------------------------------
         # 🔐 FORCE VERIFIED MOBILE (AUTHORITATIVE SOURCE)
@@ -1903,12 +2629,15 @@ def view_additional_doc(request, doc_id):
 # -----------------------------------------------------------------------------
 # Direct KYC entry view (no login)
 
+from datetime import datetime
+from django.core.exceptions import ValidationError
+
 def direct_kyc_entry_view(request):
     """
     Direct KYC entry without login.
     Inputs:
       - policy_no
-      - dob_ad
+      - dob_ad (YYYY-MM-DD from browser)
     """
 
     if request.method == "GET":
@@ -1921,15 +2650,21 @@ def direct_kyc_entry_view(request):
         messages.error(request, "Policy number and DOB are required.")
         return redirect("kyc:direct_kyc_entry")
 
+
     # -------------------------------------------------
-    # VALIDATE POLICY + DOB (single source of truth)
+    # 🔍 RESOLVE POLICY IDENTITY
     # -------------------------------------------------
     try:
         user, user_id = resolve_policy_identity(
             policy_no=policy_no,
             dob_ad=dob_ad,
         )
-    except ValidationError:
+    except ValidationError as e:
+        messages.error(request, str(e))
+        return redirect("kyc:direct_kyc_entry")
+
+    # 🚨 THIS IS THE REAL FAILURE CHECK
+    if not user or not user_id:
         messages.error(
             request,
             "Invalid policy number or date of birth. Please check and try again."
@@ -1949,11 +2684,11 @@ def direct_kyc_entry_view(request):
     # -------------------------------------------------
     # 🔐 CLEAN SESSION (CRITICAL)
     # -------------------------------------------------
-    request.session.flush()      # remove any old login session
-    request.session.cycle_key()  # prevent fixation
+    request.session.flush()
+    request.session.cycle_key()
 
     # -------------------------------------------------
-    # SESSION BINDING (STRICT)
+    # 🔒 SESSION BINDING (STRICT)
     # -------------------------------------------------
     request.session["kyc_access_mode"] = "DIRECT_KYC"
     request.session["kyc_policy_no"] = policy_no
@@ -1961,7 +2696,7 @@ def direct_kyc_entry_view(request):
     request.session["kyc_dob"] = user.dob.isoformat()
 
     # -------------------------------------------------
-    # AUDIT LOG (OPTIONAL BUT GOOD)
+    # 📝 AUDIT LOG (OPTIONAL)
     # -------------------------------------------------
     submission = KycSubmission.objects.filter(user=user).first()
     if submission:
@@ -1974,6 +2709,7 @@ def direct_kyc_entry_view(request):
         )
 
     return redirect("/kyc-form/")
+
 
 
 def kyc_submitted_view(request):
@@ -2018,8 +2754,8 @@ def send_mobile_otp(request):
     # -------------------------------------------------
     try:
         resp = requests.post(
-            f"{settings.FASTAPI_BASE_URL}/otp/send",
-            params={"mobile": mobile},
+            f"{settings.API_SERVICE_BASE_URL.rstrip('/')}/otp/send",
+            json={"mobile": mobile},
             timeout=10
         )
     except requests.RequestException:

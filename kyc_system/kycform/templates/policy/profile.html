@@ -1,0 +1,114 @@
+{% extends "policy/base_policy.html" %}
+
+{% block title %}My Profile | RJBCL{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <div>
+    <h4 class="mb-1">My Profile</h4>
+    <nav class="small">
+      <a href="{% url 'kyc:dashboard' %}">Dashboard</a> /
+      <span class="text-muted">Profile</span>
+    </nav>
+  </div>
+</div>
+
+<div class="row g-4">
+  <div class="col-lg-4">
+    <div class="card shadow-sm text-center p-4 h-100">
+      <div class="mb-3">
+        <div class="rounded-circle bg-primary text-white d-inline-flex align-items-center justify-content-center"
+             style="width:96px;height:96px;font-size:2.5rem;">
+          <i class="bi bi-person"></i>
+        </div>
+      </div>
+      <h5 class="fw-semibold mb-1" id="profile-name">-</h5>
+      <p class="text-muted mb-3">Policy Holder</p>
+
+      <span id="kyc-status" class="badge px-3 py-2">Loading...</span>
+      <hr class="my-4">
+      <div class="text-start small">
+        <p class="mb-2">
+          <i class="bi bi-telephone me-2"></i>
+          <strong>Mobile:</strong>
+          <span id="profile-mobile">-</span>
+        </p>
+        <p class="mb-0">
+          <i class="bi bi-envelope me-2"></i>
+          <strong>Email:</strong>
+          <span id="profile-email">-</span>
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-8">
+    <div class="card shadow-sm p-4 h-100">
+      <h6 class="fw-semibold mb-3 border-bottom pb-2">Policy Holder Information</h6>
+
+      <div class="row mb-3">
+        <div class="col-md-4 text-muted fw-semibold">Full Name</div>
+        <div class="col-md-8" id="info-name">-</div>
+      </div>
+      <div class="row mb-3">
+        <div class="col-md-4 text-muted fw-semibold">Client ID</div>
+        <div class="col-md-8" id="info-client-id">-</div>
+      </div>
+      <div class="row mb-3">
+        <div class="col-md-4 text-muted fw-semibold">Date of Birth</div>
+        <div class="col-md-8" id="info-dob">-</div>
+      </div>
+
+      <hr>
+      <h6 class="fw-semibold mb-3 border-bottom pb-2">Bank Information</h6>
+      <div class="row mb-3">
+        <div class="col-md-4 text-muted fw-semibold">Bank Name</div>
+        <div class="col-md-8" id="bank-name">-</div>
+      </div>
+      <div class="row">
+        <div class="col-md-4 text-muted fw-semibold">Bank Account</div>
+        <div class="col-md-8" id="bank-account">-</div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+  fetch("/api/policy/profile/", { credentials: "same-origin" })
+    .then(function (res) { return res.json(); })
+    .then(function (data) {
+      const p = data.policy_holder || {};
+
+      document.getElementById("profile-name").innerText = p.name || "-";
+      document.getElementById("profile-mobile").innerText = p.mobile || "-";
+      document.getElementById("profile-email").innerText = p.email || "-";
+
+      document.getElementById("info-name").innerText = p.name || "-";
+      document.getElementById("info-client-id").innerText = p.client_id || "-";
+      document.getElementById("info-dob").innerText = p.dob || "-";
+      document.getElementById("bank-name").innerText = p.bank_name || "-";
+      document.getElementById("bank-account").innerText = p.bank_account || "-";
+
+      const kycBadge = document.getElementById("kyc-status");
+      const status = (p.kyc_status || "").toUpperCase();
+      if (status === "VERIFIED") {
+        kycBadge.className = "badge bg-success-subtle text-success px-3 py-2";
+        kycBadge.innerHTML = '<i class="bi bi-patch-check-fill me-1"></i> KYC Verified';
+      } else if (status === "PENDING") {
+        kycBadge.className = "badge bg-warning-subtle text-warning px-3 py-2";
+        kycBadge.innerHTML = '<i class="bi bi-hourglass-split me-1"></i> KYC Pending';
+      } else {
+        kycBadge.className = "badge bg-secondary-subtle text-secondary px-3 py-2";
+        kycBadge.innerHTML = '<i class="bi bi-info-circle me-1"></i> ' + (p.kyc_status || "Unknown");
+      }
+    })
+    .catch(function () {
+      document.getElementById("kyc-status").className = "badge bg-danger-subtle text-danger px-3 py-2";
+      document.getElementById("kyc-status").innerText = "Profile Load Failed";
+    });
+});
+</script>
+{% endblock %}

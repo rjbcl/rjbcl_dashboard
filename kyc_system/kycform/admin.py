@@ -1,6 +1,7 @@
 # kycform/admin.py
 from urllib import request
 from django.db.models import Q
+from django.db import DatabaseError
 
 from django.contrib import admin, messages
 from django.utils.html import format_html
@@ -12,12 +13,14 @@ from django.core.exceptions import PermissionDenied
 from django.utils.html import format_html
 from django.utils.http import urlencode
 from django.urls import reverse
+from django.http import HttpResponseRedirect
 from django.forms import ValidationError as FormValidationError
-from .models import KycChangeLog, KycUserInfo, KycPolicy
+from .models import KycChangeLog, KycUserInfo, KycPolicy, KycSmsNotification
 from .models import KycMobileOTP
 
 
-from .models import KycSubmission, KycDocument
+from .models import KycSubmission, KycDocument, PolicyClaimRequest, PolicyClaimDocument
+from .services.kyc_sms import send_kyc_verified_sms
 from .forms import KycSubmissionAdminForm
 
 
@@ -383,6 +386,7 @@ class KycSubmissionAdmin(admin.ModelAdmin):
     # changeform_view
     # -------------------------------------------------------------------
     def changeform_view(self, request, object_id=None, form_url="", extra_context=None):
+        extra_context = extra_context or {}
         
          # ✅ Capture PRISTINE submission BEFORE admin edits (for audit)
         if object_id:
@@ -462,6 +466,7 @@ class KycSubmissionAdmin(admin.ModelAdmin):
     def save_model(self, request, obj, form, change):
 
         old_obj = getattr(request, "_old_submission", None)
+        old_status = old_obj.user.kyc_status if old_obj and old_obj.user else None
         
         try:
             kyc_status = form.cleaned_data.get("kyc_status")
@@ -516,6 +521,14 @@ class KycSubmissionAdmin(admin.ModelAdmin):
                 new_value=new_status or "",
                 actor_type="ADMIN",
                 actor_identifier=request.user.username,
+            )
+
+        if new_status == "VERIFIED" and old_status != "VERIFIED" and obj.user:
+            send_kyc_verified_sms(
+                obj.user,
+                mobile=obj.user.phone_number or getattr(obj, "mobile", None),
+                actor_identifier=request.user.username,
+                source="ADMIN_FORM",
             )
         # 📝 SAVE & LOG ADMIN COMMENT (REJECTED / INCOMPLETE)
         if kyc_status in ["REJECTED", "INCOMPLETE"] and comment:
@@ -712,6 +725,7 @@ class KycSubmissionAdmin(admin.ModelAdmin):
     def _apply_review(self, request, queryset, new_status, comment):
         now = timezone.now().isoformat()
         for sub in queryset:
+            old_status = sub.user.kyc_status if sub.user else None
             sub.user.kyc_status = new_status
             sub.user.save()
 
@@ -727,6 +741,14 @@ class KycSubmissionAdmin(admin.ModelAdmin):
             data["last_review"] = audit
             sub.data_json = data
             sub.save()
+
+            if new_status == "VERIFIED" and old_status != "VERIFIED" and sub.user:
+                send_kyc_verified_sms(
+                    sub.user,
+                    mobile=sub.user.phone_number or getattr(sub, "mobile", None),
+                    actor_identifier=request.user.username,
+                    source="ADMIN_ACTION",
+                )
 
     def mark_verified(self, request, queryset):
         self._apply_review(request, queryset, "VERIFIED", "Verified by admin")
@@ -793,6 +815,31 @@ class KycChangeLogAdmin(admin.ModelAdmin):
         return True
 
     # 🔒 HARD READ-ONLY (AUDIT SAFE)
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False
+
+
+@admin.register(KycSmsNotification)
+class KycSmsNotificationAdmin(admin.ModelAdmin):
+    list_display = (
+        "user",
+        "mobile",
+        "template_name",
+        "delivery_status",
+        "source",
+        "sent_at",
+        "created_at",
+    )
+    list_filter = ("delivery_status", "source", "template_name", "created_at")
+    search_fields = ("user__user_id", "mobile", "message", "provider_reference")
+    readonly_fields = [f.name for f in KycSmsNotification._meta.fields]
+
     def has_add_permission(self, request):
         return False
 
@@ -884,3 +931,108 @@ class KycPolicyAdmin(admin.ModelAdmin):
         val = data.get("core_new_client_id") or data.get("NewClientId") or None
         return val if val else "—"
     core_new_client_id.short_description = "New Client ID"
+class _SafeClaimAdminMixin:
+    claim_admin_error_message = "Policy claim records are currently unavailable."
+
+    def get_queryset(self, request):
+        try:
+            return super().get_queryset(request)
+        except DatabaseError:
+            return self.model.objects.none()
+
+    def changelist_view(self, request, extra_context=None):
+        try:
+            return super().changelist_view(request, extra_context=extra_context)
+        except DatabaseError:
+            self.message_user(request, self.claim_admin_error_message, level=messages.ERROR)
+            return HttpResponseRedirect("/admin/")
+
+    def change_view(self, request, object_id, form_url="", extra_context=None):
+        try:
+            return super().change_view(request, object_id, form_url=form_url, extra_context=extra_context)
+        except DatabaseError:
+            self.message_user(request, self.claim_admin_error_message, level=messages.ERROR)
+            return HttpResponseRedirect("/admin/")
+
+    def add_view(self, request, form_url="", extra_context=None):
+        try:
+            return super().add_view(request, form_url=form_url, extra_context=extra_context)
+        except DatabaseError:
+            self.message_user(request, self.claim_admin_error_message, level=messages.ERROR)
+            return HttpResponseRedirect("/admin/")
+
+
+class PolicyClaimDocumentInline(admin.TabularInline):
+    model = PolicyClaimDocument
+    extra = 0
+    fields = ("original_name", "uploaded_at", "document_link")
+    readonly_fields = ("original_name", "uploaded_at", "document_link")
+    can_delete = False
+
+    def get_queryset(self, request):
+        try:
+            return super().get_queryset(request)
+        except DatabaseError:
+            return self.model.objects.none()
+
+    def has_add_permission(self, request, obj=None):
+        return False
+
+    def document_link(self, obj):
+        if not obj or not obj.file:
+            return "No file"
+        return format_html('<a href="{}" target="_blank">Open file</a>', obj.file.url)
+
+    document_link.short_description = "Document"
+
+
+@admin.register(PolicyClaimRequest)
+class PolicyClaimRequestAdmin(_SafeClaimAdminMixin, admin.ModelAdmin):
+    list_display = (
+        "id",
+        "policy_number",
+        "name_of_insured",
+        "claim_type",
+        "product_name",
+        "phone_number",
+        "status",
+        "submitted_at",
+    )
+    list_filter = ("claim_type", "status", "submitted_at")
+    search_fields = (
+        "policy_number",
+        "name_of_insured",
+        "phone_number",
+        "email",
+        "contact_person",
+    )
+    readonly_fields = ("submitted_at", "updated_at", "linked_user", "document_count")
+    fields = (
+        "linked_user",
+        "claim_type",
+        "product_name",
+        "name_of_insured",
+        "phone_number",
+        "email",
+        "date_of_loss",
+        "contact_person",
+        "policy_number",
+        "place_of_loss",
+        "details_of_loss",
+        "message",
+        "status",
+        "document_count",
+        "submitted_at",
+        "updated_at",
+    )
+    inlines = (PolicyClaimDocumentInline,)
+
+    def linked_user(self, obj):
+        return obj.user.user_id if obj and obj.user else "-"
+
+    linked_user.short_description = "User"
+
+    def document_count(self, obj):
+        return obj.documents.count() if obj else 0
+
+    document_count.short_description = "Uploaded Documents"

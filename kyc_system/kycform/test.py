@@ -2,6 +2,7 @@ from datetime import date, timedelta
 import json
 
 from django.test import TestCase
+from django.test import override_settings
 from django.utils import timezone
 from django.db import connection
 from django.db import IntegrityError
@@ -13,7 +14,9 @@ from kycform.models import (
     KYCTemporary,
     KycChangeLog,
     KycMobileOTP,
+    KycSmsNotification,
 )
+from kycform.services.kyc_sms import VERIFIED_SMS_MESSAGE, send_kyc_verified_sms
 
 # ================================================================
 # MIXIN FOR UNMANAGED kyc_policy TABLE
@@ -250,6 +253,36 @@ class KycChangeLogTest(TestCase):
 
     def test_changelog_str(self):
         self.assertIn(self.submission.user.user_id, str(self.log))
+
+
+# ================================================================
+# KYC SMS NOTIFICATION TESTS
+# ================================================================
+
+class KycSmsNotificationTest(TestCase):
+
+    def setUp(self):
+        self.user = KycUserInfo.objects.create(
+            user_id="CUS007",
+            first_name="Mina",
+            last_name="Khanal",
+            dob=date(1993, 7, 7),
+            phone_number="9810000000",
+            mobile_verified=True,
+            kyc_status="VERIFIED",
+        )
+
+    @override_settings(SMS_GATEWAY_URL="")
+    def test_verified_sms_is_saved_even_without_gateway(self):
+        notification = send_kyc_verified_sms(self.user, source="TEST")
+
+        self.assertEqual(notification.message, VERIFIED_SMS_MESSAGE)
+        self.assertEqual(notification.delivery_status, "SKIPPED")
+
+        saved = KycSmsNotification.objects.get(id=notification.id)
+        self.assertEqual(saved.mobile, "9810000000")
+        self.assertEqual(saved.message, VERIFIED_SMS_MESSAGE)
+        self.assertEqual(saved.delivery_status, "SKIPPED")
 
 
 # ================================================================

@@ -179,6 +179,12 @@ $(document).ready(function () {
     this.showPicker();
   });
 
+  // ✅ AGENT REGISTRATION DATE PICKER INITIALIZATION
+  $("#agent_dob_bs").NepaliDatePicker();
+  $("#agent_dob_ad").on("focus", function () {
+    this.showPicker();
+  });
+
 });
 
 // ===========================
