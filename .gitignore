@@ -7,3 +7,4 @@ __pycache__/
 media/*
 # Django static collection
 staticfiles/
+kyc_system/media/
