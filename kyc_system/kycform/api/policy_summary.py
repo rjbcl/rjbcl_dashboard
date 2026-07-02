@@ -1,3 +1,4 @@
+from django.core.cache import cache
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
@@ -17,15 +18,29 @@ class PolicySummaryAPIView(APIView):
         if not policy_no:
             return Response({"detail": "Policy holder session invalid"}, status=401)
 
-        root_policy = KycPolicy.objects.filter(policy_number=policy_no).first()
-        if not root_policy or not root_policy.user_id:
-            return Response({"detail": "Policy mapping not found"}, status=404)
+        session_user_id = request.session.get("policy_user_id")
+        if session_user_id:
+            user_id = session_user_id
+        else:
+            root_policy = KycPolicy.objects.filter(policy_number=policy_no).values("user_id").first()
+            user_id = root_policy.get("user_id") if root_policy else None
+            if not user_id:
+                return Response({"detail": "Policy mapping not found"}, status=404)
+            request.session["policy_user_id"] = user_id
 
-        policy_numbers = list(
-            KycPolicy.objects.filter(user_id=root_policy.user_id).values_list(
-                "policy_number", flat=True
+        cache_key = f"policy:summary:{user_id}"
+        cached = cache.get(cache_key)
+        if cached is not None:
+            return Response(cached)
+
+        policy_numbers_key = f"policy:user_policies:{user_id}"
+        policy_numbers = cache.get(policy_numbers_key)
+        if policy_numbers is None:
+            policy_numbers = list(
+                KycPolicy.objects.filter(user_id=user_id).values_list("policy_number", flat=True)
             )
-        )
+            cache.set(policy_numbers_key, policy_numbers, 300)
 
         data = get_policy_dashboard_data(policy_numbers or [policy_no])
+        cache.set(cache_key, data, 60)
         return Response(data)

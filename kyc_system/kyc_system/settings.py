@@ -178,6 +178,38 @@ KYC_API_TOKEN = config(
     default="super-secret-kyc-token"
 )
 
+# ---- SMS GATEWAY (KYC VERIFICATION NOTIFICATIONS) ----
+SMS_GATEWAY_URL = config("SMS_GATEWAY_URL", default="")
+SMS_GATEWAY_TOKEN = config("SMS_GATEWAY_TOKEN", default="")
+SMS_GATEWAY_TIMEOUT = config("SMS_GATEWAY_TIMEOUT", default=15, cast=int)
+
+# ---- FASTAPI OTP/SMS SERVICE ----
+# Point this to the api_service app, e.g. http://127.0.0.1:8001
+API_SERVICE_BASE_URL = config("API_SERVICE_BASE_URL", default="http://127.0.0.1:8001")
+
+# ---- POLICY SERVICE URLS (LOCAL DASHBOARD CONFIG) ----
+PREMIUM_PAYMENT_URL = config(
+    "PREMIUM_PAYMENT_URL",
+    default="https://rbs.gov.np/premium-payment"
+)
+LOAN_REPAYMENT_URL = config(
+    "LOAN_REPAYMENT_URL",
+    default="https://lims.rbs.gov.np:2028/Transaction/LoanRepaymentSearch/loan-payment"
+)
+FOREIGN_POLICY_URL = config(
+    "FOREIGN_POLICY_URL",
+    default="https://rbs.gov.np/foreign-policy"
+)
+
+RECAPTCHA_SITE_KEY = config(
+    "RECAPTCHA_SITE_KEY",
+    default="6LdykNEsAAAAAJZkPHkyaJcoCWtrCg65WJlAG511",
+)
+RECAPTCHA_SECRET_KEY = config(
+    "RECAPTCHA_SECRET_KEY",
+    default="",
+)
+
 
 # SESSION SETTINGS
 SESSION_COOKIE_AGE = 20 * 60  # 20 minutes

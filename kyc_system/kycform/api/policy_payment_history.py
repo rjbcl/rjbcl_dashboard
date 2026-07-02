@@ -11,6 +11,25 @@ class PolicyPaymentHistoryAPIView(PolicySessionBaseAPIView):
         if error:
             return error
 
+        policy_no = (request.GET.get("policy_no") or "").strip()
+        page_raw = request.GET.get("page")
+        page_size_raw = request.GET.get("page_size")
+        paginated = page_raw is not None or page_size_raw is not None
+        try:
+            page = int(page_raw or 1)
+        except (TypeError, ValueError):
+            page = 1
+        try:
+            page_size = int(page_size_raw or 10)
+        except (TypeError, ValueError):
+            page_size = 10
+
         client_id = PolicyClientService.get_client_no(user_id)
-        data = PolicyPaymentHistoryService.get_payment_history(client_id)
+        data = PolicyPaymentHistoryService.get_payment_history(
+            client_id=client_id,
+            policy_no=policy_no,
+            page=page,
+            page_size=page_size,
+            paginated=paginated,
+        )
         return Response(data)

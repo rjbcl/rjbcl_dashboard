@@ -36,10 +36,20 @@
           <th>Paid Amount</th>
           <th>Premium</th>
           <th>Type</th>
+          <th class="text-center">Receipt</th>
         </tr>
       </thead>
       <tbody></tbody>
     </table>
+    <div class="d-flex justify-content-between align-items-center mt-3">
+      <button id="paymentPrevBtn" class="btn btn-outline-secondary btn-sm" disabled>
+        <i class="bi bi-chevron-left"></i> Prev
+      </button>
+      <span id="paymentPageInfo" class="small text-muted">Page 0 of 0</span>
+      <button id="paymentNextBtn" class="btn btn-outline-secondary btn-sm" disabled>
+        Next <i class="bi bi-chevron-right"></i>
+      </button>
+    </div>
   </div>
 </div>
 {% endblock %}
@@ -48,46 +58,112 @@
 <script>
 document.addEventListener("DOMContentLoaded", function () {
   const table = $('#paymentTable').DataTable({
-    paging: true,
+    paging: false,
     searching: false,
     ordering: true,
-    info: true,
-    pageLength: 10
+    info: false
   });
 
-  function loadPaymentHistory(filterNo) {
-    fetch("/api/policy/payment-history/", { credentials: "same-origin" })
+  let currentPage = 1;
+  const pageSize = 10;
+  let currentFilter = "";
+  let totalPages = 0;
+  const receiptBaseUrl = "{% url 'kyc:policy_payment_receipt_download' %}";
+
+  function syncPager() {
+    document.getElementById("paymentPageInfo").innerText = "Page " + (totalPages ? currentPage : 0) + " of " + totalPages;
+    document.getElementById("paymentPrevBtn").disabled = currentPage <= 1;
+    document.getElementById("paymentNextBtn").disabled = currentPage >= totalPages;
+  }
+
+  function buildReceiptUrl(row) {
+    const url = new URL(receiptBaseUrl, window.location.origin);
+    const data = row || {};
+    if (data.policy_no) {
+      url.searchParams.set("policy_no", data.policy_no);
+    }
+    if (data.premium_paid_date) url.searchParams.set("paid_date", data.premium_paid_date);
+    if (data.paid_amount !== undefined && data.paid_amount !== null) url.searchParams.set("paid_amount", data.paid_amount);
+    if (data.premium !== undefined && data.premium !== null) url.searchParams.set("premium", data.premium);
+    if (data.installment_type) url.searchParams.set("installment_type", data.installment_type);
+    return url.toString();
+  }
+
+  function downloadIcon(row) {
+    return '<a class="btn btn-sm btn-outline-success" href="' + buildReceiptUrl(row) + '" title="Download receipt PDF">' +
+      '<i class="bi bi-download"></i>' +
+      '</a>';
+  }
+
+  function loadPaymentHistory(page) {
+    currentPage = page || 1;
+    syncPager();
+
+    fetch(`/api/policy/payment-history/?policy_no=${encodeURIComponent(currentFilter)}&page=${currentPage}&page_size=${pageSize}`, { credentials: "same-origin" })
       .then(function (res) { return res.json(); })
       .then(function (data) {
         const rows = data.rows || [];
         const total = data.total || {};
+        const pagination = data.pagination || {};
+        totalPages = Number(pagination.total_pages || 0);
+        currentPage = Number(pagination.page || currentPage);
+        syncPager();
         document.getElementById("payment-total").innerText =
-          "Paid: NPR " + Number(total.paid_amount || 0).toLocaleString() +
-          " | Premium: NPR " + Number(total.premium || 0).toLocaleString();
+          rows.length
+            ? "Paid: NPR " + Number(total.paid_amount || 0).toLocaleString() +
+              " | Premium: NPR " + Number(total.premium || 0).toLocaleString()
+            : "No payment records found.";
 
         table.clear();
-        rows
-          .filter(function (r) {
-            if (!filterNo) return true;
-            return String(r.policy_no || "").toLowerCase().indexOf(filterNo.toLowerCase()) !== -1;
-          })
-          .forEach(function (r) {
+        if (!rows.length) {
+          table.row.add([
+            "No payment records found.",
+            "-",
+            "-",
+            "-",
+            "-",
+            "-"
+          ]);
+        } else {
+          rows.forEach(function (r) {
             table.row.add([
               r.policy_no || "-",
               r.premium_paid_date || "-",
               "NPR " + Number(r.paid_amount || 0).toLocaleString(),
               "NPR " + Number(r.premium || 0).toLocaleString(),
-              r.installment_type || "-"
+              r.installment_type || "-",
+              downloadIcon(r)
             ]);
           });
+        }
 
+        table.draw();
+      })
+      .catch(function (error) {
+        document.getElementById("payment-total").innerText = error.message || "Unable to load payment history.";
+        table.clear();
+        table.row.add([
+          error.message || "Unable to load payment history.",
+          "-",
+          "-",
+          "-",
+          "-",
+          "-"
+        ]);
         table.draw();
       });
   }
 
-  loadPaymentHistory("");
+  loadPaymentHistory(1);
   document.getElementById("paymentFilterBtn").addEventListener("click", function () {
-    loadPaymentHistory(document.getElementById("paymentPolicyFilter").value || "");
+    currentFilter = document.getElementById("paymentPolicyFilter").value || "";
+    loadPaymentHistory(1);
+  });
+  document.getElementById("paymentPrevBtn").addEventListener("click", function () {
+    if (currentPage > 1) loadPaymentHistory(currentPage - 1);
+  });
+  document.getElementById("paymentNextBtn").addEventListener("click", function () {
+    if (currentPage < totalPages) loadPaymentHistory(currentPage + 1);
   });
 });
 </script>

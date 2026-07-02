@@ -10,6 +10,7 @@ Full views.py for KYC form handling.
   attaches NID as KycDocument (doc_type="NID"), deletes temp draft.
 """
 
+import csv
 import json
 import os
 import uuid
@@ -29,9 +30,11 @@ from django.http import HttpResponse, HttpResponseForbidden, JsonResponse
 from django.shortcuts import render, redirect
 from django.urls import reverse
 from django.db import transaction, connection
+from django.db.utils import ProgrammingError, OperationalError
 from django.core.files import File
 from django.utils.text import get_valid_filename
 from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.csrf import ensure_csrf_cookie
 from django.views.decorators.http import require_POST
 from django.utils.text import get_valid_filename
 from django.utils import timezone
@@ -61,9 +64,15 @@ from .utils import generate_user_id  # from kycform/utils.py
 
 from .models import (
     KycChangeLog, KycUserInfo, KycAgentInfo, KycPolicy, KycAdmin,
-    KycSubmission, KycDocument, KYCTemporary
+    KycSubmission, KycDocument, KYCTemporary, PolicyClaimRequest, PolicyClaimDocument,
+    ProductType, ProductPlan
 )
 from .storage_utils import save_uploaded_file_to_storage 
+from .services.policy_client import PolicyClientService
+from .services.policy_payment_history import PolicyPaymentHistoryService
+from .services.policy_policies import PolicyPoliciesService
+from .services.payment_receipt_lookup import get_payment_receipt_row
+from .services.payment_receipt_pdf import build_payment_receipt_pdf
 
 
 # FASTAPI_BASE = "http://127.0.0.1:9000"   # your FastAPI server
@@ -99,6 +108,190 @@ def get_fastapi_token():
 # Utilities
 # -----------------------------------------------------------------------------
 MAX_UPLOAD_BYTES = 2 * 1024 * 1024  # 2 MB default per-file check
+
+
+def get_active_claim_insurance_types():
+    """
+    Read active product types from the shared mobile-app table.
+    Falls back to a static list only if the table is unavailable.
+    """
+    fallback = [
+        "Endowment",
+        "Term Life",
+        "Whole Life",
+        "Child Life",
+        "Joint Life",
+        "Money Back",
+        "Group Insurance",
+        "Rastrasewak",
+    ]
+
+    try:
+        existing_tables = set(connection.introspection.table_names())
+        if "product_type" not in existing_tables:
+            return fallback
+
+        with connection.cursor() as cursor:
+            cursor.execute(
+                """
+                SELECT name
+                FROM product_type
+                WHERE is_active = %s
+                ORDER BY display_order ASC, name ASC
+                """,
+                [True],
+            )
+            rows = [str(row[0]).strip() for row in cursor.fetchall() if row and row[0]]
+        return rows or fallback
+    except Exception:
+        return fallback
+
+
+def get_active_claim_products_map():
+    """
+    Return active plans grouped by active product type.
+    """
+    fallback = {}
+    try:
+        existing_tables = set(connection.introspection.table_names())
+        if not {"product_type", "product_plan"}.issubset(existing_tables):
+            return fallback
+
+        rows = (
+            ProductPlan.objects
+            .select_related("product_type")
+            .filter(is_active=True, product_type__is_active=True)
+            .order_by("product_type__display_order", "display_order", "plan_name")
+            .values(
+                "id",
+                "plan_name",
+                "core_plan_id",
+                "product_type__name",
+            )
+        )
+
+        plan_map = {}
+        for row in rows:
+            type_name = (row.get("product_type__name") or "").strip()
+            if not type_name:
+                continue
+            plan_map.setdefault(type_name, []).append({
+                "id": row.get("id"),
+                "plan_name": row.get("plan_name"),
+                "core_plan_id": row.get("core_plan_id"),
+            })
+        return plan_map
+    except Exception:
+        return fallback
+
+
+def get_policyholder_claim_catalog(user_id, current_policy_no=""):
+    """
+    Build claim type/product choices from policies actually purchased by the
+    current policyholder, not from the full product catalog.
+    """
+    fallback_types = get_active_claim_insurance_types()
+    fallback_products = get_active_claim_products_map()
+
+    try:
+        client_id = PolicyClientService.get_client_no(user_id)
+        purchased = PolicyPoliciesService.get_policies(
+            client_id=client_id,
+            paginated=False,
+        ).get("rows", [])
+
+        if not purchased:
+            return fallback_types, fallback_products, None
+
+        existing_tables = set(connection.introspection.table_names())
+        if "product_plan" not in existing_tables or "product_type" not in existing_tables:
+            return fallback_types, fallback_products, None
+
+        purchased_plan_names = {
+            (row.get("plan_name") or "").strip()
+            for row in purchased
+            if (row.get("plan_name") or "").strip()
+        }
+        if not purchased_plan_names:
+            return fallback_types, fallback_products, None
+
+        plan_rows = (
+            ProductPlan.objects
+            .select_related("product_type")
+            .filter(
+                is_active=True,
+                product_type__is_active=True,
+                plan_name__in=list(purchased_plan_names),
+            )
+            .order_by("product_type__display_order", "display_order", "plan_name")
+            .values(
+                "id",
+                "plan_name",
+                "core_plan_id",
+                "product_type__name",
+            )
+        )
+
+        plan_lookup = {}
+        for row in plan_rows:
+            plan_name = (row.get("plan_name") or "").strip()
+            if not plan_name:
+                continue
+            plan_lookup[plan_name] = {
+                "id": row.get("id"),
+                "plan_name": plan_name,
+                "core_plan_id": row.get("core_plan_id"),
+                "type_name": (row.get("product_type__name") or "").strip(),
+            }
+
+        type_to_products = {}
+        default_selection = None
+
+        for item in purchased:
+            plan_name = (item.get("plan_name") or "").strip()
+            policy_number = (item.get("policy_number") or "").strip()
+            match = plan_lookup.get(plan_name)
+            if not match:
+                continue
+
+            type_name = match["type_name"]
+            product_entry = {
+                "id": match["id"],
+                "plan_name": match["plan_name"],
+                "core_plan_id": match["core_plan_id"],
+                "policy_number": policy_number,
+            }
+
+            bucket = type_to_products.setdefault(type_name, [])
+            if not any(existing["plan_name"] == product_entry["plan_name"] and existing["policy_number"] == product_entry["policy_number"] for existing in bucket):
+                bucket.append(product_entry)
+
+            if current_policy_no and policy_number == current_policy_no and default_selection is None:
+                default_selection = {
+                    "claim_type": type_name,
+                    "product_name": match["plan_name"],
+                    "policy_number": policy_number,
+                    "product_plan_id": match["id"],
+                }
+
+        claim_types = list(type_to_products.keys())
+        if not claim_types:
+            return fallback_types, fallback_products, None
+
+        if default_selection is None:
+            first_type = claim_types[0]
+            first_product = type_to_products[first_type][0] if type_to_products[first_type] else None
+            if first_product:
+                default_selection = {
+                    "claim_type": first_type,
+                    "product_name": first_product["plan_name"],
+                    "policy_number": first_product["policy_number"],
+                    "product_plan_id": first_product["id"],
+                }
+
+        return claim_types, type_to_products, default_selection
+    except Exception:
+        return fallback_types, fallback_products, None
 
 def resolve_session_policy_no(request):
     """
@@ -375,6 +568,77 @@ def policy_payment_history_view(request):
     })
 
 
+def policy_payment_history_export(request):
+    policy_no, user, error_response = _policy_portal_guard(request)
+    if error_response:
+        return error_response
+
+    policy_filter = (request.GET.get("policy_no") or "").strip()
+    policy_client_id = PolicyClientService.get_client_no(user.user_id)
+    data = PolicyPaymentHistoryService.get_payment_history(
+        client_id=policy_client_id,
+        policy_no=policy_filter,
+        paginated=False,
+    )
+
+    response = HttpResponse(content_type="text/csv")
+    response["Content-Disposition"] = 'attachment; filename="policy_payment_history.csv"'
+
+    writer = csv.writer(response)
+    writer.writerow(["Policy", "Paid Date", "Paid Amount", "Premium", "Type", "Plan", "Term", "FUP", "Client ID", "Client Name", "Frequency"])
+    for row in data.get("rows", []):
+        writer.writerow([
+            row.get("policy_no", ""),
+            row.get("premium_paid_date", ""),
+            row.get("paid_amount", 0),
+            row.get("premium", 0),
+            row.get("installment_type", ""),
+            row.get("plan_name", ""),
+            row.get("term", ""),
+            row.get("fup", ""),
+            row.get("client_id", ""),
+            row.get("client_name", ""),
+            row.get("policy_premium_frequency", ""),
+        ])
+
+    return response
+
+
+def policy_payment_receipt_download(request):
+    policy_no, user, error_response = _policy_portal_guard(request)
+    if error_response:
+        return error_response
+
+    receipt_row = get_payment_receipt_row(user.user_id, {
+        "policy_no": (request.GET.get("policy_no") or "").strip(),
+        "paid_date": (request.GET.get("paid_date") or "").strip(),
+        "paid_amount": (request.GET.get("paid_amount") or "").strip(),
+        "premium": (request.GET.get("premium") or "").strip(),
+        "installment_type": (request.GET.get("installment_type") or "").strip(),
+    })
+
+    if not receipt_row:
+        return HttpResponse("Receipt not found.", status=404)
+
+    pdf_content = build_payment_receipt_pdf({
+        "policy_no": receipt_row.get("policy_no") or policy_no,
+        "client_name": receipt_row.get("client_name") or "",
+        "paid_date": receipt_row.get("premium_paid_date") or "",
+        "installment_type": receipt_row.get("installment_type") or "",
+        "paid_amount": float(receipt_row.get("paid_amount") or 0),
+        "premium": float(receipt_row.get("premium") or 0),
+        "plan_name": receipt_row.get("plan_name") or "",
+        "term": receipt_row.get("term") or "",
+        "policy_premium_frequency": receipt_row.get("policy_premium_frequency") or "",
+        "fup": receipt_row.get("fup") or "",
+    })
+
+    receipt_no = receipt_row.get("policy_no") or policy_no
+    response = HttpResponse(pdf_content, content_type="application/pdf")
+    response["Content-Disposition"] = f'attachment; filename="receipt-{receipt_no}.pdf"'
+    return response
+
+
 def policy_renewal_pending_view(request):
     policy_no, user, error_response = _policy_portal_guard(request)
     if error_response:
@@ -411,6 +675,18 @@ def policy_loan_repayment_view(request):
     })
 
 
+def policy_loan_details_view(request):
+    policy_no, user, error_response = _policy_portal_guard(request)
+    if error_response:
+        return error_response
+
+    return render(request, "policy/loan_details.html", {
+        "policy_no": policy_no,
+        "user": user,
+        "page_title": "Policy Loan Details",
+    })
+
+
 def policy_foreign_policy_view(request):
     policy_no, user, error_response = _policy_portal_guard(request)
     if error_response:
@@ -432,6 +708,214 @@ def policy_claim_process_view(request):
         "policy_no": policy_no,
         "user": user,
         "page_title": "Claim Process",
+    })
+
+
+@ensure_csrf_cookie
+def policy_online_file_claim_view(request):
+    policy_no, user, error_response = _policy_portal_guard(request)
+    if error_response:
+        return error_response
+
+    form_data = {
+        "claim_type": "",
+        "product_name": "",
+        "product_plan_id": "",
+        "name_of_insured": f"{(user.first_name or '').strip()} {(user.last_name or '').strip()}".strip(),
+        "phone_number": user.phone_number or "",
+        "email": user.email or "",
+        "date_of_loss": "",
+        "contact_person": "",
+        "policy_number": policy_no or "",
+        "place_of_loss": "",
+        "details_of_loss": "",
+        "message": "",
+    }
+
+    claim_type_choices, claim_products_map, default_claim_selection = get_policyholder_claim_catalog(
+        user.user_id,
+        current_policy_no=policy_no,
+    )
+    if default_claim_selection:
+        form_data["claim_type"] = default_claim_selection.get("claim_type") or ""
+        form_data["product_name"] = default_claim_selection.get("product_name") or ""
+        form_data["product_plan_id"] = default_claim_selection.get("product_plan_id") or ""
+        form_data["policy_number"] = default_claim_selection.get("policy_number") or form_data["policy_number"]
+    elif claim_type_choices and not form_data["claim_type"]:
+        form_data["claim_type"] = claim_type_choices[0]
+    max_upload_mb = MAX_UPLOAD_BYTES // (1024 * 1024)
+    claim_tables_ready = True
+
+    try:
+        existing_tables = set(connection.introspection.table_names())
+        claim_tables_ready = {
+            PolicyClaimRequest._meta.db_table,
+            PolicyClaimDocument._meta.db_table,
+        }.issubset(existing_tables)
+    except Exception:
+        claim_tables_ready = False
+
+    if request.method == "POST":
+        if not claim_tables_ready:
+            messages.error(
+                request,
+                "Claim request tables are not ready yet. Please run migrations first.",
+            )
+            return redirect("kyc:policy_online_file_claim")
+
+        form_data = {
+            "claim_type": (request.POST.get("claim_type") or "").strip(),
+            "product_name": (request.POST.get("product_name") or "").strip(),
+            "product_plan_id": (request.POST.get("product_plan_id") or "").strip(),
+            "name_of_insured": (request.POST.get("name_of_insured") or "").strip(),
+            "phone_number": (request.POST.get("phone_number") or "").strip(),
+            "email": (request.POST.get("email") or "").strip(),
+            "date_of_loss": (request.POST.get("date_of_loss") or "").strip(),
+            "contact_person": (request.POST.get("contact_person") or "").strip(),
+            "policy_number": (request.POST.get("policy_number") or "").strip(),
+            "place_of_loss": (request.POST.get("place_of_loss") or "").strip(),
+            "details_of_loss": (request.POST.get("details_of_loss") or "").strip(),
+            "message": (request.POST.get("message") or "").strip(),
+        }
+        uploaded_files = request.FILES.getlist("documents")
+        errors = []
+
+        required_fields = {
+            "claim_type": "Type of insurance",
+            "product_name": "Insurance product",
+            "name_of_insured": "Name of insured",
+            "phone_number": "Phone number",
+            "email": "Email address",
+            "date_of_loss": "Date of loss",
+            "contact_person": "Contact person",
+            "policy_number": "Policy number / document number",
+            "place_of_loss": "Place of loss / accident",
+            "details_of_loss": "Details of loss",
+            "message": "Message",
+        }
+
+        for field_name, label in required_fields.items():
+            if not form_data[field_name]:
+                errors.append(f"{label} is required.")
+
+        valid_claim_types = set(claim_type_choices)
+        if form_data["claim_type"] and form_data["claim_type"] not in valid_claim_types:
+            errors.append("Invalid insurance type selected.")
+
+        available_products = claim_products_map.get(form_data["claim_type"], [])
+        selected_product = next(
+            (
+                item for item in available_products
+                if (item.get("plan_name") or "").strip() == form_data["product_name"]
+                and (item.get("policy_number") or "").strip() == form_data["policy_number"]
+            ),
+            None,
+        )
+        if selected_product is None:
+            selected_product = next(
+                (
+                    item for item in available_products
+                    if (item.get("plan_name") or "").strip() == form_data["product_name"]
+                ),
+                None,
+            )
+        if form_data["claim_type"] and not available_products:
+            errors.append("No active products found for the selected insurance type.")
+        elif form_data["product_name"] and not selected_product:
+            errors.append("Invalid insurance product selected.")
+
+        if form_data["email"] and "@" not in form_data["email"]:
+            errors.append("Enter a valid email address.")
+
+        try:
+            loss_date = datetime.strptime(form_data["date_of_loss"], "%Y-%m-%d").date()
+        except ValueError:
+            loss_date = None
+            errors.append("Enter a valid date of loss.")
+
+        if not uploaded_files:
+            errors.append("Upload at least one document.")
+
+        for uploaded_file in uploaded_files:
+            if uploaded_file.size > MAX_UPLOAD_BYTES:
+                errors.append(f"{uploaded_file.name} exceeds {max_upload_mb}MB.")
+
+        if errors:
+            for error in errors:
+                messages.error(request, error)
+        else:
+            existing_claim = (
+                PolicyClaimRequest.objects
+                .filter(policy_number__iexact=form_data["policy_number"])
+                .only("id")
+                .first()
+            )
+            if existing_claim:
+                messages.error(request, "Claim already submitted for the given policy number.")
+                return redirect("kyc:policy_online_file_claim")
+
+            with transaction.atomic():
+                claim_request = PolicyClaimRequest.objects.create(
+                    user=user,
+                    claim_type=form_data["claim_type"],
+                    product_name=form_data["product_name"],
+                    product_plan_id=selected_product.get("id") if selected_product else None,
+                    name_of_insured=form_data["name_of_insured"],
+                    phone_number=form_data["phone_number"],
+                    email=form_data["email"],
+                    date_of_loss=loss_date,
+                    contact_person=form_data["contact_person"],
+                    policy_number=form_data["policy_number"],
+                    place_of_loss=form_data["place_of_loss"],
+                    details_of_loss=form_data["details_of_loss"],
+                    message=form_data["message"],
+                )
+
+                for uploaded_file in uploaded_files:
+                    doc = PolicyClaimDocument(
+                        claim_request=claim_request,
+                        original_name=uploaded_file.name,
+                    )
+                    doc.file.save(uploaded_file.name, uploaded_file, save=True)
+
+            messages.success(request, "Claim request submitted successfully.")
+            return redirect("kyc:policy_online_file_claim")
+
+    recent_claims = []
+    if claim_tables_ready:
+        try:
+            recent_claims = list(
+                PolicyClaimRequest.objects
+                .filter(user=user)
+                .prefetch_related("documents")[:5]
+            )
+        except (ProgrammingError, OperationalError):
+            claim_tables_ready = False
+            recent_claims = []
+
+    return render(request, "policy/online_file_claim.html", {
+        "policy_no": policy_no,
+        "user": user,
+        "page_title": "Online File Claim",
+        "claim_type_choices": claim_type_choices,
+        "claim_products_map": claim_products_map,
+        "form_data": form_data,
+        "max_upload_mb": max_upload_mb,
+        "recent_claims": recent_claims,
+        "claim_tables_ready": claim_tables_ready,
+    })
+
+
+def policy_claim_status_view(request):
+    policy_no, user, error_response = _policy_portal_guard(request)
+    if error_response:
+        return error_response
+
+    return render(request, "policy/claim_status.html", {
+        "policy_no": policy_no,
+        "user": user,
+        "page_title": "Claim Status",
+        "recaptcha_site_key": getattr(settings, "RECAPTCHA_SITE_KEY", ""),
     })
 
 
@@ -513,6 +997,15 @@ def agent_hierarchy(request):
 
     return render(request, "agent/agent_hierarchy.html", {
         "page_title": "Agent Hierarchy",
+    })
+
+
+def agent_maturity_forecasting(request):
+    if not request.session.get("agent_authenticated"):
+        return redirect("kyc:agent_login")
+
+    return render(request, "agent/maturity_forecasting.html", {
+        "page_title": "Maturity Forecasting",
     })
 
 
@@ -2261,8 +2754,8 @@ def send_mobile_otp(request):
     # -------------------------------------------------
     try:
         resp = requests.post(
-            f"{settings.FASTAPI_BASE_URL}/otp/send",
-            params={"mobile": mobile},
+            f"{settings.API_SERVICE_BASE_URL.rstrip('/')}/otp/send",
+            json={"mobile": mobile},
             timeout=10
         )
     except requests.RequestException:

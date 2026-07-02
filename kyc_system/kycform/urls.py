@@ -6,12 +6,19 @@ from kycform.api.agent_due_report import AgentDueReportAPIView
 from kycform.api.agent_commission_report import AgentCommissionReportAPIView
 from kycform.api.agent_hierarchy import AgentHierarchyAPIView
 from kycform.api.agent_downline_business_report import AgentDownlineBusinessReportAPIView
+from kycform.api.agent_maturity_forecasting import AgentMaturityForecastingAPIView
 from kycform.api.policy_summary import PolicySummaryAPIView
 from kycform.api.policy_profile import PolicyProfileAPIView
 from kycform.api.policy_policies import PolicyPoliciesAPIView
 from kycform.api.policy_payment_history import PolicyPaymentHistoryAPIView
 from kycform.api.policy_renewal_pending import PolicyRenewalPendingAPIView
 from kycform.api.policy_rastra_sewak import PolicyRastraSewakAPIView
+from kycform.api.policy_loan_details import PolicyLoanDetailsAPIView
+from kycform.api.claim_status import ClaimStatusHistoryAPIView
+from kycform.api.policy_mobile_services import (
+    PolicyForeignEmploymentAPIView,
+    PolicyPaymentOptionsAPIView,
+)
 from . import views
 
 app_name = "kyc"
@@ -49,11 +56,17 @@ urlpatterns = [
     path("policy/profile/", views.policy_profile_view, name="policy_profile"),
     path("policy/policies/", views.policy_policies_view, name="policy_policies"),
     path("policy/payment-history/", views.policy_payment_history_view, name="policy_payment_history"),
+    path("policy/payment-history/export/", views.policy_payment_history_export, name="policy_payment_history_export"),
+    path("policy/payment-history/receipt/", views.policy_payment_receipt_download, name="policy_payment_receipt_download"),
     path("policy/renewal-pending/", views.policy_renewal_pending_view, name="policy_renewal_pending"),
     path("policy/payment/", views.policy_payment_view, name="policy_payment"),
     path("policy/loan-repayment/", views.policy_loan_repayment_view, name="policy_loan_repayment"),
+    path("policy/loan-details/", views.policy_loan_details_view, name="policy_loan_details"),
     path("policy/foreign-policy/", views.policy_foreign_policy_view, name="policy_foreign_policy"),
     path("policy/claim-process/", views.policy_claim_process_view, name="policy_claim_process"),
+    path("policy/online-file-claim/", views.policy_online_file_claim_view, name="policy_online_file_claim"),
+    path("claim-status/", views.policy_claim_status_view, name="claim_status"),
+    path("policy/claim-status/", views.policy_claim_status_view, name="policy_claim_status"),
     path("policy/rastra-sewak/", views.policy_rastra_sewak_view, name="policy_rastra_sewak"),
 
     # -------------------------------
@@ -66,6 +79,7 @@ urlpatterns = [
     path("commission-report/", views.commission_report, name="commission_report"),
     path("agent-hierarchy/", views.agent_hierarchy, name="agent_hierarchy"),
     path("downline-business-report/", views.downline_business_report, name="downline_business_report"),
+    path("maturity-forecasting/", views.agent_maturity_forecasting, name="agent_maturity_forecasting"),
     # -------------------------------
     # ADMIN DASHBOARD
     # -------------------------------
@@ -118,5 +132,11 @@ urlpatterns = [
     path("api/policy/payment-history/", PolicyPaymentHistoryAPIView.as_view(), name="policy_payment_history_api"),
     path("api/policy/renewal-pending/", PolicyRenewalPendingAPIView.as_view(), name="policy_renewal_pending_api"),
     path("api/policy/rastra-sewak/", PolicyRastraSewakAPIView.as_view(), name="policy_rastra_sewak_api"),
+    path("api/policy/loan-details/", PolicyLoanDetailsAPIView.as_view(), name="policy_loan_details_api"),
+    path("api/policy/payment-options/", PolicyPaymentOptionsAPIView.as_view(), name="policy_payment_options_api"),
+    path("api/policy/foreign-employment/", PolicyForeignEmploymentAPIView.as_view(), name="policy_foreign_employment_api"),
+    path("api/agent/maturity-forecasting/", AgentMaturityForecastingAPIView.as_view(), name="agent_maturity_forecasting_api"),
+    path("api/claim-status/history/", ClaimStatusHistoryAPIView.as_view(), name="claim_status_history_api"),
+    path("api/policy/claim-status/history/", ClaimStatusHistoryAPIView.as_view(), name="policy_claim_status_history_api"),
 ]
 

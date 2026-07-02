@@ -31,6 +31,9 @@
     <button class="btn btn-outline-primary btn-sm" id="filterBtn">
       <i class="bi bi-funnel"></i> Filter
     </button>
+    <button class="btn btn-outline-success btn-sm" id="exportBtn">
+      <i class="bi bi-download"></i> Export All
+    </button>
   </div>
 </div>
 
@@ -60,6 +63,15 @@
       </tbody>
 
     </table>
+    <div class="d-flex justify-content-between align-items-center mt-3">
+      <button id="duePrevBtn" class="btn btn-outline-secondary btn-sm" disabled>
+        <i class="bi bi-chevron-left"></i> Prev
+      </button>
+      <span id="duePageInfo" class="small text-muted">Page 0 of 0</span>
+      <button id="dueNextBtn" class="btn btn-outline-secondary btn-sm" disabled>
+        Next <i class="bi bi-chevron-right"></i>
+      </button>
+    </div>
 
   </div>
 </div>
@@ -79,16 +91,31 @@
 $(document).ready(function () {
 
   const table = $('#dueReportTable').DataTable({
-    pageLength: 10,
+    paging: false,
     ordering: true,
     searching: false,
-    info: true
+    info: false
   });
 
-  function loadDueReport(policyNo = "", name = "") {
-    table.clear();
+  let currentPage = 1;
+  const pageSize = 10;
+  let currentKeyword = "";
+  let totalPages = 0;
 
-    fetch(`/api/agent/due-report/?policy_no=${encodeURIComponent(policyNo)}&name=${encodeURIComponent(name)}`, {
+  function syncPager() {
+    $('#duePageInfo').text("Page " + (totalPages ? currentPage : 0) + " of " + totalPages);
+    $('#duePrevBtn').prop('disabled', currentPage <= 1);
+    $('#dueNextBtn').prop('disabled', currentPage >= totalPages);
+  }
+
+  function loadDueReport(page = 1) {
+    currentPage = page;
+    const policyNo = currentKeyword;
+    const name = currentKeyword;
+    table.clear();
+    syncPager();
+
+    fetch(`/api/agent/due-report/?policy_no=${encodeURIComponent(policyNo)}&name=${encodeURIComponent(name)}&page=${currentPage}&page_size=${pageSize}`, {
       credentials: "same-origin"
     })
     .then(res => {
@@ -96,6 +123,11 @@ $(document).ready(function () {
       return res.json();
     })
     .then(data => {
+      const pg = data.pagination || {};
+      totalPages = Number(pg.total_pages || 0);
+      currentPage = Number(pg.page || currentPage);
+      syncPager();
+
       data.rows.forEach(row => {
         table.row.add([
           row.sn,
@@ -124,12 +156,72 @@ $(document).ready(function () {
   }
 
   // INITIAL LOAD
-  loadDueReport();
+  loadDueReport(1);
 
   // FILTER BUTTON
   $('#filterBtn').on('click', function () {
-    const keyword = $('#searchFilter').val();
-    loadDueReport(keyword, keyword);
+    currentKeyword = ($('#searchFilter').val() || "").trim();
+    loadDueReport(1);
+  });
+
+  function toCsvValue(v) {
+    const s = String(v == null ? "" : v);
+    return '"' + s.replace(/"/g, '""') + '"';
+  }
+
+  async function exportAll() {
+    const exportBtn = $('#exportBtn');
+    exportBtn.prop('disabled', true).text('Exporting...');
+    try {
+      const keyword = ($('#searchFilter').val() || "").trim();
+      const exportPageSize = 100;
+      let page = 1;
+      let totalPagesLocal = 1;
+      const allRows = [];
+
+      while (page <= totalPagesLocal) {
+        const res = await fetch(`/api/agent/due-report/?policy_no=${encodeURIComponent(keyword)}&name=${encodeURIComponent(keyword)}&page=${page}&page_size=${exportPageSize}`, {
+          credentials: "same-origin"
+        });
+        if (!res.ok) throw new Error("Export API error");
+        const data = await res.json();
+        totalPagesLocal = Number((data.pagination || {}).total_pages || 1);
+        (data.rows || []).forEach(r => allRows.push(r));
+        page += 1;
+      }
+
+      const header = [
+        "SN","Policy No","Policy Holder","Plan","Term","Paymode","DOC","Premium","Late Fee","Next Due Date","Mobile","Status"
+      ];
+      const lines = [header.map(toCsvValue).join(",")];
+      allRows.forEach(r => {
+        lines.push([
+          r.sn, r.policy_no, r.policy_holder, r.plan, r.term, r.paymode, r.doc, r.premium, r.late_fee, r.next_due_date, r.mobile, r.status
+        ].map(toCsvValue).join(","));
+      });
+
+      const blob = new Blob([lines.join("\n")], { type: "text/csv;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "agent_due_report.csv";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      exportBtn.prop('disabled', false).html('<i class="bi bi-download"></i> Export All');
+    }
+  }
+  $('#exportBtn').on('click', exportAll);
+
+  $('#duePrevBtn').on('click', function () {
+    if (currentPage > 1) loadDueReport(currentPage - 1);
+  });
+  $('#dueNextBtn').on('click', function () {
+    if (currentPage < totalPages) loadDueReport(currentPage + 1);
   });
 
 });

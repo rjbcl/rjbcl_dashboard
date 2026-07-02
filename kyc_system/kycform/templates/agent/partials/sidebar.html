@@ -52,6 +52,12 @@
       Downline Business Report
     </a>
 
+    <a class="nav-link {% if request.path == '/maturity-forecasting/' %}active{% endif %}"
+      href="{% url 'kyc:agent_maturity_forecasting' %}">
+      <i class="bi bi-calendar2-week me-2"></i>
+      Maturity Forecasting
+    </a>
+
     <div class="nav-section">Support</div>
     <a class="nav-link {% if request.path == '/contact-us/' %}active{% endif %}"
         href="{% url 'kyc:contact_us' %}">

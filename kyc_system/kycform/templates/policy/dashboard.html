@@ -75,6 +75,22 @@
         </ul>
       </div>
     </div>
+    <div class="card shadow-sm mb-3">
+      <div class="card-body">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+          <h6 class="fw-semibold mb-0">Policy Loan Snapshot</h6>
+          <a href="{% url 'kyc:policy_loan_details' %}" class="small text-decoration-none">View all</a>
+        </div>
+        <ul class="list-unstyled small mb-2">
+          <li>Loan Records: <strong id="summary-loan-count">0</strong></li>
+          <li>Total Loan: <strong id="summary-loan-amount">NPR 0</strong></li>
+          <li>Outstanding: <strong id="summary-loan-balance">NPR 0</strong></li>
+        </ul>
+        <ul id="recent-loans" class="list-group list-group-flush small">
+          <li class="list-group-item text-muted px-0">Loading...</li>
+        </ul>
+      </div>
+    </div>
     <div class="card shadow-sm">
       <div class="card-body">
         <h6 class="fw-semibold">Recent Payment Snapshot</h6>
@@ -113,6 +129,19 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <script>
 document.addEventListener("DOMContentLoaded", function () {
+  function pickLoanField(row, candidates) {
+    if (!row) return null;
+    const map = {};
+    Object.keys(row).forEach(function (key) {
+      map[String(key).toLowerCase()] = key;
+    });
+    for (let i = 0; i < candidates.length; i++) {
+      const actual = map[candidates[i].toLowerCase()];
+      if (actual) return row[actual];
+    }
+    return null;
+  }
+
   const policyTable = $('#dashboardPolicyTable').DataTable({
     paging: true,
     searching: false,
@@ -142,27 +171,6 @@ document.addEventListener("DOMContentLoaded", function () {
       policyTable.draw();
     });
 
-  fetch("/api/policy/payment-history/", { credentials: "same-origin" })
-    .then(function (res) { return res.json(); })
-    .then(function (data) {
-      const list = document.getElementById("recent-payments");
-      const rows = (data.rows || []).slice(0, 5);
-      if (!rows.length) {
-        list.innerHTML = '<li class="list-group-item text-muted px-0">No payment records found.</li>';
-        return;
-      }
-      list.innerHTML = rows.map(function (r) {
-        return '<li class="list-group-item px-0 d-flex justify-content-between">' +
-          '<span>' + (r.policy_no || "-") + ' (' + (r.premium_paid_date || "-") + ')</span>' +
-          '<strong>NPR ' + Number(r.paid_amount || 0).toLocaleString() + '</strong>' +
-        '</li>';
-      }).join("");
-    });
-});
-</script>
-
-<script>
-document.addEventListener("DOMContentLoaded", function () {
   fetch("/api/policy/summary/", { credentials: "same-origin" })
     .then(function (res) { return res.json(); })
     .then(function (data) {
@@ -174,6 +182,39 @@ document.addEventListener("DOMContentLoaded", function () {
       document.getElementById("summary-policies").innerText = data.summary?.policies ?? 0;
       document.getElementById("summary-premium").innerText = "NPR " + Number(data.summary?.premium ?? 0).toLocaleString();
       document.getElementById("summary-due-premium").innerText = "NPR " + Number(data.kpi?.due?.premium ?? 0).toLocaleString();
+
+      document.getElementById("summary-loan-count").innerText = data.loan?.count ?? 0;
+      document.getElementById("summary-loan-amount").innerText = "NPR " + Number(data.loan?.loan_amount ?? 0).toLocaleString();
+      document.getElementById("summary-loan-balance").innerText = "NPR " + Number(data.loan?.balance_amount ?? 0).toLocaleString();
+
+      const loanList = document.getElementById("recent-loans");
+      const loanRows = (data.loan?.rows || []).slice(0, 5);
+      if (!loanRows.length) {
+        loanList.innerHTML = '<li class="list-group-item text-muted px-0">No loan records found.</li>';
+      } else {
+        loanList.innerHTML = loanRows.map(function (r) {
+          const policyNo = pickLoanField(r, ["policy_no", "PolicyNo", "PolicyNO", "PolicyNumber", "Policy_No"]) || "-";
+          const loanAmount = pickLoanField(r, ["loan_amount", "LoanAmount", "LoanAmt", "Amount", "PrincipalAmount", "PrincipleAmount"]) || 0;
+          const balanceAmount = pickLoanField(r, ["balance_amount", "BalanceAmount", "OutstandingAmount", "Outstanding", "Balance", "DueAmount", "LoanBalance"]) || 0;
+          return '<li class="list-group-item px-0 d-flex justify-content-between">' +
+            '<span>' + policyNo + '</span>' +
+            '<strong>NPR ' + Number(loanAmount).toLocaleString() + ' / ' + Number(balanceAmount).toLocaleString() + '</strong>' +
+          '</li>';
+        }).join("");
+      }
+
+      const list = document.getElementById("recent-payments");
+      const rows = (data.history || []).slice(0, 5);
+      if (!rows.length) {
+        list.innerHTML = '<li class="list-group-item text-muted px-0">No payment records found.</li>';
+      } else {
+        list.innerHTML = rows.map(function (r) {
+          return '<li class="list-group-item px-0 d-flex justify-content-between">' +
+            '<span>' + (r.policy_no || "-") + ' (' + (r.paid_date || "-") + ')</span>' +
+            '<strong>NPR ' + Number(r.amount || 0).toLocaleString() + '</strong>' +
+          '</li>';
+        }).join("");
+      }
 
       const chartEl = document.getElementById("premiumChart");
       if (!chartEl) return;

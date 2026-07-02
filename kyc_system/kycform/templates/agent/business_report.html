@@ -28,6 +28,9 @@
     <button class="btn btn-outline-primary btn-sm" id="filterBtn">
       <i class="bi bi-funnel"></i> Filter
     </button>
+    <button class="btn btn-outline-success btn-sm" id="exportBtn">
+      <i class="bi bi-download"></i> Export All
+    </button>
   </div>
 </div>
 
@@ -65,6 +68,15 @@
 
 
     </table>
+    <div class="d-flex justify-content-between align-items-center mt-3">
+      <button id="businessPrevBtn" class="btn btn-outline-secondary btn-sm" disabled>
+        <i class="bi bi-chevron-left"></i> Prev
+      </button>
+      <span id="businessPageInfo" class="small text-muted">Page 0 of 0</span>
+      <button id="businessNextBtn" class="btn btn-outline-secondary btn-sm" disabled>
+        Next <i class="bi bi-chevron-right"></i>
+      </button>
+    </div>
 
   </div>
 </div>
@@ -78,17 +90,31 @@
 $(document).ready(function () {
 
   const table = $('#businessReportTable').DataTable({
-    paging: true,
-    searching: true,
+    paging: false,
+    searching: false,
     ordering: true,
-    info: true,
-    pageLength: 10
+    info: false
   });
 
-  function loadBusinessReport(policyNo = "", name = "") {
-    table.clear();
+  let currentPage = 1;
+  const pageSize = 10;
+  let currentKeyword = "";
+  let totalPages = 0;
 
-    fetch(`/api/agent/business-report/?policy_no=${encodeURIComponent(policyNo)}&name=${encodeURIComponent(name)}`, {
+  function syncPager() {
+    $('#businessPageInfo').text("Page " + (totalPages ? currentPage : 0) + " of " + totalPages);
+    $('#businessPrevBtn').prop('disabled', currentPage <= 1);
+    $('#businessNextBtn').prop('disabled', currentPage >= totalPages);
+  }
+
+  function loadBusinessReport(page = 1) {
+    currentPage = page;
+    const policyNo = currentKeyword;
+    const name = currentKeyword;
+    table.clear();
+    syncPager();
+
+    fetch(`/api/agent/business-report/?policy_no=${encodeURIComponent(policyNo)}&name=${encodeURIComponent(name)}&page=${currentPage}&page_size=${pageSize}`, {
       credentials: "same-origin"
     })
     .then(res => {
@@ -96,6 +122,11 @@ $(document).ready(function () {
       return res.json();
     })
     .then(data => {
+      const pg = data.pagination || {};
+      totalPages = Number(pg.total_pages || 0);
+      currentPage = Number(pg.page || currentPage);
+      syncPager();
+
       data.rows.forEach(row => {
         table.row.add([
           row.sn,
@@ -115,14 +146,73 @@ $(document).ready(function () {
     .catch(err => console.error(err));
   }
 
-  loadBusinessReport();
+  loadBusinessReport(1);
 
    // FILTER BUTTON
   $('#filterBtn').on('click', function () {
-    const keyword = $('#searchFilter').val();
-    loadBusinessReport(keyword, keyword);
+    currentKeyword = ($('#searchFilter').val() || "").trim();
+    loadBusinessReport(1);
   });
 
+  function toCsvValue(v) {
+    const s = String(v == null ? "" : v);
+    return '"' + s.replace(/"/g, '""') + '"';
+  }
+
+  async function exportAll() {
+    const exportBtn = $('#exportBtn');
+    exportBtn.prop('disabled', true).text('Exporting...');
+    try {
+      const keyword = ($('#searchFilter').val() || "").trim();
+      const exportPageSize = 100;
+      let page = 1;
+      let totalPagesLocal = 1;
+      const allRows = [];
+
+      while (page <= totalPagesLocal) {
+        const res = await fetch(`/api/agent/business-report/?policy_no=${encodeURIComponent(keyword)}&name=${encodeURIComponent(keyword)}&page=${page}&page_size=${exportPageSize}`, {
+          credentials: "same-origin"
+        });
+        if (!res.ok) throw new Error("Export API error");
+        const data = await res.json();
+        totalPagesLocal = Number((data.pagination || {}).total_pages || 1);
+        (data.rows || []).forEach(r => allRows.push(r));
+        page += 1;
+      }
+
+      const header = [
+        "SN","Policy No","Policy Holder","Plan","DOC","SA","Premium","Paid Date","Premium Type"
+      ];
+      const lines = [header.map(toCsvValue).join(",")];
+      allRows.forEach(r => {
+        lines.push([
+          r.sn, r.policy_no, r.policy_holder, r.plan, r.doc, r.sa, r.premium, r.paid_date, r.premium_type
+        ].map(toCsvValue).join(","));
+      });
+
+      const blob = new Blob([lines.join("\n")], { type: "text/csv;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "agent_business_report.csv";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      exportBtn.prop('disabled', false).html('<i class="bi bi-download"></i> Export All');
+    }
+  }
+  $('#exportBtn').on('click', exportAll);
+
+  $('#businessPrevBtn').on('click', function () {
+    if (currentPage > 1) loadBusinessReport(currentPage - 1);
+  });
+  $('#businessNextBtn').on('click', function () {
+    if (currentPage < totalPages) loadBusinessReport(currentPage + 1);
+  });
 
 });
 </script>

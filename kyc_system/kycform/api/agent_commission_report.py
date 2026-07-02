@@ -14,6 +14,20 @@ class AgentCommissionReportAPIView(APIView):
 
         policy_no = (request.GET.get("policy_no") or "").strip()
         name = (request.GET.get("name") or "").strip()
+        try:
+            page = int(request.GET.get("page", "1") or 1)
+        except ValueError:
+            page = 1
+        try:
+            page_size = int(request.GET.get("page_size", "10") or 10)
+        except ValueError:
+            page_size = 10
+        if page < 1:
+            page = 1
+        if page_size < 1:
+            page_size = 10
+        if page_size > 100:
+            page_size = 100
 
         params = [agent_code]
         search_filter = ""
@@ -43,7 +57,42 @@ class AgentCommissionReportAPIView(APIView):
             """
             params.append(f"%{name}%")
 
+        count_sql = f"""
+            SELECT COUNT(*)
+            FROM tblPolicyDetail pd WITH (NOLOCK)
+            INNER JOIN tblInsuredDetail i WITH (NOLOCK)
+                    ON i.RegisterNo = pd.RegisterNo
+            INNER JOIN tblPremiumPaid pz WITH (NOLOCK)
+                    ON pd.PolicyNo = pz.PolicyNo
+            WHERE pd.AgentCode = %s
+            {search_filter}
+        """
+
+        total_sql = f"""
+            SELECT
+                CAST(ISNULL(SUM(pd.SA), 0) AS DECIMAL(18,0)) AS TotalSA,
+                CAST(ISNULL(SUM(pd.Premium), 0) AS DECIMAL(18,0)) AS TotalPremium,
+                CAST(ISNULL(SUM(ISNULL(pz.CommAmount, 0)), 0) AS DECIMAL(18,0)) AS TotalCommission
+            FROM tblPolicyDetail pd WITH (NOLOCK)
+            INNER JOIN tblInsuredDetail i WITH (NOLOCK)
+                    ON i.RegisterNo = pd.RegisterNo
+            INNER JOIN tblPremiumPaid pz WITH (NOLOCK)
+                    ON pd.PolicyNo = pz.PolicyNo
+            WHERE pd.AgentCode = %s
+            {search_filter}
+        """
+
         with connections["sqlserver"].cursor() as cursor:
+            cursor.execute(count_sql, params)
+            total_rows = int((cursor.fetchone() or [0])[0] or 0)
+            total_pages = (total_rows + page_size - 1) // page_size if total_rows else 0
+            if total_pages and page > total_pages:
+                page = total_pages
+            offset = (page - 1) * page_size if total_rows else 0
+
+            cursor.execute(total_sql, params)
+            total_row = cursor.fetchone() or (0, 0, 0)
+
             cursor.execute(f"""
                 SELECT
                     ROW_NUMBER() OVER (ORDER BY pd.DOC DESC) AS SN,
@@ -78,23 +127,18 @@ class AgentCommissionReportAPIView(APIView):
                 {search_filter}
 
                 ORDER BY pd.DOC DESC
-            """, params)
+                OFFSET %s ROWS
+                FETCH NEXT %s ROWS ONLY
+            """, [*params, offset, page_size])
 
             rows = cursor.fetchall()
 
         data = []
-        total_sa = 0
-        total_premium = 0
-        total_commission = 0
 
         for r in rows:
             sa = r[8] or 0
             premium = r[9] or 0
             commission = r[11] or 0
-
-            total_sa += sa
-            total_premium += premium
-            total_commission += commission
 
             data.append({
                 "sn": r[0],
@@ -113,8 +157,16 @@ class AgentCommissionReportAPIView(APIView):
         return Response({
             "rows": data,
             "total": {
-                "sa": float(total_sa),
-                "premium": float(total_premium),
-                "commission": float(total_commission)
-            }
+                "sa": float(total_row[0] or 0),
+                "premium": float(total_row[1] or 0),
+                "commission": float(total_row[2] or 0)
+            },
+            "pagination": {
+                "page": page,
+                "page_size": page_size,
+                "total_rows": total_rows,
+                "total_pages": total_pages,
+                "has_next": bool(total_pages and page < total_pages),
+                "has_prev": bool(total_pages and page > 1),
+            },
         })

@@ -1,12 +1,53 @@
 from django.db import connections
+from kycform.services.policy_status import format_policy_status
 
 
 class PolicyPoliciesService:
     @staticmethod
-    def get_policies(client_id):
+    def get_policies(client_id, policy_no="", page=1, page_size=10, paginated=False):
+        page = int(page or 1)
+        page_size = int(page_size or 10)
+        if page < 1:
+            page = 1
+        if page_size < 1:
+            page_size = 10
+        if page_size > 100:
+            page_size = 100
+
+        policy_filter_sql = ""
+        params = [client_id]
+        if policy_no:
+            policy_filter_sql = "AND tpd.PolicyNo LIKE %s"
+            params.append(f"%{policy_no}%")
+
         with connections["sqlserver"].cursor() as cursor:
+            if paginated:
+                cursor.execute(
+                    f"""
+                    SELECT COUNT(*)
+                    FROM dbo.tblPolicyDetail tpd WITH (NOLOCK)
+                    INNER JOIN dbo.tblInsuredDetail tid WITH (NOLOCK)
+                            ON tid.RegisterNo = tpd.RegisterNo
+                    WHERE tid.ClientNo = %s
+                    {policy_filter_sql}
+                    """,
+                    params,
+                )
+                total_rows = int((cursor.fetchone() or [0])[0] or 0)
+                total_pages = (total_rows + page_size - 1) // page_size if total_rows else 0
+                if total_pages and page > total_pages:
+                    page = total_pages
+                offset = (page - 1) * page_size if total_rows else 0
+                query_params = [*params, offset, page_size]
+                pagination_sql = "OFFSET %s ROWS FETCH NEXT %s ROWS ONLY"
+            else:
+                total_rows = 0
+                total_pages = 0
+                query_params = params
+                pagination_sql = ""
+
             cursor.execute(
-                """
+                f"""
                 SELECT
                     tpd.PolicyNo AS PolicyNumber,
                     tp.PlanName,
@@ -40,9 +81,11 @@ class PolicyPoliciesService:
                         ON LTRIM(RTRIM(tsdv.Code)) = LTRIM(RTRIM(tpd.CurrentStatus))
                        AND LTRIM(RTRIM(tsdv.StaticCode)) = 'CurrentStatus'
                 WHERE tid.ClientNo = %s
+                {policy_filter_sql}
                 ORDER BY tpd.DOC DESC
+                {pagination_sql}
                 """,
-                [client_id],
+                query_params,
             )
             rows = cursor.fetchall()
 
@@ -72,8 +115,22 @@ class PolicyPoliciesService:
                     "policy_premium_next_due_date": row[19],
                     "policy_premium_last_paid_date": row[20],
                     "current_status_code": row[21],
-                    "current_status": row[22],
+                    "current_status": format_policy_status(row[21] or row[22]),
                 }
             )
 
-        return {"rows": data}
+        if not paginated:
+            total_rows = len(data)
+            total_pages = 1 if total_rows else 0
+
+        return {
+            "rows": data,
+            "pagination": {
+                "page": page,
+                "page_size": page_size,
+                "total_rows": total_rows,
+                "total_pages": total_pages,
+                "has_next": bool(total_pages and page < total_pages),
+                "has_prev": bool(total_pages and page > 1),
+            },
+        }

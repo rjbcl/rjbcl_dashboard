@@ -22,6 +22,9 @@
     <button id="policyFilterBtn" class="btn btn-outline-primary btn-sm">
       <i class="bi bi-funnel"></i> Filter
     </button>
+    <button id="policyExportBtn" class="btn btn-outline-success btn-sm">
+      <i class="bi bi-download"></i> Export All
+    </button>
   </div>
 </div>
 
@@ -40,6 +43,15 @@
       </thead>
       <tbody></tbody>
     </table>
+    <div class="d-flex justify-content-between align-items-center mt-3">
+      <button id="policiesPrevBtn" class="btn btn-outline-secondary btn-sm" disabled>
+        <i class="bi bi-chevron-left"></i> Prev
+      </button>
+      <span id="policiesPageInfo" class="small text-muted">Page 0 of 0</span>
+      <button id="policiesNextBtn" class="btn btn-outline-secondary btn-sm" disabled>
+        Next <i class="bi bi-chevron-right"></i>
+      </button>
+    </div>
   </div>
 </div>
 {% endblock %}
@@ -48,43 +60,107 @@
 <script>
 document.addEventListener("DOMContentLoaded", function () {
   const table = $('#policiesTable').DataTable({
-    paging: true,
+    paging: false,
     searching: false,
     ordering: true,
-    info: true,
-    pageLength: 10
+    info: false
   });
 
-  function loadPolicies(filterNo) {
-    fetch("/api/policy/policies/", { credentials: "same-origin" })
+  let currentPage = 1;
+  const pageSize = 10;
+  let currentFilter = "";
+  let totalPages = 0;
+
+  function syncPager() {
+    document.getElementById("policiesPageInfo").innerText = "Page " + (totalPages ? currentPage : 0) + " of " + totalPages;
+    document.getElementById("policiesPrevBtn").disabled = currentPage <= 1;
+    document.getElementById("policiesNextBtn").disabled = currentPage >= totalPages;
+  }
+
+  function loadPolicies(page) {
+    currentPage = page || 1;
+    syncPager();
+
+    fetch(`/api/policy/policies/?policy_no=${encodeURIComponent(currentFilter)}&page=${currentPage}&page_size=${pageSize}`, { credentials: "same-origin" })
       .then(function (res) { return res.json(); })
       .then(function (data) {
         const rows = data.rows || [];
+        const pagination = data.pagination || {};
+        totalPages = Number(pagination.total_pages || 0);
+        currentPage = Number(pagination.page || currentPage);
+        syncPager();
         table.clear();
 
-        rows
-          .filter(function (r) {
-            if (!filterNo) return true;
-            return String(r.policy_number || "").toLowerCase().indexOf(filterNo.toLowerCase()) !== -1;
-          })
-          .forEach(function (r) {
-            table.row.add([
-              r.policy_number || "-",
-              r.plan_name || "-",
-              r.term || "-",
-              "NPR " + Number(r.policy_premium || 0).toLocaleString(),
-              r.policy_premium_frequency || "-",
-              r.current_status || "-"
-            ]);
-          });
+        rows.forEach(function (r) {
+          table.row.add([
+            r.policy_number || "-",
+            r.plan_name || "-",
+            r.term || "-",
+            "NPR " + Number(r.policy_premium || 0).toLocaleString(),
+            r.policy_premium_frequency || "-",
+            r.current_status || "-"
+          ]);
+        });
 
         table.draw();
       });
   }
 
-  loadPolicies("");
+  loadPolicies(1);
   document.getElementById("policyFilterBtn").addEventListener("click", function () {
-    loadPolicies(document.getElementById("policyFilter").value || "");
+    currentFilter = document.getElementById("policyFilter").value || "";
+    loadPolicies(1);
+  });
+  function toCsvValue(v) {
+    const s = String(v == null ? "" : v);
+    return '"' + s.replace(/"/g, '""') + '"';
+  }
+  async function exportAllPolicies() {
+    const btn = document.getElementById("policyExportBtn");
+    btn.disabled = true;
+    btn.innerText = "Exporting...";
+    try {
+      const filter = document.getElementById("policyFilter").value || "";
+      const exportPageSize = 100;
+      let page = 1;
+      let total = 1;
+      const allRows = [];
+
+      while (page <= total) {
+        const res = await fetch(`/api/policy/policies/?policy_no=${encodeURIComponent(filter)}&page=${page}&page_size=${exportPageSize}`, { credentials: "same-origin" });
+        const data = await res.json();
+        total = Number((data.pagination || {}).total_pages || 1);
+        (data.rows || []).forEach(r => allRows.push(r));
+        page += 1;
+      }
+
+      const lines = [];
+      lines.push(["Policy No","Plan","Term","Premium","Frequency","Status"].map(toCsvValue).join(","));
+      allRows.forEach(r => {
+        lines.push([
+          r.policy_number, r.plan_name, r.term, r.policy_premium, r.policy_premium_frequency, r.current_status
+        ].map(toCsvValue).join(","));
+      });
+      const blob = new Blob([lines.join("\n")], { type: "text/csv;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "policy_policies.csv";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = '<i class="bi bi-download"></i> Export All';
+    }
+  }
+  document.getElementById("policyExportBtn").addEventListener("click", exportAllPolicies);
+  document.getElementById("policiesPrevBtn").addEventListener("click", function () {
+    if (currentPage > 1) loadPolicies(currentPage - 1);
+  });
+  document.getElementById("policiesNextBtn").addEventListener("click", function () {
+    if (currentPage < totalPages) loadPolicies(currentPage + 1);
   });
 });
 </script>

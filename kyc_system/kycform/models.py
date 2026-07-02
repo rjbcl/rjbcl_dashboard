@@ -344,6 +344,109 @@ class KycDocument(models.Model):
             return None
 
 
+class PolicyClaimRequest(models.Model):
+    STATUS_CHOICES = [
+        ("PENDING", "Pending"),
+        ("UNDER_REVIEW", "Under Review"),
+        ("APPROVED", "Approved"),
+        ("REJECTED", "Rejected"),
+    ]
+
+    id = models.BigAutoField(primary_key=True)
+    user = models.ForeignKey(
+        KycUserInfo,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="mobile_claim_requests",
+    )
+    claim_type = models.CharField(max_length=100)
+    product_name = models.CharField(max_length=255)
+    product_plan_id = models.IntegerField(null=True, blank=True)
+    name_of_insured = models.CharField(max_length=200)
+    phone_number = models.CharField(max_length=20)
+    email = models.CharField(max_length=200)
+    date_of_loss = models.DateField()
+    contact_person = models.CharField(max_length=200)
+    policy_number = models.CharField(max_length=50)
+    place_of_loss = models.CharField(max_length=255)
+    details_of_loss = models.TextField()
+    message = models.TextField()
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="PENDING")
+    submitted_at = models.DateTimeField(default=timezone.now)
+    updated_at = models.DateTimeField(default=timezone.now)
+
+    class Meta:
+        db_table = "policy_claim_request"
+        ordering = ["-submitted_at"]
+        managed = False
+
+    def __str__(self):
+        return f"{self.policy_number} - {self.product_name}"
+
+
+class PolicyClaimDocument(models.Model):
+    id = models.BigAutoField(primary_key=True)
+    claim_request = models.ForeignKey(
+        PolicyClaimRequest,
+        on_delete=models.CASCADE,
+        related_name="documents",
+    )
+    file = models.FileField(upload_to="policy_claims/%Y/%m/%d/")
+    original_name = models.CharField(max_length=255)
+    uploaded_at = models.DateTimeField(default=timezone.now)
+
+    class Meta:
+        db_table = "policy_claim_document"
+        ordering = ["uploaded_at"]
+        managed = False
+
+    def __str__(self):
+        return self.original_name
+
+    @property
+    def url(self):
+        try:
+            return self.file.url
+        except Exception:
+            return None
+
+
+class ProductType(models.Model):
+    name = models.CharField(max_length=100, unique=True)
+    is_active = models.BooleanField(default=True)
+    display_order = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        db_table = "product_type"
+        ordering = ["display_order", "name"]
+        managed = False
+
+    def __str__(self):
+        return self.name
+
+
+class ProductPlan(models.Model):
+    product_type = models.ForeignKey(
+        ProductType,
+        on_delete=models.DO_NOTHING,
+        related_name="plans",
+        db_index=True,
+    )
+    plan_name = models.CharField(max_length=255, db_index=True)
+    is_active = models.BooleanField(default=True)
+    display_order = models.PositiveIntegerField(default=0)
+    core_plan_id = models.SmallIntegerField(null=True, blank=True, unique=True)
+
+    class Meta:
+        db_table = "product_plan"
+        ordering = ["product_type", "display_order", "plan_name"]
+        managed = False
+
+    def __str__(self):
+        return f"{self.product_type.name} - {self.plan_name}"
+
+
 # ================================================================
 # AGENT MODEL
 # ================================================================
@@ -448,6 +551,47 @@ class KycChangeLog(models.Model):
 
     def __str__(self):
         return f"{self.submission.user.user_id} | {self.action} | {self.field_name}"
+
+
+# ================================================================
+# KYC SMS NOTIFICATION LOG
+# ================================================================
+
+class KycSmsNotification(models.Model):
+    DELIVERY_STATUS_CHOICES = [
+        ("PENDING", "Pending"),
+        ("SENT", "Sent"),
+        ("FAILED", "Failed"),
+        ("SKIPPED", "Skipped"),
+    ]
+
+    id = models.BigAutoField(primary_key=True)
+    user = models.ForeignKey(
+        KycUserInfo,
+        on_delete=models.CASCADE,
+        related_name="sms_notifications",
+    )
+    mobile = models.CharField(max_length=20)
+    message = models.TextField()
+    template_name = models.CharField(max_length=100, default="kyc_verified")
+    source = models.CharField(max_length=50, default="ADMIN")
+    delivery_status = models.CharField(
+        max_length=20,
+        choices=DELIVERY_STATUS_CHOICES,
+        default="PENDING",
+    )
+    provider_reference = models.CharField(max_length=150, blank=True, null=True)
+    error_message = models.TextField(blank=True, null=True)
+    sent_at = models.DateTimeField(blank=True, null=True)
+    created_at = models.DateTimeField(default=timezone.now)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "kyc_sms_notification"
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"{self.user.user_id} | {self.template_name} | {self.delivery_status}"
 
 # ================================================================
 # KYC MOBILE OTP MODEL

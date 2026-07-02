@@ -33,6 +33,9 @@
     <button class="btn btn-outline-primary btn-sm" id="filterBtn">
       <i class="bi bi-funnel"></i> Filter
     </button>
+    <button class="btn btn-outline-success btn-sm" id="exportBtn">
+      <i class="bi bi-download"></i> Export All
+    </button>
 
   </div>
 </div>
@@ -67,6 +70,15 @@
       </tfoot>
 
     </table>
+    <div class="d-flex justify-content-between align-items-center mt-3">
+      <button id="commissionPrevBtn" class="btn btn-outline-secondary btn-sm" disabled>
+        <i class="bi bi-chevron-left"></i> Prev
+      </button>
+      <span id="commissionPageInfo" class="small text-muted">Page 0 of 0</span>
+      <button id="commissionNextBtn" class="btn btn-outline-secondary btn-sm" disabled>
+        Next <i class="bi bi-chevron-right"></i>
+      </button>
+    </div>
 
   </div>
 </div>
@@ -84,17 +96,31 @@
 $(document).ready(function () {
 
   const table = $('#commissionReportTable').DataTable({
-    paging: true,
+    paging: false,
     ordering: true,
     searching: false,
-    info: true,
-    pageLength: 10
+    info: false
   });
 
-  function loadCommissionReport(policyNo = "", name = "") {
-    table.clear();
+  let currentPage = 1;
+  const pageSize = 10;
+  let currentKeyword = "";
+  let totalPages = 0;
 
-    fetch(`/api/agent/commission-report/?policy_no=${encodeURIComponent(policyNo)}&name=${encodeURIComponent(name)}`, {
+  function syncPager() {
+    $('#commissionPageInfo').text("Page " + (totalPages ? currentPage : 0) + " of " + totalPages);
+    $('#commissionPrevBtn').prop('disabled', currentPage <= 1);
+    $('#commissionNextBtn').prop('disabled', currentPage >= totalPages);
+  }
+
+  function loadCommissionReport(page = 1) {
+    currentPage = page;
+    const policyNo = currentKeyword;
+    const name = currentKeyword;
+    table.clear();
+    syncPager();
+
+    fetch(`/api/agent/commission-report/?policy_no=${encodeURIComponent(policyNo)}&name=${encodeURIComponent(name)}&page=${currentPage}&page_size=${pageSize}`, {
       credentials: "same-origin"
     })
     .then(res => {
@@ -102,6 +128,10 @@ $(document).ready(function () {
       return res.json();
     })
     .then(data => {
+      const pg = data.pagination || {};
+      totalPages = Number(pg.total_pages || 0);
+      currentPage = Number(pg.page || currentPage);
+      syncPager();
 
       data.rows.forEach(row => {
         table.row.add([
@@ -128,25 +158,80 @@ $(document).ready(function () {
       table.draw();
 
       // FOOTER TOTALS
-      $('#commissionReportTable tfoot th').eq(1)
-        .text(data.total.sa.toLocaleString());
-
-      $('#commissionReportTable tfoot th').eq(2)
-        .text(data.total.premium.toLocaleString());
-
-      $('#commissionReportTable tfoot th').eq(4)
-        .text(data.total.commission.toLocaleString());
+      $('#commissionReportTable tfoot th').eq(1).text((data.total?.sa || 0).toLocaleString());
+      $('#commissionReportTable tfoot th').eq(2).text((data.total?.premium || 0).toLocaleString());
+      $('#commissionReportTable tfoot th').eq(4).text((data.total?.commission || 0).toLocaleString());
     })
     .catch(err => console.error(err));
   }
 
   // INITIAL LOAD
-  loadCommissionReport();
+  loadCommissionReport(1);
 
   // FILTER
   $('#filterBtn').on('click', function () {
-    const keyword = $('#searchFilter').val();
-    loadCommissionReport(keyword, keyword);
+    currentKeyword = ($('#searchFilter').val() || "").trim();
+    loadCommissionReport(1);
+  });
+
+  function toCsvValue(v) {
+    const s = String(v == null ? "" : v);
+    return '"' + s.replace(/"/g, '""') + '"';
+  }
+
+  async function exportAll() {
+    const exportBtn = $('#exportBtn');
+    exportBtn.prop('disabled', true).text('Exporting...');
+    try {
+      const keyword = ($('#searchFilter').val() || "").trim();
+      const exportPageSize = 100;
+      let page = 1;
+      let totalPagesLocal = 1;
+      const allRows = [];
+
+      while (page <= totalPagesLocal) {
+        const res = await fetch(`/api/agent/commission-report/?policy_no=${encodeURIComponent(keyword)}&name=${encodeURIComponent(keyword)}&page=${page}&page_size=${exportPageSize}`, {
+          credentials: "same-origin"
+        });
+        if (!res.ok) throw new Error("Export API error");
+        const data = await res.json();
+        totalPagesLocal = Number((data.pagination || {}).total_pages || 1);
+        (data.rows || []).forEach(r => allRows.push(r));
+        page += 1;
+      }
+
+      const header = [
+        "SN","Policy No","Policy Holder","Plan","DOC","Paid Date","SA","Premium","Commission Rate","Commission Amount","Premium Type"
+      ];
+      const lines = [header.map(toCsvValue).join(",")];
+      allRows.forEach(r => {
+        lines.push([
+          r.sn, r.policy_no, r.policy_holder, r.plan, r.doc, r.paid_date, r.sa, r.premium, r.commission_rate, r.commission_amount, r.premium_type
+        ].map(toCsvValue).join(","));
+      });
+
+      const blob = new Blob([lines.join("\n")], { type: "text/csv;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "agent_commission_report.csv";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      exportBtn.prop('disabled', false).html('<i class="bi bi-download"></i> Export All');
+    }
+  }
+  $('#exportBtn').on('click', exportAll);
+
+  $('#commissionPrevBtn').on('click', function () {
+    if (currentPage > 1) loadCommissionReport(currentPage - 1);
+  });
+  $('#commissionNextBtn').on('click', function () {
+    if (currentPage < totalPages) loadCommissionReport(currentPage + 1);
   });
 
 });

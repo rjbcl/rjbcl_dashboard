@@ -1,0 +1,144 @@
+{% extends "agent/base_agent.html" %}
+
+{% block title %}Maturity Forecasting | RJBCL{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <div>
+    <h4 class="mb-1">Maturity Forecasting</h4>
+    <nav class="small">
+      <a href="{% url 'kyc:agent_dashboard' %}">Dashboard</a> /
+      <span class="text-muted">Maturity Forecasting</span>
+    </nav>
+  </div>
+</div>
+
+<div class="card mb-3">
+  <div class="card-body d-flex flex-wrap gap-2 align-items-center">
+    <input id="maturityPolicyFilter" type="text" class="form-control w-auto" style="min-width: 240px;" placeholder="Policy Number">
+    <button id="maturityFilterBtn" class="btn btn-outline-primary btn-sm">
+      <i class="bi bi-funnel"></i> Filter
+    </button>
+    <div class="ms-auto text-muted small">
+      <span class="me-3">Policies: <strong id="maturityPolicies">0</strong></span>
+      <span class="me-3">SA: <strong id="maturitySa">NPR 0</strong></span>
+      <span>Premium: <strong id="maturityPremium">NPR 0</strong></span>
+    </div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-body">
+    <div class="table-responsive">
+      <table id="maturityTable" class="table table-striped table-bordered align-middle w-100">
+        <thead class="table-light">
+          <tr>
+            <th>SN</th>
+            <th>Policy No</th>
+            <th>Holder</th>
+            <th>Mobile</th>
+            <th>Plan</th>
+            <th>Term</th>
+            <th>Pay Mode</th>
+            <th>Maturity Date</th>
+            <th>SA</th>
+            <th>Premium</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+    <div class="d-flex justify-content-between align-items-center mt-3">
+      <button id="maturityPrevBtn" class="btn btn-outline-secondary btn-sm" disabled>
+        <i class="bi bi-chevron-left"></i> Prev
+      </button>
+      <span id="maturityPageInfo" class="small text-muted">Page 0 of 0</span>
+      <button id="maturityNextBtn" class="btn btn-outline-secondary btn-sm" disabled>
+        Next <i class="bi bi-chevron-right"></i>
+      </button>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+  const table = $('#maturityTable').DataTable({
+    paging: false,
+    searching: false,
+    ordering: true,
+    info: false
+  });
+
+  let currentPage = 1;
+  const pageSize = 10;
+  let currentFilter = "";
+  let totalPages = 0;
+
+  function syncPager() {
+    document.getElementById("maturityPageInfo").innerText = "Page " + (totalPages ? currentPage : 0) + " of " + totalPages;
+    document.getElementById("maturityPrevBtn").disabled = currentPage <= 1;
+    document.getElementById("maturityNextBtn").disabled = currentPage >= totalPages;
+  }
+
+  function updateTotals(data) {
+    const total = data.total || {};
+    const summary = data.summary || {};
+    document.getElementById("maturityPolicies").innerText = Number(summary.policies || 0).toLocaleString();
+    document.getElementById("maturitySa").innerText = "NPR " + Number(total.sa || 0).toLocaleString();
+    document.getElementById("maturityPremium").innerText = "NPR " + Number(total.premium || 0).toLocaleString();
+  }
+
+  function loadMaturity(page) {
+    currentPage = page || 1;
+    syncPager();
+
+    fetch(`/api/agent/maturity-forecasting/?policy_no=${encodeURIComponent(currentFilter)}&page=${currentPage}&page_size=${pageSize}`, { credentials: "same-origin" })
+      .then(function (res) { return res.json(); })
+      .then(function (data) {
+        const rows = data.rows || [];
+        const pagination = data.pagination || {};
+        totalPages = Number(pagination.total_pages || 0);
+        currentPage = Number(pagination.page || currentPage);
+        syncPager();
+        updateTotals(data);
+
+        table.clear();
+        rows.forEach(function (r) {
+          table.row.add([
+            r.sn || "-",
+            r.policy_no || "-",
+            r.policy_holder || "-",
+            r.mobile || "-",
+            r.plan || "-",
+            r.term || "-",
+            r.paymode || "-",
+            r.maturity_date || "-",
+            "NPR " + Number(r.sa || 0).toLocaleString(),
+            "NPR " + Number(r.premium || 0).toLocaleString(),
+            r.status || "-"
+          ]);
+        });
+        table.draw();
+      });
+  }
+
+  loadMaturity(1);
+
+  document.getElementById("maturityFilterBtn").addEventListener("click", function () {
+    currentFilter = document.getElementById("maturityPolicyFilter").value || "";
+    loadMaturity(1);
+  });
+
+  document.getElementById("maturityPrevBtn").addEventListener("click", function () {
+    if (currentPage > 1) loadMaturity(currentPage - 1);
+  });
+
+  document.getElementById("maturityNextBtn").addEventListener("click", function () {
+    if (currentPage < totalPages) loadMaturity(currentPage + 1);
+  });
+});
+</script>
+{% endblock %}

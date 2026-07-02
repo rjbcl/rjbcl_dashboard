@@ -14,6 +14,20 @@ class AgentDueReportAPIView(APIView):
 
         policy_no = (request.GET.get("policy_no") or "").strip()
         name = (request.GET.get("name") or "").strip()
+        try:
+            page = int(request.GET.get("page", "1") or 1)
+        except ValueError:
+            page = 1
+        try:
+            page_size = int(request.GET.get("page_size", "10") or 10)
+        except ValueError:
+            page_size = 10
+        if page < 1:
+            page = 1
+        if page_size < 1:
+            page_size = 10
+        if page_size > 100:
+            page_size = 100
 
         params = [agent_code]
         search_filter = ""
@@ -39,7 +53,24 @@ class AgentDueReportAPIView(APIView):
             """
             params.append(f"%{name}%")
 
+        count_sql = f"""
+            SELECT COUNT(*)
+            FROM tblPolicyDetail pd WITH (NOLOCK)
+            INNER JOIN tblInsuredDetail i WITH (NOLOCK)
+                    ON pd.RegisterNo = i.RegisterNo
+            WHERE pd.AgentCode = %s
+              AND pd.FUP < GETDATE()
+              {search_filter}
+        """
+
         with connections["sqlserver"].cursor() as cursor:
+            cursor.execute(count_sql, params)
+            total_rows = int((cursor.fetchone() or [0])[0] or 0)
+            total_pages = (total_rows + page_size - 1) // page_size if total_rows else 0
+            if total_pages and page > total_pages:
+                page = total_pages
+            offset = (page - 1) * page_size if total_rows else 0
+
             cursor.execute(
                 f"""
                 SELECT
@@ -67,8 +98,10 @@ class AgentDueReportAPIView(APIView):
                   AND pd.FUP < GETDATE()
                   {search_filter}
                 ORDER BY pd.FUP ASC
+                OFFSET %s ROWS
+                FETCH NEXT %s ROWS ONLY
                 """,
-                params,
+                [*params, offset, page_size],
             )
 
             rows = cursor.fetchall()
@@ -92,4 +125,16 @@ class AgentDueReportAPIView(APIView):
                 }
             )
 
-        return Response({"rows": data})
+        return Response(
+            {
+                "rows": data,
+                "pagination": {
+                    "page": page,
+                    "page_size": page_size,
+                    "total_rows": total_rows,
+                    "total_pages": total_pages,
+                    "has_next": bool(total_pages and page < total_pages),
+                    "has_prev": bool(total_pages and page > 1),
+                },
+            }
+        )

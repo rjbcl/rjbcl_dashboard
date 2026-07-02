@@ -68,6 +68,11 @@
           <i class="bi bi-search me-1"></i> Submit
         </button>
       </div>
+      <div class="d-grid mt-2">
+        <button id="rastraExportBtn" class="btn btn-outline-success">
+          <i class="bi bi-download me-1"></i> Export All
+        </button>
+      </div>
     </div>
 
     <div class="card-footer bg-transparent border-0 pt-0 pb-3 px-4 px-md-5">
@@ -97,6 +102,15 @@
       </thead>
       <tbody></tbody>
     </table>
+    <div class="d-flex justify-content-between align-items-center mt-3">
+      <button id="rastraPrevBtn" class="btn btn-outline-secondary btn-sm" disabled>
+        <i class="bi bi-chevron-left"></i> Prev
+      </button>
+      <span id="rastraPageInfo" class="small text-muted">Page 0 of 0</span>
+      <button id="rastraNextBtn" class="btn btn-outline-secondary btn-sm" disabled>
+        Next <i class="bi bi-chevron-right"></i>
+      </button>
+    </div>
   </div>
 </div>
 {% endblock %}
@@ -106,16 +120,25 @@
 document.addEventListener("DOMContentLoaded", function () {
   const entryWrap = document.querySelector(".entry-wrap");
   const resultsSection = document.getElementById("rastraResultsSection");
+  const prevBtn = document.getElementById("rastraPrevBtn");
+  const nextBtn = document.getElementById("rastraNextBtn");
+  const pageInfo = document.getElementById("rastraPageInfo");
   const table = $('#rastraSewakTable').DataTable({
-    paging: true,
+    paging: false,
     searching: false,
-    ordering: true,
-    info: true,
-    pageLength: 10,
+    ordering: false,
+    info: false,
     language: {
       emptyTable: "Enter Policy Number and DOB to search."
     }
   });
+
+  let currentPage = 1;
+  let currentPageSize = 10;
+  let currentPolicyNo = "";
+  let currentDob = "";
+  let totalPages = 0;
+  let totalRows = 0;
 
   function setMessage(msg, danger) {
     const el = document.getElementById("rastraMessage");
@@ -123,14 +146,24 @@ document.addEventListener("DOMContentLoaded", function () {
     el.className = danger ? "small text-danger" : "small text-muted";
   }
 
-  function loadRastraSewak() {
-    const policyNo = (document.getElementById("rastraPolicyNo").value || "").trim();
-    const dob = document.getElementById("rastraDob").value;
+  function syncPager() {
+    pageInfo.innerText = "Page " + (totalPages ? currentPage : 0) + " of " + totalPages;
+    prevBtn.disabled = currentPage <= 1;
+    nextBtn.disabled = currentPage >= totalPages;
+  }
+
+  function loadRastraSewak(page) {
+    const policyNo = currentPolicyNo || (document.getElementById("rastraPolicyNo").value || "").trim();
+    const dob = currentDob || document.getElementById("rastraDob").value;
 
     if (!policyNo || !dob) {
       setMessage("Policy Number and DOB are required.", true);
       return;
     }
+
+    currentPolicyNo = policyNo;
+    currentDob = dob;
+    currentPage = page || 1;
 
     if (entryWrap) {
       entryWrap.classList.add("d-none");
@@ -138,6 +171,7 @@ document.addEventListener("DOMContentLoaded", function () {
     resultsSection.classList.remove("d-none");
     setMessage("Loading...", false);
     table.clear().draw();
+    syncPager();
 
     fetch("/api/policy/rastra-sewak/", {
       method: "POST",
@@ -148,7 +182,9 @@ document.addEventListener("DOMContentLoaded", function () {
       },
       body: JSON.stringify({
         policy_no: policyNo,
-        dob: dob
+        dob: dob,
+        page: currentPage,
+        page_size: currentPageSize
       })
     })
     .then(async function (res) {
@@ -160,6 +196,12 @@ document.addEventListener("DOMContentLoaded", function () {
     })
     .then(function (data) {
       const rows = data.rows || [];
+      const pagination = data.pagination || {};
+      totalPages = Number(pagination.total_pages || 0);
+      totalRows = Number(pagination.total_rows || 0);
+      currentPage = Number(pagination.page || currentPage);
+      syncPager();
+
       if (!rows.length) {
         setMessage("No record found.", true);
         table.clear().draw();
@@ -181,11 +223,14 @@ document.addEventListener("DOMContentLoaded", function () {
         ]);
       });
       table.draw();
-      setMessage("Found " + rows.length + " record(s).", false);
+      setMessage("Found " + totalRows + " record(s).", false);
     })
     .catch(function (err) {
       setMessage(err.message || "Unable to fetch records.", true);
       table.clear().draw();
+      totalPages = 0;
+      totalRows = 0;
+      syncPager();
     });
   }
 
@@ -199,12 +244,104 @@ document.addEventListener("DOMContentLoaded", function () {
     return "";
   }
 
-  document.getElementById("rastraSearchBtn").addEventListener("click", loadRastraSewak);
+  function toCsvValue(v) {
+    const s = String(v == null ? "" : v);
+    return '"' + s.replace(/"/g, '""') + '"';
+  }
+
+  async function exportAllRastraSewak() {
+    const policyNo = (document.getElementById("rastraPolicyNo").value || "").trim();
+    const dob = document.getElementById("rastraDob").value;
+    if (!policyNo || !dob) {
+      setMessage("Policy Number and DOB are required.", true);
+      return;
+    }
+
+    const btn = document.getElementById("rastraExportBtn");
+    btn.disabled = true;
+    btn.innerText = "Exporting...";
+    setMessage("Preparing export...", false);
+    try {
+      const exportPageSize = 100;
+      let page = 1;
+      let total = 1;
+      const allRows = [];
+
+      while (page <= total) {
+        const res = await fetch("/api/policy/rastra-sewak/", {
+          method: "POST",
+          credentials: "same-origin",
+          headers: {
+            "Content-Type": "application/json",
+            "X-CSRFToken": getCsrfToken()
+          },
+          body: JSON.stringify({
+            policy_no: policyNo,
+            dob: dob,
+            page: page,
+            page_size: exportPageSize
+          })
+        });
+        if (!res.ok) throw new Error("Unable to export records.");
+        const data = await res.json();
+        total = Number((data.pagination || {}).total_pages || 1);
+        (data.rows || []).forEach(r => allRows.push(r));
+        page += 1;
+      }
+
+      const lines = [];
+      lines.push([
+        "Policy No","Policy Holder","DOB","Branch","Group ID","Paid Date","Paid Amount","Installment","Claim Status","Status"
+      ].map(toCsvValue).join(","));
+      allRows.forEach(r => {
+        lines.push([
+          r.policy_no, r.policy_holder_name, r.dob, r.branch, r.group_id, r.paid_date, r.paid_amount, r.instalment, r.claim_status, (r.paid_policy_status || r.policy_current_status)
+        ].map(toCsvValue).join(","));
+      });
+
+      const blob = new Blob([lines.join("\n")], { type: "text/csv;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "policy_rastra_sewak.csv";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+      setMessage("Export completed.", false);
+    } catch (err) {
+      setMessage(err.message || "Unable to export records.", true);
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = '<i class="bi bi-download me-1"></i> Export All';
+    }
+  }
+
+  document.getElementById("rastraSearchBtn").addEventListener("click", function () {
+    currentPolicyNo = "";
+    currentDob = "";
+    loadRastraSewak(1);
+  });
+  document.getElementById("rastraExportBtn").addEventListener("click", exportAllRastraSewak);
+  prevBtn.addEventListener("click", function () {
+    if (currentPage > 1) loadRastraSewak(currentPage - 1);
+  });
+  nextBtn.addEventListener("click", function () {
+    if (currentPage < totalPages) loadRastraSewak(currentPage + 1);
+  });
   document.getElementById("rastraDob").addEventListener("keydown", function (e) {
-    if (e.key === "Enter") loadRastraSewak();
+    if (e.key === "Enter") {
+      currentPolicyNo = "";
+      currentDob = "";
+      loadRastraSewak(1);
+    }
   });
   document.getElementById("rastraPolicyNo").addEventListener("keydown", function (e) {
-    if (e.key === "Enter") loadRastraSewak();
+    if (e.key === "Enter") {
+      currentPolicyNo = "";
+      currentDob = "";
+      loadRastraSewak(1);
+    }
   });
 });
 </script>

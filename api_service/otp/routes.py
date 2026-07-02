@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 from .utils import generate_otp
 from .sms import send_sms
 
@@ -7,17 +7,38 @@ router = APIRouter(prefix="/otp", tags=["OTP"])
 
 
 @router.post("/send")
-def send_otp(mobile: str):
-    otp = generate_otp()
+async def send_otp(request: Request, mobile: str = ""):
+    payload = {}
+    try:
+        payload = await request.json()
+        if not isinstance(payload, dict):
+            payload = {}
+    except Exception:
+        payload = {}
 
-    message = f"Your RJBCL KYC OTP is {otp}. Valid for 2 minutes."
+    resolved_mobile = (payload.get("mobile") or mobile or "").strip()
+    custom_message = (payload.get("message") or "").strip()
 
-    status, response = send_sms(mobile, message)
+    if not resolved_mobile:
+        raise HTTPException(status_code=400, detail="mobile is required")
+
+    if custom_message:
+        message = custom_message
+        otp = None
+    else:
+        otp = generate_otp()
+        message = f"Your RJBCL KYC OTP is {otp}. Valid for 2 minutes."
+
+    status, response = send_sms(resolved_mobile, message)
 
     if status != 200:
         raise HTTPException(status_code=502, detail=response)
 
-    return {
+    response_body = {
         "success": True,
-        "otp": otp
+        "message": "SMS sent successfully",
     }
+    if otp is not None:
+        response_body["otp"] = otp
+
+    return response_body

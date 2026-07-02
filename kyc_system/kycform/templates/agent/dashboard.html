@@ -128,7 +128,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
   Promise.all([
     fetch("/api/agent/summary/", { credentials: "same-origin" }).then(function (r) { return r.json(); }),
-    fetch("/api/agent/business-report/", { credentials: "same-origin" }).then(function (r) { return r.json(); })
+    fetch("/api/agent/business-report/?limit=20", { credentials: "same-origin" }).then(function (r) { return r.json(); })
   ])
   .then(function (responses) {
     const summary = responses[0];

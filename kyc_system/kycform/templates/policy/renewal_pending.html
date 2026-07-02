@@ -22,6 +22,9 @@
     <button id="renewalFilterBtn" class="btn btn-outline-primary btn-sm">
       <i class="bi bi-funnel"></i> Filter
     </button>
+    <button id="renewalExportBtn" class="btn btn-outline-success btn-sm">
+      <i class="bi bi-download"></i> Export All
+    </button>
   </div>
 </div>
 
@@ -40,6 +43,15 @@
       </thead>
       <tbody></tbody>
     </table>
+    <div class="d-flex justify-content-between align-items-center mt-3">
+      <button id="renewalPrevBtn" class="btn btn-outline-secondary btn-sm" disabled>
+        <i class="bi bi-chevron-left"></i> Prev
+      </button>
+      <span id="renewalPageInfo" class="small text-muted">Page 0 of 0</span>
+      <button id="renewalNextBtn" class="btn btn-outline-secondary btn-sm" disabled>
+        Next <i class="bi bi-chevron-right"></i>
+      </button>
+    </div>
   </div>
 </div>
 {% endblock %}
@@ -48,46 +60,110 @@
 <script>
 document.addEventListener("DOMContentLoaded", function () {
   const table = $('#renewalTable').DataTable({
-    paging: true,
+    paging: false,
     searching: false,
     ordering: true,
-    info: true,
-    pageLength: 10
+    info: false
   });
 
-  function loadRenewalPending(filterNo) {
-    fetch("/api/policy/renewal-pending/", { credentials: "same-origin" })
+  let currentPage = 1;
+  const pageSize = 10;
+  let currentFilter = "";
+  let totalPages = 0;
+
+  function syncPager() {
+    document.getElementById("renewalPageInfo").innerText = "Page " + (totalPages ? currentPage : 0) + " of " + totalPages;
+    document.getElementById("renewalPrevBtn").disabled = currentPage <= 1;
+    document.getElementById("renewalNextBtn").disabled = currentPage >= totalPages;
+  }
+
+  function loadRenewalPending(page) {
+    currentPage = page || 1;
+    syncPager();
+
+    fetch(`/api/policy/renewal-pending/?policy_no=${encodeURIComponent(currentFilter)}&page=${currentPage}&page_size=${pageSize}`, { credentials: "same-origin" })
       .then(function (res) { return res.json(); })
       .then(function (data) {
         const rows = data.rows || [];
         const total = data.total || {};
+        const pagination = data.pagination || {};
+        totalPages = Number(pagination.total_pages || 0);
+        currentPage = Number(pagination.page || currentPage);
+        syncPager();
         document.getElementById("renewal-total").innerText =
           "Total: NPR " + Number(total.total_amount || 0).toLocaleString() +
           " | Late Fee: NPR " + Number(total.late_fee || 0).toLocaleString();
 
         table.clear();
-        rows
-          .filter(function (r) {
-            if (!filterNo) return true;
-            return String(r.policy_no || "").toLowerCase().indexOf(filterNo.toLowerCase()) !== -1;
-          })
-          .forEach(function (r) {
-            table.row.add([
-              r.policy_no || "-",
-              r.renewal_deadline_date || "-",
-              "NPR " + Number(r.premium_amount || 0).toLocaleString(),
-              "NPR " + Number(r.late_fee || 0).toLocaleString(),
-              "NPR " + Number(r.total_amount || 0).toLocaleString()
-            ]);
-          });
+        rows.forEach(function (r) {
+          table.row.add([
+            r.policy_no || "-",
+            r.renewal_deadline_date || "-",
+            "NPR " + Number(r.premium_amount || 0).toLocaleString(),
+            "NPR " + Number(r.late_fee || 0).toLocaleString(),
+            "NPR " + Number(r.total_amount || 0).toLocaleString()
+          ]);
+        });
 
         table.draw();
       });
   }
 
-  loadRenewalPending("");
+  loadRenewalPending(1);
   document.getElementById("renewalFilterBtn").addEventListener("click", function () {
-    loadRenewalPending(document.getElementById("renewalPolicyFilter").value || "");
+    currentFilter = document.getElementById("renewalPolicyFilter").value || "";
+    loadRenewalPending(1);
+  });
+  function toCsvValue(v) {
+    const s = String(v == null ? "" : v);
+    return '"' + s.replace(/"/g, '""') + '"';
+  }
+  async function exportAllRenewals() {
+    const btn = document.getElementById("renewalExportBtn");
+    btn.disabled = true;
+    btn.innerText = "Exporting...";
+    try {
+      const filter = document.getElementById("renewalPolicyFilter").value || "";
+      const exportPageSize = 100;
+      let page = 1;
+      let total = 1;
+      const allRows = [];
+
+      while (page <= total) {
+        const res = await fetch(`/api/policy/renewal-pending/?policy_no=${encodeURIComponent(filter)}&page=${page}&page_size=${exportPageSize}`, { credentials: "same-origin" });
+        const data = await res.json();
+        total = Number((data.pagination || {}).total_pages || 1);
+        (data.rows || []).forEach(r => allRows.push(r));
+        page += 1;
+      }
+
+      const lines = [];
+      lines.push(["Policy","Deadline","Premium","Late Fee","Total"].map(toCsvValue).join(","));
+      allRows.forEach(r => {
+        lines.push([
+          r.policy_no, r.renewal_deadline_date, r.premium_amount, r.late_fee, r.total_amount
+        ].map(toCsvValue).join(","));
+      });
+      const blob = new Blob([lines.join("\n")], { type: "text/csv;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "policy_renewal_pending.csv";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = '<i class="bi bi-download"></i> Export All';
+    }
+  }
+  document.getElementById("renewalExportBtn").addEventListener("click", exportAllRenewals);
+  document.getElementById("renewalPrevBtn").addEventListener("click", function () {
+    if (currentPage > 1) loadRenewalPending(currentPage - 1);
+  });
+  document.getElementById("renewalNextBtn").addEventListener("click", function () {
+    if (currentPage < totalPages) loadRenewalPending(currentPage + 1);
   });
 });
 </script>
